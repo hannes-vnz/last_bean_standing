@@ -29,7 +29,7 @@ Stop-and-Shoot-Roguelite: zeitbasierte, endlos härter werdende Wellen in einer 
 - Setup: `python -m venv .venv && .venv/bin/pip install -e ".[dev]"` (Python 3.11+); `make check` = Lint + Tests + Inhalt synchron
 - Benchmark Simulation: `python tools/bench.py` (Schritte pro Sekunde, Ergebnis messen und notieren)
 
-## Struktur (Stand M0)
-- `sim/world.py`: `World(seed, WorldConfig)`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; Eingaben `PlayerInput(player_id, ...)`
+## Struktur (Stand M1)
+- `sim/world.py`: `World(seed, WorldConfig.from_content(...))`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; Eingaben `PlayerInput(player_id, ...)`; `sim/entities.py` (Werte aus JSON), `sim/spatial.py` (Raster). Platzhalter-Spawner (`enemy_target`) bis M2
 - `data/loader.py`: `load_content()` liefert typisierte `Content` (`data/schema.py`), sammelt alle Fehler in `ContentError`
 - `meta/profile.py`: `ProfileStore`-Schnittstelle (Datei, Speicher); `render/renderer.py`: 640x360-Fläche, ganzzahlig skaliert

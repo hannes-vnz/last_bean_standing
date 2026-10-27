@@ -31,7 +31,8 @@ async def run(seed: int = 1, max_frames: int | None = None) -> World:
     pygame.display.set_caption("Last Bean Standing")
     window = pygame.display.set_mode((CANVAS_W * 2, CANVAS_H * 2), pygame.RESIZABLE)
     renderer = Renderer(content)
-    world = World(seed, WorldConfig.from_content(content))
+    config = WorldConfig.from_content(content)
+    world = World(seed, config)
     clock = pygame.time.Clock()
     acc, frames, running = 0.0, 0, True
     try:
@@ -39,6 +40,9 @@ async def run(seed: int = 1, max_frames: int | None = None) -> World:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                     running = False
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_r and world.over:
+                    seed += 1
+                    world, acc = World(seed, config), 0.0
             acc += min(clock.tick(120) / 1000.0, DT * MAX_STEPS_PER_FRAME)
             inputs = [read_input(0)]
             while acc >= DT:

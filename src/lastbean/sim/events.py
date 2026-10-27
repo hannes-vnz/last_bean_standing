@@ -22,3 +22,44 @@ class RunStarted(Event):
 @dataclass(frozen=True, slots=True)
 class WaveStarted(Event):
     wave: int
+
+
+@dataclass(frozen=True, slots=True)
+class ShotFired(Event):
+    x: float
+    y: float
+    dx: float
+    dy: float
+
+
+@dataclass(frozen=True, slots=True)
+class EnemyHit(Event):
+    enemy_id: int
+    x: float
+    y: float
+    damage: float
+    crit: bool
+
+
+@dataclass(frozen=True, slots=True)
+class EnemyKilled(Event):
+    enemy_id: int
+    kind: str
+    x: float
+    y: float
+
+
+@dataclass(frozen=True, slots=True)
+class PlayerHit(Event):
+    damage: float
+    hp_left: float
+
+
+@dataclass(frozen=True, slots=True)
+class PlayerDied(Event):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class RunEnded(Event):
+    time_s: float
