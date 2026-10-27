@@ -9,7 +9,8 @@ from __future__ import annotations
 import pygame
 
 from ..data.schema import Content
-from ..sim.world import Snapshot
+from ..sim.waves import biome_at
+from ..sim.world import Snapshot, WorldConfig
 
 CANVAS_W, CANVAS_H = 640, 360
 # World units per canvas pixel (DESIGN.md section 16: 1 tile = 32 units = 16 px).
@@ -38,9 +39,8 @@ class Renderer:
     def __init__(self, content: Content) -> None:
         self.canvas = pygame.Surface((CANVAS_W, CANVAS_H))
         style = content.style
-        plaza = content.biome("plaza").palette
-        self.ground = hex_rgb(plaza["ground"])
-        self.ground_detail = hex_rgb(plaza["detail"])
+        self.tile_px = content.balance.tile_px
+        self.palettes = {b.id: b.palette for b in content.biomes}
         self.ink = hex_rgb(style.ink)
         self.player_body = hex_rgb(style.player["body"])
         self.enemy_colors = {"slimeling": hex_rgb(style.enemy["slime"]), "batswarm": hex_rgb(style.enemy["bat"])}
@@ -59,6 +59,7 @@ class Renderer:
             "legendary": hex_rgb(style.crit_text),
         }
         self.selected = 0
+        self.set_arena(WorldConfig.from_content(content))
         # Outside the arena: ink darkened, so the ink border and outlines stay visible.
         self.void = tuple(v * 3 // 5 for v in self.ink)
         self.font = pygame.font.Font(None, 16)
@@ -72,7 +73,7 @@ class Renderer:
         cam_x = round(focus.x / UNITS_PER_PX) - CANVAS_W // 2
         cam_y = round(focus.y / UNITS_PER_PX) - CANVAS_H // 2
 
-        self._draw_ground(c, snap, cam_x, cam_y)
+        self._draw_ground(c, cam_x, cam_y)
         ink = self.ink
 
         for o in snap.orbs:
@@ -166,18 +167,39 @@ class Renderer:
             x -= img.get_width() // 2
         self.canvas.blit(img, (x, y))
 
-    def _draw_ground(self, c: pygame.Surface, snap: Snapshot, cam_x: int, cam_y: int) -> None:
-        arena = pygame.Rect(-cam_x, -cam_y, int(snap.arena_w / UNITS_PER_PX), int(snap.arena_h / UNITS_PER_PX))
-        c.fill(self.ground, arena)
-        tile = 32 // UNITS_PER_PX
-        # Checker detail every other tile so movement is visible.
-        view = arena.clip(c.get_rect())
-        cols = range((view.left - arena.left) // tile, -(-(view.right - arena.left) // tile))
-        for row in range((view.top - arena.top) // tile, -(-(view.bottom - arena.top) // tile)):
-            for col in cols:
-                if (row + col) % 2:
-                    c.fill(self.ground_detail, (arena.left + col * tile, arena.top + row * tile, tile, tile))
-        pygame.draw.rect(c, self.ink, arena, 1)
+    def set_arena(self, config: WorldConfig) -> None:
+        """Pre-render the static map (biome grounds, obstacles) once; each frame blits the visible part."""
+        tile = self.tile_px // UNITS_PER_PX
+        w, h = int(config.arena_w / UNITS_PER_PX), int(config.arena_h / UNITS_PER_PX)
+        surf = pygame.Surface((w, h))
+        for row in range(h // tile):
+            for col in range(w // tile):
+                cx, cy = (col + 0.5) * tile * UNITS_PER_PX, (row + 0.5) * tile * UNITS_PER_PX
+                pal = self.palettes.get(biome_at(config.biomes, cx, cy) or "plaza", self.palettes["plaza"])
+                color = pal["detail"] if (row + col) % 2 else pal["ground"]
+                surf.fill(hex_rgb(color), (col * tile, row * tile, tile, tile))
+        for o in config.obstacles:
+            self._draw_obstacle(surf, o)
+        pygame.draw.rect(surf, self.ink, surf.get_rect(), 1)
+        self.map_surface = surf
+
+    def _draw_obstacle(self, surf: pygame.Surface, o) -> None:
+        x, y = round(o.x / UNITS_PER_PX), round(o.y / UNITS_PER_PX)
+        r = max(3, round(o.radius / UNITS_PER_PX) + 1)
+        pal = self.palettes.get("forest", {})
+        canopy = hex_rgb(pal.get("tree") or "#5aa05a")
+        trunk = hex_rgb(pal.get("trunk") or "#8a6a4a")
+        ink = self.ink
+        # Trunk below, round canopy with a light spot (light from the top left), dark outline.
+        surf.fill(ink, (x - 2, y + r - 4, 5, 7))
+        surf.fill(trunk, (x - 1, y + r - 3, 3, 5))
+        pygame.draw.circle(surf, ink, (x, y - 1), r + 1)
+        pygame.draw.circle(surf, canopy, (x, y - 1), r)
+        light = tuple(min(255, v + 40) for v in canopy)
+        pygame.draw.circle(surf, light, (x - r // 3, y - 1 - r // 3), max(1, r // 3))
+
+    def _draw_ground(self, c: pygame.Surface, cam_x: int, cam_y: int) -> None:
+        c.blit(self.map_surface, (-cam_x, -cam_y))
 
     def _text(self, text: str, pos: tuple[int, int], font=None, center: bool = False) -> None:
         """White text with a dark outline (readability rule, DESIGN.md section 16)."""

@@ -103,6 +103,7 @@ async def run(seed: int = 1, max_frames: int | None = None) -> World:
     normal = WorldConfig.from_content(content)
     config = normal
     world = World(seed, config)
+    renderer.set_arena(config)
     clock = pygame.time.Clock()
     timer, show_timings, bench_result = FrameTimer(), False, ""
     acc, frames, running, choice = 0.0, 0, True, None

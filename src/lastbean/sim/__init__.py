@@ -1,5 +1,6 @@
 """Headless, deterministic simulation (no pygame)."""
 
+from .arena import Obstacle, ObstacleMap
 from .entities import CharacterStats, Enemy, MobStats, Player, Projectile, Stats, XpOrb
 from .events import (
     EnemyHit,
@@ -9,6 +10,7 @@ from .events import (
     LevelUp,
     PlayerDied,
     PlayerHit,
+    ProjectileBlocked,
     RunEnded,
     RunStarted,
     ShotFired,
@@ -38,10 +40,13 @@ __all__ = [
     "XpOrb",
     "Event",
     "MobStats",
+    "Obstacle",
+    "ObstacleMap",
     "Player",
     "PlayerDied",
     "PlayerHit",
     "PlayerInput",
+    "ProjectileBlocked",
     "Projectile",
     "Rng",
     "RunEnded",
