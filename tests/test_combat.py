@@ -13,7 +13,7 @@ from lastbean.sim import (
 
 
 def place(world: World, x: float, y: float, hp: float | None = None) -> Enemy:
-    m = world.config.mob
+    m = world.config.mobs[0]
     e = Enemy(world._next_eid, m.id, x, y, hp or m.hp, hp or m.hp, m.speed, m.damage, m.radius)
     world._next_eid += 1
     world.enemies.append(e)
@@ -33,7 +33,7 @@ def test_spawner_keeps_target_alive_at_spawn_distance(make_config):
     p = w.players[0]
     lo, hi = w.config.spawn_distance
     # Fresh spawns lie on the spawn ring (minus at most 20 ticks of walking towards the player).
-    walked = w.config.mob.speed * 21 / TICK_HZ + 2 * w.config.mob.radius
+    walked = w.config.mobs[0].speed * 21 / TICK_HZ + 2 * w.config.mobs[0].radius
     for e in w.enemies:
         d = ((e.x - p.x) ** 2 + (e.y - p.y) ** 2) ** 0.5
         assert lo - walked <= d <= hi + 1e-6

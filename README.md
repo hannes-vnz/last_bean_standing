@@ -4,14 +4,14 @@ A small stop-and-shoot roguelite with bean mascots, built in Python with pygame-
 Time-based waves in a finite arena with four biomes, bosses, shrines and an endless swarm after 20:00.
 Portfolio project: clean code, tests, and later a reinforcement-learning agent that plays the game.
 
-**Status:** milestone M1 (player, chasing enemies, auto-fire projectiles, collision, death).
+**Status:** milestone M2: stop-and-shoot, time-based waves, XP orbs, level-up with upgrade cards. Playable to 5:00.
 
 ## Quick start
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Python 3.11+
 pip install -e ".[dev]"
-python -m lastbean        # WASD / arrow keys to move, Esc to quit
+python -m lastbean        # WASD/arrows move (you shoot while standing), 1/2/3 pick upgrades, Esc quits
 pytest                    # tests
 ruff check                # lint
 ```
@@ -33,6 +33,8 @@ Measured with `python tools/bench.py --render` (Apple Silicon, Python 3.12, head
 |---|---|---|---|
 | 200 | 1.1 ms | 2.4 ms | 3.5 ms |
 | 350 (cap) | 2.1 ms | 2.8 ms | 4.9 ms |
+
+Balancing (`python tools/balance.py --seeds 20`, heuristic bot as ranger): median death 3:38 (1:47 to 4:56), median level 3.
 
 ## Assets
 

@@ -29,7 +29,9 @@ Stop-and-Shoot-Roguelite: zeitbasierte, endlos härter werdende Wellen in einer 
 - Setup: `python -m venv .venv && .venv/bin/pip install -e ".[dev]"` (Python 3.11+); `make check` = Lint + Tests + Inhalt synchron
 - Benchmark Simulation: `python tools/bench.py` (Schritte pro Sekunde, Ergebnis messen und notieren)
 
-## Struktur (Stand M1)
-- `sim/world.py`: `World(seed, WorldConfig.from_content(...))`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; Eingaben `PlayerInput(player_id, ...)`; `sim/entities.py` (Werte aus JSON), `sim/spatial.py` (Raster). Platzhalter-Spawner (`enemy_target`) bis M2
+## Struktur (Stand M2)
+- `sim/world.py`: `World(seed, WorldConfig.from_content(...))`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; `PlayerInput(player_id, move_x, move_y, choice)`; Level-up pausiert nur im Einzelspiel
+- `sim/waves.py` (Budget, Skalierung, XP-Kurve, Biome), `sim/upgrades.py` (Stat-Summen, Kartenwahl), `sim/entities.py`, `sim/spatial.py`; neue Mob-Verhalten in `IMPLEMENTED_BEHAVIORS` eintragen
+- `bots.py`: Heuristik-Spieler; `tools/balance.py` misst Todeszeiten über viele Seeds
 - `data/loader.py`: `load_content()` liefert typisierte `Content` (`data/schema.py`), sammelt alle Fehler in `ContentError`
-- `meta/profile.py`: `ProfileStore`-Schnittstelle (Datei, Speicher); `render/renderer.py`: 640x360-Fläche, ganzzahlig skaliert
+- `meta/profile.py`: `ProfileStore`-Schnittstelle; `render/renderer.py`: 640x360-Fläche, ganzzahlig skaliert, Level-up-Karten

@@ -13,14 +13,14 @@ def content():
 
 @pytest.fixture
 def make_config(content):
-    """WorldConfig from the real content, with optional overrides (also for character/mob stats)."""
+    """WorldConfig from the real content, with optional overrides (character stats, stats of every mob)."""
 
     def make(character: dict | None = None, mob: dict | None = None, **overrides) -> WorldConfig:
         cfg = WorldConfig.from_content(content, **overrides)
         if character:
             cfg = dataclasses.replace(cfg, character=dataclasses.replace(cfg.character, **character))
         if mob:
-            cfg = dataclasses.replace(cfg, mob=dataclasses.replace(cfg.mob, **mob))
+            cfg = dataclasses.replace(cfg, mobs=tuple(dataclasses.replace(m, **mob) for m in cfg.mobs))
         return cfg
 
     return make
