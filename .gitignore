@@ -6,3 +6,4 @@ profile.json
 .DS_Store
 *.db
 files/
+build/

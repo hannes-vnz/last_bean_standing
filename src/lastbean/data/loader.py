@@ -35,7 +35,17 @@ from .schema import (
     WorkshopItem,
 )
 
-DATA_DIR = Path(__file__).resolve().parents[3] / "data"
+
+def _find_data_dir() -> Path:
+    """`data/` next to `src/` in the repo, or next to the `lastbean` package in the web build."""
+    here = Path(__file__).resolve()
+    for base in (here.parents[3], here.parents[2]):
+        if (base / "data" / "balance.json").is_file():
+            return base / "data"
+    return here.parents[3] / "data"
+
+
+DATA_DIR = _find_data_dir()
 DATA_FILES = (
     "balance", "biomes", "bosses", "challenges", "characters", "elite", "mobs",
     "modes", "shop", "shrines", "skins", "style", "swarm", "upgrades",

@@ -16,6 +16,16 @@ pytest                    # tests
 ruff check                # lint
 ```
 
+## Browser version
+
+```bash
+pip install -e ".[web]"
+python tools/build_web.py --serve   # http://localhost:8000
+```
+
+Every push to `main` builds the web version and publishes it on GitHub Pages (`.github/workflows/pages.yml`).
+Debug keys: F3 timings, F4 stress test (200 enemies), F5 benchmark.
+
 ## Layout
 
 - `src/lastbean/sim/` – deterministic headless simulation (no pygame), fixed 1/60 s step
@@ -33,6 +43,7 @@ Measured with `python tools/bench.py --render` (Apple Silicon, Python 3.12, head
 |---|---|---|---|
 | 200 | 1.1 ms | 2.4 ms | 3.5 ms |
 | 350 (cap) | 2.1 ms | 2.8 ms | 4.9 ms |
+| 200, browser (pygbag 0.9.3, F5) | 1.7 ms | 2.4 ms | 4.1 ms |
 
 Balancing (`python tools/balance.py --seeds 20`, heuristic bot as ranger): median death 3:38 (1:47 to 4:56), median level 3.
 
