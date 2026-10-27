@@ -1,0 +1,19 @@
+{
+ "start_s": 1200,
+ "entity": "floodwisp",
+ "name": "Flutgeist",
+ "hp": 6,
+ "speed": 75,
+ "damage": 6,
+ "flying": true,
+ "ignores_obstacles": true,
+ "burst_every_s": 3,
+ "burst_size_base": 40,
+ "burst_growth_pct_per_min": 10,
+ "speed_gain_pct_per_min": 8,
+ "score_mult_start": 1,
+ "score_mult_gain_per_45s": 1,
+ "score_mult_cap": 8,
+ "hp_damage_scaling": "wie normale Gegner (hp_mult, damage_mult), setzt sich unbegrenzt fort",
+ "text": "Ab 20:00 beginnt die Schwarmflut: fliegende Flutgeister in Schüben, die nie aufhört und immer schneller wird. Sie ist der Endlos-Modus für den Highscore."
+}

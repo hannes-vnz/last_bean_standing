@@ -1,0 +1,570 @@
+[
+ {
+  "id": "ranger",
+  "name": "Fenn",
+  "title": "der Falkenauge",
+  "archetype": "Jäger: ausgewogen, durchschlagende Pfeile",
+  "hp": 100,
+  "speed": 150,
+  "damage": 12,
+  "attack_rate": 1.6,
+  "range": 380,
+  "crit_chance": 5,
+  "crit_mult": 1.5,
+  "weapon": {
+   "type": "projectile",
+   "pattern": "single",
+   "projectile_speed": 640,
+   "pierce": 1,
+   "aoe_radius": 0,
+   "text": "Ein Pfeil, durchschlägt 1 Gegner."
+  },
+  "passive": {
+   "id": "far_sight",
+   "name": "Weitblick",
+   "text": "+12 % Reichweite. +8 % Schaden auf Ziele über 250 px.",
+   "effects": [
+    {
+     "stat": "range_pct",
+     "value": 12
+    },
+    {
+     "stat": "damage_pct_far",
+     "value": 8,
+     "threshold_px": 250
+    }
+   ]
+  },
+  "active": {
+   "id": "arrow_storm",
+   "name": "Pfeilhagel",
+   "cooldown_s": 18,
+   "text": "16 Pfeile in alle Richtungen (je 60 % Schaden)."
+  },
+  "tags": [
+   "projectile",
+   "pierce",
+   "range"
+  ],
+  "unlock_challenge": null,
+  "impl_phase": 1,
+  "skins": [
+   "ranger_a",
+   "ranger_b"
+  ],
+  "vfx": {
+   "projectile": "Pfeil (3 px lang, helle Spitze) mit Schweif aus 3 verblassenden Pixeln",
+   "impact": "4 Funken und 2 Frames weißes Aufblitzen am Gegner",
+   "ability": "Pfeilhagel: Mündungsring, 16 Pfeile in alle Richtungen"
+  }
+ },
+ {
+  "id": "pyro",
+  "name": "Mira",
+  "title": "Aschenglut",
+  "archetype": "Pyromantin: Flächenschaden und Brand",
+  "hp": 80,
+  "speed": 140,
+  "damage": 14,
+  "attack_rate": 1.1,
+  "range": 320,
+  "crit_chance": 5,
+  "crit_mult": 1.5,
+  "weapon": {
+   "type": "projectile",
+   "pattern": "single_explosive",
+   "projectile_speed": 420,
+   "pierce": 0,
+   "aoe_radius": 64,
+   "text": "Feuerball explodiert (Radius 64) und entzündet (3 s, 20 % Schaden/s)."
+  },
+  "passive": {
+   "id": "heat_wave",
+   "name": "Hitzewelle",
+   "text": "Brennende Gegner erleiden +20 % Schaden.",
+   "effects": [
+    {
+     "stat": "damage_pct_vs_burning",
+     "value": 20
+    }
+   ]
+  },
+  "active": {
+   "id": "inferno",
+   "name": "Inferno",
+   "cooldown_s": 22,
+   "text": "Feuerring (Radius 180) um dich, 4 s, 40 % Schaden/s."
+  },
+  "tags": [
+   "fire",
+   "area",
+   "burn"
+  ],
+  "unlock_challenge": "unlock_pyro",
+  "impl_phase": 2,
+  "skins": [
+   "pyro_a",
+   "pyro_b"
+  ],
+  "vfx": {
+   "projectile": "Feuerball (6 px, 3-Frame-Flackern) mit Glutschweif (orange, rot, dunkelrot)",
+   "impact": "expandierender Explosionsring (4 Frames), Glutpartikel; brennende Gegner tragen kleine Flammen",
+   "ability": "Inferno: rotierender Flammenring um den Spieler"
+  }
+ },
+ {
+  "id": "rogue",
+  "name": "Kaz",
+  "title": "Nachtmesser",
+  "archetype": "Schurke: schnell, kritisch, kurze Reichweite",
+  "hp": 85,
+  "speed": 190,
+  "damage": 7,
+  "attack_rate": 2.2,
+  "range": 210,
+  "crit_chance": 20,
+  "crit_mult": 1.5,
+  "weapon": {
+   "type": "projectile",
+   "pattern": "fan3",
+   "projectile_speed": 700,
+   "pierce": 0,
+   "aoe_radius": 0,
+   "text": "Fächer aus 3 Wurfmessern."
+  },
+  "passive": {
+   "id": "thrill",
+   "name": "Nervenkitzel",
+   "text": "+15 % Lauftempo. +6 % Schaden je Gegner im Umkreis 150 px (max. 5).",
+   "effects": [
+    {
+     "stat": "move_speed_pct",
+     "value": 15
+    },
+    {
+     "stat": "damage_pct_per_nearby",
+     "value": 6,
+     "radius_px": 150,
+     "max_stacks": 5
+    }
+   ]
+  },
+  "active": {
+   "id": "shadow_step",
+   "name": "Schattenschritt",
+   "cooldown_s": 5,
+   "text": "Dash über 220 px, 0,3 s unverwundbar."
+  },
+  "tags": [
+   "crit",
+   "movement",
+   "close"
+  ],
+  "unlock_challenge": "unlock_rogue",
+  "impl_phase": 2,
+  "skins": [
+   "rogue_a",
+   "rogue_b"
+  ],
+  "vfx": {
+   "projectile": "drehendes Messer (4 Frames) mit blaugrauen Nachbildern",
+   "impact": "weißer Diagonal-Schnitt (3 Frames)",
+   "ability": "Schattenschritt: Schatten-Nachbilder und kleiner Rauchpuff"
+  }
+ },
+ {
+  "id": "guardian",
+  "name": "Brun",
+  "title": "Eisenschulter",
+  "archetype": "Wächter: Nahkampf-Tank mit Dornen",
+  "hp": 160,
+  "speed": 120,
+  "damage": 20,
+  "attack_rate": 0.9,
+  "range": 110,
+  "crit_chance": 0,
+  "crit_mult": 1.5,
+  "weapon": {
+   "type": "nova",
+   "pattern": "shockwave",
+   "projectile_speed": 0,
+   "pierce": 99,
+   "aoe_radius": 110,
+   "text": "Schockwelle um dich (Radius 110) mit Rückstoß."
+  },
+  "passive": {
+   "id": "iron_skin",
+   "name": "Eisenhaut",
+   "text": "-15 % erlittener Schaden. Reflektiert 25 % des Nahkampfschadens.",
+   "effects": [
+    {
+     "stat": "damage_taken_pct",
+     "value": -15
+    },
+    {
+     "stat": "thorns_pct",
+     "value": 25
+    }
+   ]
+  },
+  "active": {
+   "id": "bulwark",
+   "name": "Bollwerk",
+   "cooldown_s": 25,
+   "text": "Schild für 3 s, absorbiert 150 Schaden."
+  },
+  "tags": [
+   "defense",
+   "thorns",
+   "area",
+   "melee"
+  ],
+  "unlock_challenge": "unlock_guardian",
+  "impl_phase": 2,
+  "skins": [
+   "guardian_a",
+   "guardian_b"
+  ],
+  "vfx": {
+   "projectile": "Schockwelle: Ring mit 2 px Kante expandiert, Staubpartikel am Boden",
+   "impact": "Rückstoß mit Staub, leichtes Bildschirmwackeln",
+   "ability": "Bollwerk: schimmernder Sechseck-Schild"
+  }
+ },
+ {
+  "id": "cryo",
+  "name": "Ysa",
+  "title": "Winterhauch",
+  "archetype": "Frostmagierin: Kontrolle und Verlangsamung",
+  "hp": 90,
+  "speed": 145,
+  "damage": 10,
+  "attack_rate": 1.3,
+  "range": 340,
+  "crit_chance": 5,
+  "crit_mult": 1.5,
+  "weapon": {
+   "type": "projectile",
+   "pattern": "single",
+   "projectile_speed": 520,
+   "pierce": 0,
+   "aoe_radius": 0,
+   "text": "Frostgeschoss verlangsamt um 30 % (2 s). 3 Kältestapel frieren 1,2 s ein."
+  },
+  "passive": {
+   "id": "frost_aura",
+   "name": "Frostaura",
+   "text": "Gegner im Umkreis von 140 px sind 15 % langsamer.",
+   "effects": [
+    {
+     "stat": "aura_slow_pct",
+     "value": 15,
+     "radius_px": 140
+    }
+   ]
+  },
+  "active": {
+   "id": "ice_age",
+   "name": "Eiszeit",
+   "cooldown_s": 24,
+   "text": "Friert alle Gegner im Bild 2 s ein."
+  },
+  "tags": [
+   "frost",
+   "control",
+   "ranged"
+  ],
+  "unlock_challenge": "unlock_cryo",
+  "impl_phase": 2,
+  "skins": [
+   "cryo_a",
+   "cryo_b"
+  ],
+  "vfx": {
+   "projectile": "Eiskristall (5 px) mit Glitzerpixeln",
+   "impact": "6 Eisscherben und blaues Aufblitzen; eingefrorene Gegner bläulich mit Kristallhülle",
+   "ability": "Eiszeit: weiß-blauer Ring über den ganzen Bildschirm"
+  }
+ },
+ {
+  "id": "summoner",
+  "name": "Thorn",
+  "title": "Geisterruf",
+  "archetype": "Beschwörer: Begleiter kämpfen für ihn",
+  "hp": 90,
+  "speed": 140,
+  "damage": 6,
+  "attack_rate": 1.0,
+  "range": 300,
+  "crit_chance": 5,
+  "crit_mult": 1.5,
+  "weapon": {
+   "type": "projectile_plus_minions",
+   "pattern": "single",
+   "projectile_speed": 480,
+   "pierce": 0,
+   "aoe_radius": 0,
+   "minions": 2,
+   "text": "Schwacher Geisterbolzen. 2 Geister-Begleiter greifen selbstständig an (8 Schaden, 1,5/s)."
+  },
+  "passive": {
+   "id": "soul_bond",
+   "name": "Seelenband",
+   "text": "Geister erhalten 50 % deiner Schadensboni.",
+   "effects": [
+    {
+     "stat": "minion_inherit_damage_pct",
+     "value": 50
+    }
+   ]
+  },
+  "active": {
+   "id": "raise_dead",
+   "name": "Totenruf",
+   "cooldown_s": 30,
+   "text": "4 zusätzliche Geister für 10 s."
+  },
+  "tags": [
+   "summon",
+   "minion"
+  ],
+  "unlock_challenge": "unlock_summoner",
+  "impl_phase": 3,
+  "skins": [
+   "summoner_a",
+   "summoner_b"
+  ],
+  "vfx": {
+   "projectile": "grüner Wisp mit Schweif",
+   "impact": "Seelenfunken steigen auf",
+   "ability": "Totenruf: Rune am Boden, Geister steigen auf; Begleiter (8 px) schweben sinusförmig"
+  }
+ },
+ {
+  "id": "storm",
+  "name": "Vex",
+  "title": "Donnerhall",
+  "archetype": "Sturmrufer: Kettenblitze, hohe Schussrate",
+  "hp": 80,
+  "speed": 160,
+  "damage": 8,
+  "attack_rate": 2.4,
+  "range": 300,
+  "crit_chance": 5,
+  "crit_mult": 1.5,
+  "weapon": {
+   "type": "chain",
+   "pattern": "chain_lightning",
+   "projectile_speed": 0,
+   "pierce": 0,
+   "aoe_radius": 0,
+   "chain_jumps": 2,
+   "chain_radius": 160,
+   "chain_falloff": 0.8,
+   "text": "Kettenblitz springt 2-mal (160 px, je 80 % Schaden)."
+  },
+  "passive": {
+   "id": "static_charge",
+   "name": "Statische Ladung",
+   "text": "Jeder 10. Schuss ruft einen Blitzschlag (200 % Schaden) auf einen zufälligen Gegner.",
+   "effects": [
+    {
+     "stat": "bonus_strike_every_n_shots",
+     "value": 10,
+     "damage_pct": 200
+    }
+   ]
+  },
+  "active": {
+   "id": "thunderstorm",
+   "name": "Gewittersturm",
+   "cooldown_s": 28,
+   "text": "6 s lang 4 Blitze pro Sekunde auf zufällige Gegner."
+  },
+  "tags": [
+   "chain",
+   "lightning",
+   "speed"
+  ],
+  "unlock_challenge": "unlock_storm",
+  "impl_phase": 3,
+  "skins": [
+   "storm_a",
+   "storm_b"
+  ],
+  "vfx": {
+   "projectile": "Kettenblitz: gezackte 1-px-Linie, 3-Frame-Flackern, Funken an den Knoten",
+   "impact": "Blitzschlag von oben (senkrechter Strahl) mit Bodenfunken",
+   "ability": "Gewittersturm: dunkle Pixelwolke über dem Spieler, Blitze im Takt"
+  }
+ },
+ {
+  "id": "bomber",
+  "name": "Orm",
+  "title": "Zündfunke",
+  "archetype": "Sprengmeister: Bomben im Stand, Minen im Lauf",
+  "hp": 110,
+  "speed": 150,
+  "damage": 26,
+  "attack_rate": 0.7,
+  "range": 300,
+  "crit_chance": 5,
+  "crit_mult": 1.5,
+  "weapon": {
+   "type": "lobbed",
+   "pattern": "bomb",
+   "projectile_speed": 300,
+   "pierce": 0,
+   "aoe_radius": 90,
+   "fuse_s": 0.6,
+   "text": "Bombe im Bogen, explodiert nach 0,6 s (Radius 90)."
+  },
+  "passive": {
+   "id": "mine_layer",
+   "name": "Minenleger",
+   "text": "Legt beim Laufen alle 1,5 s eine Mine (60 % Schaden, Radius 70, max. 6).",
+   "effects": [
+    {
+     "stat": "mine_interval_s",
+     "value": 1.5,
+     "damage_pct": 60,
+     "radius_px": 70,
+     "max_mines": 6
+    }
+   ]
+  },
+  "active": {
+   "id": "mega_bomb",
+   "name": "Megabombe",
+   "cooldown_s": 20,
+   "text": "Große Bombe (Radius 200, 500 % Schaden)."
+  },
+  "tags": [
+   "bomb",
+   "area",
+   "mine"
+  ],
+  "unlock_challenge": "unlock_bomber",
+  "impl_phase": 3,
+  "skins": [
+   "bomber_a",
+   "bomber_b"
+  ],
+  "vfx": {
+   "projectile": "Bombe im Bogen mit Bodenschatten und funkensprühender Lunte",
+   "impact": "großer Feuerball, Rauchring und Bildschirmwackeln; Minen blinken rot",
+   "ability": "Megabombe: roter Warnkreis, dann Einschlag"
+  }
+ },
+ {
+  "id": "venom",
+  "name": "Lilu",
+  "title": "Schierling",
+  "archetype": "Giftmischerin: Giftpfützen und Seuche",
+  "hp": 85,
+  "speed": 150,
+  "damage": 5,
+  "attack_rate": 1.4,
+  "range": 330,
+  "crit_chance": 5,
+  "crit_mult": 1.5,
+  "weapon": {
+   "type": "lobbed",
+   "pattern": "vial",
+   "projectile_speed": 360,
+   "pierce": 0,
+   "aoe_radius": 55,
+   "text": "Giftphiole: Pfütze (Radius 55, 3 s, 12 Gift/s, stapelt bis 4x)."
+  },
+  "passive": {
+   "id": "plague",
+   "name": "Seuche",
+   "text": "Vergiftete Gegner verbreiten beim Tod Gift (Radius 80).",
+   "effects": [
+    {
+     "stat": "poison_spread_on_death_radius_px",
+     "value": 80
+    }
+   ]
+  },
+  "active": {
+   "id": "toxic_cloud",
+   "name": "Giftnebel",
+   "cooldown_s": 26,
+   "text": "Wolke (Radius 160) für 8 s, 35 % Schaden/s, verlangsamt 20 %."
+  },
+  "tags": [
+   "poison",
+   "area",
+   "dot"
+  ],
+  "unlock_challenge": "unlock_venom",
+  "impl_phase": 3,
+  "skins": [
+   "venom_a",
+   "venom_b"
+  ],
+  "vfx": {
+   "projectile": "Phiole dreht sich im Bogen",
+   "impact": "grüner Platscher mit Tropfen; Pfütze mit blubbernden Blasen",
+   "ability": "Giftnebel: wabernde Partikelwolke"
+  }
+ },
+ {
+  "id": "sniper",
+  "name": "Aya",
+  "title": "Stillstand",
+  "archetype": "Scharfschützin: je länger sie steht, desto härter",
+  "hp": 75,
+  "speed": 130,
+  "damage": 40,
+  "attack_rate": 0.45,
+  "range": 600,
+  "crit_chance": 10,
+  "crit_mult": 1.5,
+  "weapon": {
+   "type": "projectile",
+   "pattern": "charged",
+   "projectile_speed": 1100,
+   "pierce": 3,
+   "aoe_radius": 0,
+   "charge_bonus_per_s_pct": 10,
+   "charge_max_pct": 100,
+   "text": "Durchschlag-Schuss (3). +10 % Schaden je Sekunde Stillstand (max. +100 %)."
+  },
+  "passive": {
+   "id": "calm_before",
+   "name": "Ruhe vor dem Schuss",
+   "text": "Nach 2 s Stillstand ist der nächste Schuss ein garantierter Krit (x2,5).",
+   "effects": [
+    {
+     "stat": "guaranteed_crit_after_still_s",
+     "value": 2,
+     "crit_mult": 2.5
+    }
+   ]
+  },
+  "active": {
+   "id": "focus",
+   "name": "Fokus",
+   "cooldown_s": 20,
+   "text": "4 s lang: schießt auch im Lauf, doppelte Schussrate."
+  },
+  "tags": [
+   "crit",
+   "pierce",
+   "stillness"
+  ],
+  "unlock_challenge": "unlock_sniper",
+  "impl_phase": 3,
+  "skins": [
+   "sniper_a",
+   "sniper_b"
+  ],
+  "vfx": {
+   "projectile": "Aufladen: wachsender heller Punkt am Lauf und feine Zielline",
+   "impact": "langer heller Strahl (1 px, 2 Frames) mit Mündungsblitz; Krit: goldener Ring plus Hit-Stop",
+   "ability": "Fokus: leichte Entsättigung des Bildes während der 4 s"
+  }
+ }
+]

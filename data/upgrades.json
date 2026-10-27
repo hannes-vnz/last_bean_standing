@@ -1,0 +1,1023 @@
+[
+ {
+  "id": "sharp_edges",
+  "name": "Geschärfte Spitzen",
+  "rarity": "common",
+  "max_level": 5,
+  "tags": [
+   "damage"
+  ],
+  "text": "+8 % Schaden je Stufe.",
+  "effects": [
+   {
+    "stat": "damage_pct",
+    "per_level": 8
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "quick_hands",
+  "name": "Flinke Hände",
+  "rarity": "common",
+  "max_level": 5,
+  "tags": [
+   "speed"
+  ],
+  "text": "+7 % Angriffstempo je Stufe.",
+  "effects": [
+   {
+    "stat": "attack_speed_pct",
+    "per_level": 7
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "long_reach",
+  "name": "Weitsicht",
+  "rarity": "common",
+  "max_level": 4,
+  "tags": [
+   "range"
+  ],
+  "text": "+10 % Reichweite je Stufe.",
+  "effects": [
+   {
+    "stat": "range_pct",
+    "per_level": 10
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "keen_eye",
+  "name": "Scharfblick",
+  "rarity": "common",
+  "max_level": 5,
+  "tags": [
+   "crit"
+  ],
+  "text": "+4 % Krit-Chance je Stufe.",
+  "effects": [
+   {
+    "stat": "crit_chance_pct",
+    "per_level": 4
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "vitality",
+  "name": "Lebenskraft",
+  "rarity": "common",
+  "max_level": 5,
+  "tags": [
+   "defense"
+  ],
+  "text": "+15 Max-HP je Stufe (heilt um 15).",
+  "effects": [
+   {
+    "stat": "max_hp_flat",
+    "per_level": 15
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "thick_skin",
+  "name": "Dicke Haut",
+  "rarity": "common",
+  "max_level": 4,
+  "tags": [
+   "defense"
+  ],
+  "text": "-6 % erlittener Schaden je Stufe.",
+  "effects": [
+   {
+    "stat": "damage_taken_pct",
+    "per_level": -6
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "swift_feet",
+  "name": "Flinke Füße",
+  "rarity": "common",
+  "max_level": 5,
+  "tags": [
+   "movement"
+  ],
+  "text": "+6 % Lauftempo je Stufe.",
+  "effects": [
+   {
+    "stat": "move_speed_pct",
+    "per_level": 6
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "magnet",
+  "name": "XP-Magnet",
+  "rarity": "common",
+  "max_level": 4,
+  "tags": [
+   "utility"
+  ],
+  "text": "+30 % Aufsammelradius je Stufe.",
+  "effects": [
+   {
+    "stat": "pickup_radius_pct",
+    "per_level": 30
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "quick_learner",
+  "name": "Schnelle Auffassung",
+  "rarity": "common",
+  "max_level": 4,
+  "tags": [
+   "utility"
+  ],
+  "text": "+8 % XP je Stufe.",
+  "effects": [
+   {
+    "stat": "xp_pct",
+    "per_level": 8
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "heal_orbs",
+  "name": "Heilkugeln",
+  "rarity": "common",
+  "max_level": 3,
+  "tags": [
+   "defense",
+   "utility"
+  ],
+  "text": "Gegner lassen mit 3 % je Stufe Heilkugeln fallen (5 HP).",
+  "effects": [
+   {
+    "stat": "heal_orb_chance_pct",
+    "per_level": 3
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "wide_blast",
+  "name": "Breite Wirkung",
+  "rarity": "common",
+  "max_level": 4,
+  "tags": [
+   "area"
+  ],
+  "text": "+10 % Flächenradius je Stufe.",
+  "effects": [
+   {
+    "stat": "area_pct",
+    "per_level": 10
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "thorns",
+  "name": "Dornenpanzer",
+  "rarity": "common",
+  "max_level": 4,
+  "tags": [
+   "defense",
+   "thorns"
+  ],
+  "text": "Reflektiert 20 % des erlittenen Nahkampfschadens je Stufe.",
+  "effects": [
+   {
+    "stat": "thorns_pct",
+    "per_level": 20
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "big_shots",
+  "name": "Schwere Geschosse",
+  "rarity": "common",
+  "max_level": 3,
+  "tags": [
+   "projectile"
+  ],
+  "text": "+12 % Geschossgröße je Stufe (trifft leichter).",
+  "effects": [
+   {
+    "stat": "projectile_size_pct",
+    "per_level": 12
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "fast_shots",
+  "name": "Schnelle Geschosse",
+  "rarity": "common",
+  "max_level": 3,
+  "tags": [
+   "projectile"
+  ],
+  "text": "+12 % Geschossgeschwindigkeit je Stufe.",
+  "effects": [
+   {
+    "stat": "projectile_speed_pct",
+    "per_level": 12
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "dodge",
+  "name": "Ausweichen",
+  "rarity": "common",
+  "max_level": 5,
+  "tags": [
+   "defense"
+  ],
+  "text": "3 % Chance je Stufe, einem Treffer zu entgehen.",
+  "effects": [
+   {
+    "stat": "dodge_chance_pct",
+    "per_level": 3
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "armor_plating",
+  "name": "Panzerplatten",
+  "rarity": "common",
+  "max_level": 4,
+  "tags": [
+   "defense"
+  ],
+  "text": "-1 Schaden je Treffer und Stufe (mindestens 1).",
+  "effects": [
+   {
+    "stat": "flat_damage_reduction",
+    "per_level": 1
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "lucky_charm",
+  "name": "Glücksklee",
+  "rarity": "common",
+  "max_level": 4,
+  "tags": [
+   "utility"
+  ],
+  "text": "+5 Glück je Stufe: seltenere Upgrades werden wahrscheinlicher.",
+  "effects": [
+   {
+    "stat": "luck",
+    "per_level": 5
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "bounty_hunter",
+  "name": "Kopfgeldjäger",
+  "rarity": "common",
+  "max_level": 4,
+  "tags": [
+   "damage"
+  ],
+  "text": "+6 % Schaden gegen Elite und Bosse je Stufe.",
+  "effects": [
+   {
+    "stat": "damage_pct_vs_elite_boss",
+    "per_level": 6
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "brutal_crits",
+  "name": "Brutale Treffer",
+  "rarity": "uncommon",
+  "max_level": 4,
+  "tags": [
+   "crit"
+  ],
+  "text": "+20 % Krit-Schaden je Stufe (Basis 150 %).",
+  "effects": [
+   {
+    "stat": "crit_mult_add_pct",
+    "per_level": 20
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "double_shot",
+  "name": "Mehrfachangriff",
+  "rarity": "uncommon",
+  "max_level": 3,
+  "tags": [
+   "projectile"
+  ],
+  "text": "+1 zusätzlicher Angriff je Stufe (60 % Schaden, leichte Streuung).",
+  "effects": [
+   {
+    "stat": "extra_attacks",
+    "per_level": 1
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "piercing",
+  "name": "Durchschlag",
+  "rarity": "uncommon",
+  "max_level": 3,
+  "tags": [
+   "pierce",
+   "projectile"
+  ],
+  "text": "Geschosse durchbohren +1 Gegner je Stufe.",
+  "effects": [
+   {
+    "stat": "pierce_add",
+    "per_level": 1
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "heavy_hitter",
+  "name": "Schwergewicht",
+  "rarity": "uncommon",
+  "max_level": 3,
+  "tags": [
+   "damage"
+  ],
+  "text": "+25 % Schaden, -10 % Angriffstempo je Stufe.",
+  "effects": [
+   {
+    "stat": "damage_pct",
+    "per_level": 25
+   },
+   {
+    "stat": "attack_speed_pct",
+    "per_level": -10
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "regeneration",
+  "name": "Regeneration",
+  "rarity": "uncommon",
+  "max_level": 4,
+  "tags": [
+   "defense"
+  ],
+  "text": "+0,6 HP pro Sekunde je Stufe.",
+  "effects": [
+   {
+    "stat": "regen_per_s",
+    "per_level": 0.6
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
+ },
+ {
+  "id": "reroll",
+  "name": "Neuwurf",
+  "rarity": "uncommon",
+  "max_level": 3,
+  "tags": [
+   "utility"
+  ],
+  "text": "+1 Neuwurf der Upgrade-Auswahl je Stufe (pro Run).",
+  "effects": [
+   {
+    "stat": "rerolls",
+    "per_level": 1
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "banish",
+  "name": "Verbannung",
+  "rarity": "uncommon",
+  "max_level": 3,
+  "tags": [
+   "utility"
+  ],
+  "text": "+1 Verbannen je Stufe: entfernt ein Upgrade aus dem Pool dieses Runs.",
+  "effects": [
+   {
+    "stat": "banishes",
+    "per_level": 1
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "stillness",
+  "name": "Meditation",
+  "rarity": "uncommon",
+  "max_level": 3,
+  "tags": [
+   "stillness",
+   "damage"
+  ],
+  "text": "Nach 1 s Stillstand +12 % Schaden je Stufe.",
+  "effects": [
+   {
+    "stat": "damage_pct_standing",
+    "per_level": 12
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_stillness",
+  "impl_phase": 2
+ },
+ {
+  "id": "ignite",
+  "name": "Entzünden",
+  "rarity": "uncommon",
+  "max_level": 4,
+  "tags": [
+   "fire",
+   "elemental"
+  ],
+  "text": "12 % Chance je Stufe zu entzünden (3 s, 30 % Schaden/s).",
+  "effects": [
+   {
+    "stat": "ignite_chance_pct",
+    "per_level": 12
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "chill",
+  "name": "Kälte",
+  "rarity": "uncommon",
+  "max_level": 4,
+  "tags": [
+   "frost",
+   "elemental"
+  ],
+  "text": "Treffer verlangsamen um 8 % je Stufe (max. 32 %).",
+  "effects": [
+   {
+    "stat": "chill_slow_pct",
+    "per_level": 8
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "toxin",
+  "name": "Toxin",
+  "rarity": "uncommon",
+  "max_level": 4,
+  "tags": [
+   "poison",
+   "elemental"
+  ],
+  "text": "Treffer vergiften (15 % Schaden/s je Stufe, 3 s, stapelt 4x).",
+  "effects": [
+   {
+    "stat": "poison_pct_per_s",
+    "per_level": 15
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "shock",
+  "name": "Schock",
+  "rarity": "uncommon",
+  "max_level": 3,
+  "tags": [
+   "lightning",
+   "elemental"
+  ],
+  "text": "15 % Chance je Stufe auf einen Blitz (60 % Schaden) auf einen nahen Gegner.",
+  "effects": [
+   {
+    "stat": "shock_chance_pct",
+    "per_level": 15
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "minion_horde",
+  "name": "Gefolgschaft",
+  "rarity": "uncommon",
+  "max_level": 3,
+  "tags": [
+   "summon"
+  ],
+  "text": "+1 Begleiter je Stufe (ohne Beschwörer: Irrlicht mit 50 % Schaden).",
+  "effects": [
+   {
+    "stat": "minions_add",
+    "per_level": 1
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_minion_horde",
+  "impl_phase": 3
+ },
+ {
+  "id": "orbiting_blades",
+  "name": "Kreisende Klingen",
+  "rarity": "uncommon",
+  "max_level": 4,
+  "tags": [
+   "area",
+   "melee"
+  ],
+  "text": "Eine zusätzliche Klinge je Stufe umkreist dich (6 Schaden).",
+  "effects": [
+   {
+    "stat": "orbit_blades",
+    "per_level": 1
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_orbiting_blades",
+  "impl_phase": 3
+ },
+ {
+  "id": "ricochet",
+  "name": "Rückprall",
+  "rarity": "rare",
+  "max_level": 3,
+  "tags": [
+   "bounce",
+   "projectile"
+  ],
+  "text": "Geschosse springen +1-mal je Stufe auf einen nahen Gegner (70 % Schaden).",
+  "effects": [
+   {
+    "stat": "bounce_add",
+    "per_level": 1
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "executioner",
+  "name": "Henker",
+  "rarity": "rare",
+  "max_level": 3,
+  "tags": [
+   "damage"
+  ],
+  "text": "+30 % Schaden gegen Gegner unter 30 % HP je Stufe.",
+  "effects": [
+   {
+    "stat": "damage_pct_vs_low_hp",
+    "per_level": 30
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_executioner",
+  "impl_phase": 2
+ },
+ {
+  "id": "lifesteal",
+  "name": "Aderlass",
+  "rarity": "rare",
+  "max_level": 3,
+  "tags": [
+   "defense",
+   "damage"
+  ],
+  "text": "Heilt 2 % des verursachten Schadens je Stufe.",
+  "effects": [
+   {
+    "stat": "lifesteal_pct",
+    "per_level": 2
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_lifesteal",
+  "impl_phase": 2
+ },
+ {
+  "id": "shield_burst",
+  "name": "Notschild",
+  "rarity": "rare",
+  "max_level": 3,
+  "tags": [
+   "defense"
+  ],
+  "text": "Schild (40 HP) alle 20 s, -2 s je Stufe.",
+  "effects": [
+   {
+    "special": "periodic_shield",
+    "hp": 40,
+    "interval_s": 20,
+    "interval_per_level_s": -2
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_shield_burst",
+  "impl_phase": 2
+ },
+ {
+  "id": "last_stand",
+  "name": "Letztes Gefecht",
+  "rarity": "rare",
+  "max_level": 3,
+  "tags": [
+   "defense",
+   "damage"
+  ],
+  "text": "Unter 30 % HP: +30 % Schaden und +20 % Tempo je Stufe.",
+  "effects": [
+   {
+    "special": "low_hp_bonus",
+    "hp_threshold_pct": 30,
+    "damage_pct": 30,
+    "speed_pct": 20
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_last_stand",
+  "impl_phase": 2
+ },
+ {
+  "id": "overcharge",
+  "name": "Überladung",
+  "rarity": "rare",
+  "max_level": 3,
+  "tags": [
+   "damage"
+  ],
+  "text": "Alle 15 s (-2 s je Stufe) trifft der nächste Angriff mit 300 % Schaden.",
+  "effects": [
+   {
+    "special": "overcharge",
+    "interval_s": 15,
+    "interval_per_level_s": -2,
+    "damage_pct": 300
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_overcharge",
+  "impl_phase": 2
+ },
+ {
+  "id": "explosive_rounds",
+  "name": "Sprengmunition",
+  "rarity": "rare",
+  "max_level": 3,
+  "tags": [
+   "area",
+   "projectile"
+  ],
+  "text": "Treffer lösen eine kleine Explosion aus (Radius 50, 40 % Schaden je Stufe).",
+  "effects": [
+   {
+    "special": "explosive_hits",
+    "radius_px": 50,
+    "damage_pct_per_level": 40
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_explosive_rounds",
+  "impl_phase": 2
+ },
+ {
+  "id": "aura_of_pain",
+  "name": "Aura des Schmerzes",
+  "rarity": "rare",
+  "max_level": 4,
+  "tags": [
+   "area",
+   "melee"
+  ],
+  "text": "Gegner im Umkreis von 100 px erleiden 4 Schaden/s je Stufe.",
+  "effects": [
+   {
+    "special": "damage_aura",
+    "radius_px": 100,
+    "dps_per_level": 4
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "elemental_mastery",
+  "name": "Elementarmeister",
+  "rarity": "rare",
+  "max_level": 3,
+  "tags": [
+   "elemental"
+  ],
+  "text": "+20 % Schaden aller Elementareffekte (Brand, Frost, Gift, Schock) je Stufe.",
+  "effects": [
+   {
+    "stat": "elemental_damage_pct",
+    "per_level": 20
+   }
+  ],
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 2
+ },
+ {
+  "id": "second_wind",
+  "name": "Zweiter Atem",
+  "rarity": "epic",
+  "max_level": 2,
+  "tags": [
+   "defense"
+  ],
+  "text": "Stufe 1: einmal pro Run mit 40 % HP wiederbeleben. Stufe 2: 60 % HP und 2 s unverwundbar.",
+  "effects": [
+   {
+    "special": "revive",
+    "hp_pct": [
+     40,
+     60
+    ],
+    "i_frames_s": [
+     0,
+     2
+    ]
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_second_wind",
+  "impl_phase": 3
+ },
+ {
+  "id": "gravity_well",
+  "name": "Schwerkraftbrunnen",
+  "rarity": "epic",
+  "max_level": 2,
+  "tags": [
+   "control",
+   "area"
+  ],
+  "text": "Alle 12 s zieht ein Sog alle Gegner im Radius 200 zusammen (Stufe 2: Radius 280, alle 9 s).",
+  "effects": [
+   {
+    "special": "gravity_pull",
+    "radius_px": [
+     200,
+     280
+    ],
+    "interval_s": [
+     12,
+     9
+    ]
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_gravity_well",
+  "impl_phase": 3
+ },
+ {
+  "id": "bloodlust",
+  "name": "Blutrausch",
+  "rarity": "epic",
+  "max_level": 3,
+  "tags": [
+   "speed"
+  ],
+  "text": "Jeder Kill: +2 % Angriffstempo für 5 s, stapelt bis 20 % / 30 % / 40 %.",
+  "effects": [
+   {
+    "special": "kill_haste",
+    "per_kill_pct": 2,
+    "duration_s": 5,
+    "max_pct": [
+     20,
+     30,
+     40
+    ]
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_bloodlust",
+  "impl_phase": 3
+ },
+ {
+  "id": "time_warp",
+  "name": "Zeitdehnung",
+  "rarity": "epic",
+  "max_level": 2,
+  "tags": [
+   "control",
+   "stillness"
+  ],
+  "text": "Im Stand sind alle Gegner im Radius 250 um 12 % / 20 % langsamer.",
+  "effects": [
+   {
+    "special": "standing_slow",
+    "radius_px": 250,
+    "slow_pct": [
+     12,
+     20
+    ]
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_time_warp",
+  "impl_phase": 3
+ },
+ {
+  "id": "shrapnel",
+  "name": "Splitterhagel",
+  "rarity": "epic",
+  "max_level": 3,
+  "tags": [
+   "area",
+   "projectile"
+  ],
+  "text": "Sterbende Gegner lösen mit 20 % Chance 6 Splitter aus (50 % Schaden), +10 % je Stufe.",
+  "effects": [
+   {
+    "special": "death_shrapnel",
+    "chance_pct": [
+     20,
+     30,
+     40
+    ],
+    "pieces": 6,
+    "damage_pct": 50
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_shrapnel",
+  "impl_phase": 3
+ },
+ {
+  "id": "titan_heart",
+  "name": "Titanenherz",
+  "rarity": "epic",
+  "max_level": 3,
+  "tags": [
+   "defense"
+  ],
+  "text": "+30 % Max-HP je Stufe. +1 % Schaden je 10 Max-HP.",
+  "effects": [
+   {
+    "stat": "max_hp_pct",
+    "per_level": 30
+   },
+   {
+    "special": "damage_per_hp",
+    "damage_pct_per_10_hp": 1
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_titan_heart",
+  "impl_phase": 3
+ },
+ {
+  "id": "glass_cannon",
+  "name": "Glaskanone",
+  "rarity": "legendary",
+  "max_level": 1,
+  "tags": [
+   "damage"
+  ],
+  "text": "+100 % Schaden, -40 % Max-HP.",
+  "effects": [
+   {
+    "stat": "damage_pct",
+    "value": 100
+   },
+   {
+    "stat": "max_hp_pct",
+    "value": -40
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_glass_cannon",
+  "impl_phase": 3
+ },
+ {
+  "id": "reaper_pact",
+  "name": "Pakt der Sense",
+  "rarity": "legendary",
+  "max_level": 1,
+  "tags": [
+   "damage",
+   "defense"
+  ],
+  "text": "Jeder Kill heilt 1 HP. Alle 25 Kills ein Todesschlag (Radius 250, 500 % Schaden).",
+  "effects": [
+   {
+    "special": "reaper_pact",
+    "heal_per_kill": 1,
+    "strike_every_kills": 25,
+    "radius_px": 250,
+    "damage_pct": 500
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_reaper_pact",
+  "impl_phase": 3
+ },
+ {
+  "id": "elemental_storm",
+  "name": "Elementarsturm",
+  "rarity": "legendary",
+  "max_level": 1,
+  "tags": [
+   "elemental"
+  ],
+  "text": "Alle Elementareffekte (Brand, Frost, Gift, Schock) können auf jeden Treffer wirken, +50 % Elementarschaden.",
+  "effects": [
+   {
+    "special": "all_elements",
+    "elemental_damage_pct": 50
+   }
+  ],
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_elemental_storm",
+  "impl_phase": 3
+ }
+]

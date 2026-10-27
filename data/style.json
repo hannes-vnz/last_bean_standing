@@ -1,0 +1,31 @@
+{
+ "name": "Freundlich, pastell",
+ "ink": "#4a3358",
+ "player": {
+  "hair": "#ffb04a",
+  "skin": "#ffe0c8",
+  "body": "#6ec6ff"
+ },
+ "enemy": {
+  "slime": "#ff8fb8",
+  "bat": "#7a5cc0"
+ },
+ "player_projectile": {
+  "core": "#fff7a8",
+  "halo": "#ffd45e"
+ },
+ "enemy_projectile": {
+  "core": "#8a4fff",
+  "outline": "#4a3358"
+ },
+ "xp_orb": "#5ee6b8",
+ "heal_orb": "#ff7aa8",
+ "telegraph": "#ff6b6b",
+ "crit_text": "#ffd45e",
+ "reaper": "#2a1d3d",
+ "flowers": [
+  "#ffffff",
+  "#ff9fc0",
+  "#ffd45e"
+ ]
+}

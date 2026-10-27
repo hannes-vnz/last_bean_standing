@@ -1,0 +1,126 @@
+[
+ {
+  "id": "plaza",
+  "name": "Lichtung (Start)",
+  "effect": "Keine, enthält den Boss-Altar (ab 10:00 aktivierbar, ruft den Schnitter)",
+  "rect_tiles": [
+   22,
+   22,
+   16,
+   16
+  ],
+  "text": "Neutrale Startzone in der Mitte.",
+  "objects": [
+   {
+    "type": "boss_altar",
+    "pos_tiles": [
+     30,
+     30
+    ],
+    "unlock_s": 600
+   }
+  ],
+  "palette": {
+   "ground": "#b9e08f",
+   "detail": "#9fcf72",
+   "hazard": null
+  }
+ },
+ {
+  "id": "forest",
+  "name": "Wald",
+  "effect": "Bäume blockieren Geschosse (Deckung für beide Seiten)",
+  "rect_tiles": [
+   0,
+   0,
+   30,
+   30
+  ],
+  "obstacles": {
+   "type": "tree",
+   "count": 70,
+   "seed": 11
+  },
+  "impl_phase": 1,
+  "palette": {
+   "ground": "#a6dd82",
+   "detail": "#83c564",
+   "hazard": null,
+   "tree": "#5aa05a",
+   "trunk": "#8a6a4a"
+  }
+ },
+ {
+  "id": "desert",
+  "name": "Wüste",
+  "effect": "Du bist 15 % langsamer",
+  "rect_tiles": [
+   30,
+   0,
+   30,
+   30
+  ],
+  "obstacles": {
+   "type": "rock",
+   "count": 25,
+   "seed": 12
+  },
+  "player_speed_pct": -15,
+  "impl_phase": 2,
+  "palette": {
+   "ground": "#f6dfa8",
+   "detail": "#e8c47a",
+   "hazard": "#e0b862",
+   "rock": "#c9a46a"
+  }
+ },
+ {
+  "id": "ice",
+  "name": "Eis",
+  "effect": "Rutschen: träge Beschleunigung und Bremsen",
+  "rect_tiles": [
+   0,
+   30,
+   30,
+   30
+  ],
+  "obstacles": {
+   "type": "ice_block",
+   "count": 30,
+   "seed": 13
+  },
+  "friction": 0.15,
+  "impl_phase": 2,
+  "palette": {
+   "ground": "#d6ecff",
+   "detail": "#b4d6f5",
+   "hazard": "#ffffff",
+   "block": "#bfe0ff"
+  }
+ },
+ {
+  "id": "lava",
+  "name": "Lava",
+  "effect": "4 Schaden pro Sekunde in Lavapfützen, dafür +25 % XP in der Zone",
+  "rect_tiles": [
+   30,
+   30,
+   30,
+   30
+  ],
+  "obstacles": {
+   "type": "lava_pool",
+   "count": 18,
+   "seed": 14
+  },
+  "dot_per_s": 4,
+  "xp_bonus_pct": 25,
+  "impl_phase": 3,
+  "palette": {
+   "ground": "#ffc9b0",
+   "detail": "#ff9f86",
+   "hazard": "#ff6b6b",
+   "bubble": "#ffd45e"
+  }
+ }
+]

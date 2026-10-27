@@ -1,0 +1,49 @@
+{
+ "shrines": [
+  {
+   "id": "greed",
+   "name": "Gier-Schrein",
+   "count": 6,
+   "channel_s": 1.5,
+   "radius_px": 60,
+   "difficulty_add": 0.05,
+   "impl_phase": 2,
+   "effect": "Dauerhaft +5 % Schwierigkeit.",
+   "reward": "+10 % XP-Gewinn und +5 % Punktemultiplikator je Aktivierung (stapelt)."
+  },
+  {
+   "id": "courage",
+   "name": "Mut-Schrein",
+   "count": 3,
+   "channel_s": 20,
+   "radius_px": 120,
+   "difficulty_add": 0.08,
+   "impl_phase": 3,
+   "effect": "Dauerhaft +8 %. 20 s im markierten Kreis stehen, währenddessen 1,5x Spawnrate in der Nähe (Fortschritt pausiert außerhalb).",
+   "reward": "Eine Gratis-Upgradewahl mit mindestens Seltenheit \"selten\"."
+  },
+  {
+   "id": "curse",
+   "name": "Fluchstein",
+   "count": 2,
+   "channel_s": 1.5,
+   "radius_px": 60,
+   "difficulty_add": 0.05,
+   "impl_phase": 3,
+   "effect": "Dauerhaft +5 %. Der nächste Biom-Boss erscheint einmal mehr (höchstens +3 Kopien insgesamt).",
+   "reward": "Bosstruhen bieten eine Karte mehr und eine Seltenheitsstufe höher."
+  },
+  {
+   "id": "elite",
+   "name": "Elite-Schrein",
+   "count": 2,
+   "channel_s": 1.5,
+   "radius_px": 60,
+   "difficulty_add": 0.03,
+   "impl_phase": 3,
+   "effect": "Dauerhaft +3 %. Ruft sofort 3 Elite-Gegner mit Affixen.",
+   "reward": "Jeder Elite lässt eine Elitetruhe fallen (mindestens \"selten\")."
+  }
+ ],
+ "rules": "Pro Lauf liegen die Schreine mit festem Seed in den Zonen (jede Zone mindestens einen, nicht in der Lichtung). Aktiviert wird durch Stillstehen im Radius (passt zu Stop-and-Shoot: du schießt dabei weiter). Jeder Schrein ist einmal nutzbar. Die Schwierigkeit zeigt das HUD als Prozentwert."
+}

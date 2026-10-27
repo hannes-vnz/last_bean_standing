@@ -1,0 +1,11 @@
+[
+ {
+  "id": "eternal_night",
+  "name": "Ewige Nacht",
+  "text": "Gegner-HP x1,5, XP x1,25, Punkte x1,5.",
+  "hp_mult": 1.5,
+  "xp_mult": 1.25,
+  "score_mult": 1.5,
+  "unlock_challenge": "reach_swarm"
+ }
+]

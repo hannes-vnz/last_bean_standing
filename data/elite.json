@@ -1,0 +1,57 @@
+{
+ "hp_mult": 4,
+ "damage_mult": 1.5,
+ "xp_mult": 5,
+ "size_mult": 1.35,
+ "affixes_per_elite_by_minute": {
+  "0": 1,
+  "10": 2,
+  "15": 3
+ },
+ "drops": "elite_chest",
+ "affixes": [
+  {
+   "id": "armored",
+   "name": "Gepanzert",
+   "text": "-30 % erlittener Schaden."
+  },
+  {
+   "id": "swift",
+   "name": "Flink",
+   "text": "+40 % Tempo."
+  },
+  {
+   "id": "regenerating",
+   "name": "Regenerierend",
+   "text": "Heilt 3 % Max-HP pro Sekunde."
+  },
+  {
+   "id": "volatile",
+   "name": "Explosiv",
+   "text": "Explodiert beim Tod (Radius 100)."
+  },
+  {
+   "id": "vampiric",
+   "name": "Vampirisch",
+   "text": "Heilt sich um 100 % des verursachten Schadens."
+  },
+  {
+   "id": "shielded",
+   "name": "Schildträger",
+   "text": "Schild in Höhe von 50 % der HP, lädt nach 8 s ohne Treffer neu."
+  }
+ ],
+ "mini_boss": {
+  "times_s": [
+   120,
+   750
+  ],
+  "hp_mult": 12,
+  "damage_mult": 2,
+  "xp_mult": 15,
+  "size_mult": 1.8,
+  "has_hp_bar": true,
+  "drops": "boss_chest_rare",
+  "pick": "eine zufällige, schon freigeschaltete Mob-Art der Zone, in der der Spieler steht"
+ }
+}

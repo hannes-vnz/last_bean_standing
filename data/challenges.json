@@ -1,0 +1,857 @@
+[
+ {
+  "id": "unlock_pyro",
+  "text": "Erreiche Minute 5 mit beliebigem Charakter.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 5
+  },
+  "reward": {
+   "type": "unlock_character",
+   "id": "pyro",
+   "stones": 100
+  }
+ },
+ {
+  "id": "unlock_rogue",
+  "text": "Räume eine Welle ab Welle 5, ohne Schaden zu nehmen.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "flawless_wave",
+   "op": ">=",
+   "value": 5
+  },
+  "reward": {
+   "type": "unlock_character",
+   "id": "rogue",
+   "stones": 100
+  }
+ },
+ {
+  "id": "unlock_guardian",
+  "text": "Erleide insgesamt 5000 Schaden.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "damage_taken_total",
+   "op": ">=",
+   "value": 5000
+  },
+  "reward": {
+   "type": "unlock_character",
+   "id": "guardian",
+   "stones": 100
+  }
+ },
+ {
+  "id": "unlock_cryo",
+  "text": "Besiege 300 Gegner im Eisbiom.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "kills_in_biome",
+   "op": ">=",
+   "value": 300,
+   "biome": "ice"
+  },
+  "reward": {
+   "type": "unlock_character",
+   "id": "cryo",
+   "stones": 100
+  }
+ },
+ {
+  "id": "unlock_summoner",
+  "text": "Erreiche Level 15 in einem Run.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "level_reached",
+   "op": ">=",
+   "value": 15
+  },
+  "reward": {
+   "type": "unlock_character",
+   "id": "summoner",
+   "stones": 100
+  }
+ },
+ {
+  "id": "unlock_storm",
+  "text": "Erreiche Minute 8.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 8
+  },
+  "reward": {
+   "type": "unlock_character",
+   "id": "storm",
+   "stones": 100
+  }
+ },
+ {
+  "id": "unlock_bomber",
+  "text": "Besiege insgesamt 2000 Gegner.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "kills_total",
+   "op": ">=",
+   "value": 2000
+  },
+  "reward": {
+   "type": "unlock_character",
+   "id": "bomber",
+   "stones": 100
+  }
+ },
+ {
+  "id": "unlock_venom",
+  "text": "Verursache insgesamt 10000 Giftschaden.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "poison_damage_total",
+   "op": ">=",
+   "value": 10000
+  },
+  "reward": {
+   "type": "unlock_character",
+   "id": "venom",
+   "stones": 100
+  }
+ },
+ {
+  "id": "unlock_sniper",
+  "text": "Besiege alle vier Biom-Bosse (Ildra, Skarra, Kalthorn, Ignarok).",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "distinct_bosses_defeated",
+   "op": ">=",
+   "value": 4
+  },
+  "reward": {
+   "type": "unlock_character",
+   "id": "sniper",
+   "stones": 100
+  }
+ },
+ {
+  "id": "unlock_up_stillness",
+  "text": "Schließe 10 Runs ab.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "runs_total",
+   "op": ">=",
+   "value": 10
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "stillness",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_minion_horde",
+  "text": "Schalte 3 Charaktere frei.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "characters_unlocked",
+   "op": ">=",
+   "value": 3
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "minion_horde",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_orbiting_blades",
+  "text": "Erreiche Level 20 in einem Run.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "level_reached",
+   "op": ">=",
+   "value": 20
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "orbiting_blades",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_executioner",
+  "text": "Besiege 25 Elite-Gegner.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "elite_kills_total",
+   "op": ">=",
+   "value": 25
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "executioner",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_lifesteal",
+  "text": "Besiege insgesamt 1000 Gegner.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "kills_total",
+   "op": ">=",
+   "value": 1000
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "lifesteal",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_shield_burst",
+  "text": "Räume eine Welle ab Welle 8, ohne Schaden zu nehmen.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "flawless_wave",
+   "op": ">=",
+   "value": 8
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "shield_burst",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_last_stand",
+  "text": "Verbringe insgesamt 60 s mit unter 20 % HP.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "low_hp_seconds_total",
+   "op": ">=",
+   "value": 60
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "last_stand",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_overcharge",
+  "text": "Lande insgesamt 3000 kritische Treffer.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "crits_total",
+   "op": ">=",
+   "value": 3000
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "overcharge",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_explosive_rounds",
+  "text": "Besiege insgesamt 3000 Gegner.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "kills_total",
+   "op": ">=",
+   "value": 3000
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "explosive_rounds",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_second_wind",
+  "text": "Besiege den ersten Boss.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "boss_kills_total",
+   "op": ">=",
+   "value": 1
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "second_wind",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_gravity_well",
+  "text": "Erreiche Minute 10.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "gravity_well",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_bloodlust",
+  "text": "Besiege 800 Gegner in einem Run.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "kills_in_run",
+   "op": ">=",
+   "value": 800
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "bloodlust",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_time_warp",
+  "text": "Erreiche Minute 12.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 12
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "time_warp",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_shrapnel",
+  "text": "Besiege insgesamt 10000 Gegner.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "kills_total",
+   "op": ">=",
+   "value": 10000
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "shrapnel",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_titan_heart",
+  "text": "Erleide 1500 Schaden in einem Run.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "damage_taken_run",
+   "op": ">=",
+   "value": 1500
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "titan_heart",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_glass_cannon",
+  "text": "Erreiche Minute 15.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "glass_cannon",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_reaper_pact",
+  "text": "Besiege insgesamt 10 Bosse.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "boss_kills_total",
+   "op": ">=",
+   "value": 10
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "reaper_pact",
+   "stones": 40
+  }
+ },
+ {
+  "id": "unlock_up_elemental_storm",
+  "text": "Besitze Entzünden, Kälte, Toxin und Schock in einem Run.",
+  "condition": {
+   "type": "run_flag",
+   "flag": "owns_all",
+   "ids": [
+    "ignite",
+    "chill",
+    "toxin",
+    "shock"
+   ]
+  },
+  "reward": {
+   "type": "unlock_upgrade",
+   "id": "elemental_storm",
+   "stones": 40
+  }
+ },
+ {
+  "id": "skin_ranger_a",
+  "text": "Erreiche Minute 10 mit Fenn.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10,
+   "character": "ranger"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "ranger_a",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_ranger_b",
+  "text": "Erreiche Minute 15 mit Fenn.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15,
+   "character": "ranger"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "ranger_b",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_pyro_a",
+  "text": "Erreiche Minute 10 mit Mira.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10,
+   "character": "pyro"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "pyro_a",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_pyro_b",
+  "text": "Erreiche Minute 15 mit Mira.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15,
+   "character": "pyro"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "pyro_b",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_rogue_a",
+  "text": "Erreiche Minute 10 mit Kaz.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10,
+   "character": "rogue"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "rogue_a",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_rogue_b",
+  "text": "Erreiche Minute 15 mit Kaz.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15,
+   "character": "rogue"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "rogue_b",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_guardian_a",
+  "text": "Erreiche Minute 10 mit Brun.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10,
+   "character": "guardian"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "guardian_a",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_guardian_b",
+  "text": "Erreiche Minute 15 mit Brun.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15,
+   "character": "guardian"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "guardian_b",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_cryo_a",
+  "text": "Erreiche Minute 10 mit Ysa.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10,
+   "character": "cryo"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "cryo_a",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_cryo_b",
+  "text": "Erreiche Minute 15 mit Ysa.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15,
+   "character": "cryo"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "cryo_b",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_summoner_a",
+  "text": "Erreiche Minute 10 mit Thorn.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10,
+   "character": "summoner"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "summoner_a",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_summoner_b",
+  "text": "Erreiche Minute 15 mit Thorn.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15,
+   "character": "summoner"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "summoner_b",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_storm_a",
+  "text": "Erreiche Minute 10 mit Vex.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10,
+   "character": "storm"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "storm_a",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_storm_b",
+  "text": "Erreiche Minute 15 mit Vex.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15,
+   "character": "storm"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "storm_b",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_bomber_a",
+  "text": "Erreiche Minute 10 mit Orm.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10,
+   "character": "bomber"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "bomber_a",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_bomber_b",
+  "text": "Erreiche Minute 15 mit Orm.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15,
+   "character": "bomber"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "bomber_b",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_venom_a",
+  "text": "Erreiche Minute 10 mit Lilu.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10,
+   "character": "venom"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "venom_a",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_venom_b",
+  "text": "Erreiche Minute 15 mit Lilu.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15,
+   "character": "venom"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "venom_b",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_sniper_a",
+  "text": "Erreiche Minute 10 mit Aya.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 10,
+   "character": "sniper"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "sniper_a",
+   "stones": 50
+  }
+ },
+ {
+  "id": "skin_sniper_b",
+  "text": "Erreiche Minute 15 mit Aya.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 15,
+   "character": "sniper"
+  },
+  "reward": {
+   "type": "unlock_skin",
+   "id": "sniper_b",
+   "stones": 50
+  }
+ },
+ {
+  "id": "boss_ildra",
+  "text": "Besiege Ildra.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "boss_defeated",
+   "op": ">=",
+   "value": 1,
+   "boss": "ildra"
+  },
+  "reward": {
+   "type": "title",
+   "id": "Dornenbrecher",
+   "stones": 150
+  }
+ },
+ {
+  "id": "boss_skarra",
+  "text": "Besiege Skarra.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "boss_defeated",
+   "op": ">=",
+   "value": 1,
+   "boss": "skarra"
+  },
+  "reward": {
+   "type": "title",
+   "id": "Sandbezwinger",
+   "stones": 150
+  }
+ },
+ {
+  "id": "boss_kalthorn",
+  "text": "Besiege Kalthorn.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "boss_defeated",
+   "op": ">=",
+   "value": 1,
+   "boss": "kalthorn"
+  },
+  "reward": {
+   "type": "title",
+   "id": "Eisbrecher",
+   "stones": 150
+  }
+ },
+ {
+  "id": "boss_ignarok",
+  "text": "Besiege Ignarok.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "boss_defeated",
+   "op": ">=",
+   "value": 1,
+   "boss": "ignarok"
+  },
+  "reward": {
+   "type": "title",
+   "id": "Glutlöscher",
+   "stones": 150
+  }
+ },
+ {
+  "id": "reach_swarm",
+  "text": "Erreiche 20:00 (Beginn der Schwarmflut).",
+  "condition": {
+   "type": "run_stat",
+   "stat": "minutes_survived",
+   "op": ">=",
+   "value": 20
+  },
+  "reward": {
+   "type": "unlock_mode",
+   "id": "eternal_night",
+   "stones": 300
+  }
+ },
+ {
+  "id": "boss_reaper",
+  "text": "Besiege den Schnitter.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "boss_defeated",
+   "op": ">=",
+   "value": 1,
+   "boss": "reaper"
+  },
+  "reward": {
+   "type": "title",
+   "id": "Sensenmeister",
+   "stones": 150
+  }
+ },
+ {
+  "id": "shrines_5",
+  "text": "Aktiviere 5 Schreine in einem Run.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "shrines_activated",
+   "op": ">=",
+   "value": 5
+  },
+  "reward": {
+   "type": "title",
+   "id": "Wagemutig",
+   "stones": 150
+  }
+ },
+ {
+  "id": "swarm_5min",
+  "text": "Überlebe 5 Minuten der Schwarmflut.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "swarm_seconds",
+   "op": ">=",
+   "value": 300
+  },
+  "reward": {
+   "type": "title",
+   "id": "Flutreiter",
+   "stones": 150
+  }
+ }
+]

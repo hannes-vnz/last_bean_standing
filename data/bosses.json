@@ -1,0 +1,141 @@
+[
+ {
+  "id": "ildra",
+  "name": "Ildra, die Dornenkönigin",
+  "spawn_wave": 10,
+  "spawn_time_s": 300,
+  "hp": 2500,
+  "speed": 45,
+  "damage": 14,
+  "biome": "forest",
+  "impl_phase": 1,
+  "phases": [
+   {
+    "at_hp_pct": 100,
+    "pattern": "Rotierender Dornenring (8 Geschosse), alle 4 s"
+   },
+   {
+    "at_hp_pct": 60,
+    "pattern": "Wurzelgriff: verlangsamt dich 40 % in einem Kreis, ruft 3 Wurzelwächter"
+   },
+   {
+    "at_hp_pct": 30,
+    "pattern": "Dornenring doppelt so schnell, Spore-Regen"
+   }
+  ],
+  "reward": "boss_chest_epic",
+  "first_kill_challenge": "boss_ildra"
+ },
+ {
+  "id": "skarra",
+  "name": "Skarra, die Sandkönigin",
+  "spawn_wave": 15,
+  "spawn_time_s": 450,
+  "hp": 5000,
+  "speed": 60,
+  "damage": 17,
+  "biome": "desert",
+  "impl_phase": 2,
+  "phases": [
+   {
+    "at_hp_pct": 100,
+    "pattern": "Stachelfächer (5 Sandstacheln, alle 3 s) und Sturmangriff nach Warnlinie (Tempo 300)"
+   },
+   {
+    "at_hp_pct": 60,
+    "pattern": "Eingraben: verschwindet, bricht nach 1,5 s Warnkreis (Radius 120) unter dir hervor, ruft Dünenskorpione"
+   },
+   {
+    "at_hp_pct": 30,
+    "pattern": "Sandwirbel über Teilen des Bildes (halbtransparent, Gegner und Geschosse bleiben sichtbar), Stachelfächer doppelt so schnell"
+   }
+  ],
+  "reward": "boss_chest_epic",
+  "first_kill_challenge": "boss_skarra"
+ },
+ {
+  "id": "kalthorn",
+  "name": "Kalthorn, der Eiswurm",
+  "spawn_wave": 20,
+  "spawn_time_s": 600,
+  "hp": 9000,
+  "speed": 70,
+  "damage": 20,
+  "biome": "ice",
+  "impl_phase": 2,
+  "phases": [
+   {
+    "at_hp_pct": 100,
+    "pattern": "Frostbahn: Linie markieren, dann Sturm (Tempo 320)"
+   },
+   {
+    "at_hp_pct": 60,
+    "pattern": "Eisnova (Radius 260), ruft Frostwolf-Rudel"
+   },
+   {
+    "at_hp_pct": 30,
+    "pattern": "Eisnova alle 5 s, Boden wird rutschig"
+   }
+  ],
+  "reward": "boss_chest_epic",
+  "first_kill_challenge": "boss_kalthorn"
+ },
+ {
+  "id": "ignarok",
+  "name": "Ignarok, der Glutkoloss",
+  "spawn_wave": 30,
+  "spawn_time_s": 900,
+  "hp": 24000,
+  "speed": 40,
+  "damage": 28,
+  "biome": "lava",
+  "impl_phase": 3,
+  "phases": [
+   {
+    "at_hp_pct": 100,
+    "pattern": "Meteorregen (6 Einschläge, 1,2 s Vorwarnung)"
+   },
+   {
+    "at_hp_pct": 60,
+    "pattern": "Stampfen: Schockwelle (Radius 300), Lavapfützen"
+   },
+   {
+    "at_hp_pct": 30,
+    "pattern": "Meteore doppelt, ruft Lavakäfer"
+   }
+  ],
+  "reward": "boss_chest_legendary",
+  "first_kill_challenge": "boss_ignarok"
+ },
+ {
+  "id": "reaper",
+  "name": "Der Schnitter",
+  "summon": "altar",
+  "altar_unlock_s": 600,
+  "spawn_time_s": null,
+  "hp_base": 30000,
+  "hp_scaled": true,
+  "speed": 55,
+  "damage": 40,
+  "biome": null,
+  "impl_phase": 3,
+  "enrage_after_s": 90,
+  "enrage_damage_pct_per_20s": 10,
+  "phases": [
+   {
+    "at_hp_pct": 100,
+    "pattern": "Sensenwirbel: rotierender Kegel mit 1 s Warnfläche, alle 5 s"
+   },
+   {
+    "at_hp_pct": 66,
+    "pattern": "Seelenregen: 8 Einschläge mit Warnkreis (Radius 90) in Wellen, ruft Flutgeister"
+   },
+   {
+    "at_hp_pct": 33,
+    "pattern": "Zeitriss: du bist 3 s lang 30 % langsamer, er stürmt dreimal; danach 25 % mehr Tempo"
+   }
+  ],
+  "reward": "victory",
+  "first_kill_challenge": "boss_reaper"
+ }
+]

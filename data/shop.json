@@ -1,0 +1,208 @@
+{
+ "currency": {
+  "id": "sparkles",
+  "name": "Funkelsteine",
+  "payout": "Am Laufende: floor(Punkte / 100 x Belohnungsfaktor). Der Belohnungsfaktor ist 1 + 0,8 x (D - 1), also steigt die Auszahlung mit der Schwierigkeit (Schreine). Nichts geht beim Sterben verloren.",
+  "run_drops": {
+   "normal_kill_chance_pct": 1.5,
+   "elite": 2,
+   "mini_boss": 8,
+   "biome_boss": 20,
+   "final_boss": 100,
+   "victory_bonus": 100,
+   "chest": 3
+  },
+  "estimates": "Ein 5-Minuten-Lauf bringt etwa 40 bis 50, ein starker 15-Minuten-Lauf etwa 200 Funkelsteine (Modellrechnung, nicht gemessen).",
+  "shown_at_run_end": "Aufschlüsselung: Zeit, Kills, Level, Bosse, Schwierigkeitsbonus, Drops, Challenges.",
+  "never_lost": true
+ },
+ "workshop_rules": {
+  "cost": "round(base_cost x 1.5^(Stufe-1))",
+  "refund_pct": 100,
+  "note": "Jederzeit zu 100 % erstattbar, damit niemand etwas bereut. Die Boni sind klein und begrenzt, damit der Lauf selbst entscheidet und nicht der Grind."
+ },
+ "workshop": [
+  {
+   "id": "ws_hp",
+   "name": "Zähigkeit",
+   "effect": {
+    "stat": "max_hp_pct",
+    "per_level": 3
+   },
+   "max_level": 5,
+   "base_cost": 50,
+   "text": "+3 % Max-HP je Stufe."
+  },
+  {
+   "id": "ws_damage",
+   "name": "Kraft",
+   "effect": {
+    "stat": "damage_pct",
+    "per_level": 2
+   },
+   "max_level": 5,
+   "base_cost": 60,
+   "text": "+2 % Schaden je Stufe."
+  },
+  {
+   "id": "ws_attack",
+   "name": "Eifer",
+   "effect": {
+    "stat": "attack_speed_pct",
+    "per_level": 2
+   },
+   "max_level": 5,
+   "base_cost": 60,
+   "text": "+2 % Angriffstempo je Stufe."
+  },
+  {
+   "id": "ws_move",
+   "name": "Beinarbeit",
+   "effect": {
+    "stat": "move_speed_pct",
+    "per_level": 2
+   },
+   "max_level": 5,
+   "base_cost": 40,
+   "text": "+2 % Lauftempo je Stufe."
+  },
+  {
+   "id": "ws_magnet",
+   "name": "Sammelfreude",
+   "effect": {
+    "stat": "pickup_radius_pct",
+    "per_level": 8
+   },
+   "max_level": 5,
+   "base_cost": 30,
+   "text": "+8 % Aufsammelradius je Stufe."
+  },
+  {
+   "id": "ws_xp",
+   "name": "Wissensdurst",
+   "effect": {
+    "stat": "xp_pct",
+    "per_level": 3
+   },
+   "max_level": 5,
+   "base_cost": 50,
+   "text": "+3 % XP je Stufe."
+  },
+  {
+   "id": "ws_luck",
+   "name": "Kleeblatt",
+   "effect": {
+    "stat": "luck",
+    "per_level": 2
+   },
+   "max_level": 5,
+   "base_cost": 70,
+   "text": "+2 Glück je Stufe."
+  },
+  {
+   "id": "ws_range",
+   "name": "Weitblick",
+   "effect": {
+    "stat": "range_pct",
+    "per_level": 2
+   },
+   "max_level": 5,
+   "base_cost": 40,
+   "text": "+2 % Reichweite je Stufe."
+  },
+  {
+   "id": "ws_reroll",
+   "name": "Neuwurf-Vorrat",
+   "effect": {
+    "stat": "rerolls",
+    "per_level": 1
+   },
+   "max_level": 2,
+   "base_cost": 150,
+   "text": "+1 Neuwurf je Stufe (pro Lauf)."
+  },
+  {
+   "id": "ws_banish",
+   "name": "Verbannungs-Vorrat",
+   "effect": {
+    "stat": "banishes",
+    "per_level": 1
+   },
+   "max_level": 2,
+   "base_cost": 150,
+   "text": "+1 Verbannen je Stufe (pro Lauf)."
+  },
+  {
+   "id": "ws_shield",
+   "name": "Startschild",
+   "effect": {
+    "stat": "start_shield_hp",
+    "per_level": 20
+   },
+   "max_level": 3,
+   "base_cost": 80,
+   "text": "+20 Schild-HP zu Beginn, verfällt nach 20 s."
+  },
+  {
+   "id": "ws_radar",
+   "name": "Schrein-Radar",
+   "effect": {
+    "stat": "show_shrines_on_map",
+    "per_level": 1
+   },
+   "max_level": 1,
+   "base_cost": 300,
+   "text": "Schreine sind auf der Karte sichtbar."
+  }
+ ],
+ "run_packs": {
+  "max_per_run": 2,
+  "items": [
+   {
+    "id": "pack_provisions",
+    "name": "Proviant",
+    "cost": 25,
+    "effect": "+5 % Heilkugel-Chance in diesem Lauf."
+   },
+   {
+    "id": "pack_clover",
+    "name": "Glücksbringer",
+    "cost": 40,
+    "effect": "+10 Glück in diesem Lauf."
+   },
+   {
+    "id": "pack_map",
+    "name": "Schatzkarte",
+    "cost": 30,
+    "effect": "Schreine sind in diesem Lauf auf der Karte sichtbar."
+   },
+   {
+    "id": "pack_headstart",
+    "name": "Frühstart",
+    "cost": 60,
+    "effect": "Start bei Level 3 (2 Gratis-Upgradewahlen)."
+   }
+  ]
+ },
+ "cosmetics": {
+  "id": "color_pots",
+  "name": "Farbtöpfe",
+  "cost_each": 150,
+  "per_character": 3,
+  "variants": [
+   {
+    "name": "Zuckerwatte",
+    "hue_shift": 40
+   },
+   {
+    "name": "Minze",
+    "hue_shift": 160
+   },
+   {
+    "name": "Sonnenuntergang",
+    "hue_shift": -60
+   }
+  ],
+  "text": "Rein kosmetische Zusatzfarben für jeden Charakter (Paletten-Tausch der Ramp-Farben)."
+ }
+}

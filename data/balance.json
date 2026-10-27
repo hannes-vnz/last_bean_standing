@@ -1,0 +1,116 @@
+{
+ "tick_hz": 60,
+ "wave_interval_s": 30,
+ "max_wave": 40,
+ "swarm_time_s": 1200,
+ "max_alive_enemies": 350,
+ "budget": {
+  "base": 10,
+  "linear": 5.5,
+  "quadratic": 0.22
+ },
+ "hp_mult": {
+  "linear": 0.1,
+  "quadratic": 0.012
+ },
+ "damage_mult": {
+  "linear": 0.05,
+  "quadratic": 0.004
+ },
+ "speed_mult": {
+  "linear": 0.01,
+  "cap": 1.2
+ },
+ "xp_to_next": {
+  "base": 12,
+  "linear": 8,
+  "quadratic": 0.5
+ },
+ "elite_every_n_waves": 5,
+ "boss_waves": {
+  "10": "ildra",
+  "15": "skarra",
+  "20": "kalthorn",
+  "30": "ignarok"
+ },
+ "spawn_distance_px": [
+  520,
+  700
+ ],
+ "arena_tiles": [
+  60,
+  60
+ ],
+ "tile_px": 32,
+ "player_base": {
+  "hp": 100,
+  "pickup_radius_px": 70,
+  "i_frames_s": 0.6
+ },
+ "score": {
+  "per_second": 2,
+  "per_kill": 5,
+  "per_level": 20,
+  "per_boss": 500,
+  "victory_bonus": 20000,
+  "swarm_per_10s": 1000
+ },
+ "rarity_weights": {
+  "common": 60,
+  "uncommon": 25,
+  "rare": 10,
+  "epic": 4,
+  "legendary": 1
+ },
+ "luck_shift_per_point": 0.4,
+ "level_up_choices": 3,
+ "elite_chest_min_rarity": "rare",
+ "target_median_death_minutes": {
+  "beginner": [
+   3,
+   5
+  ],
+  "skilled": [
+   8,
+   12
+  ],
+  "expert": [
+   14,
+   18
+  ],
+  "swarm_reached": "extrem selten"
+ },
+ "mini_boss_times_s": [
+  120,
+  750
+ ],
+ "final_boss": {
+  "id": "reaper",
+  "summon": "altar",
+  "altar_unlock_s": 600,
+  "base_hp": 30000,
+  "hp_scaling": "base_hp * hp_mult(minute_at_summon)",
+  "enrage_after_s": 90,
+  "enrage_damage_pct_per_20s": 10
+ },
+ "difficulty": {
+  "formula": "D = 1 + Summe(difficulty_add der aktivierten Schreine)",
+  "applies_to": [
+   "budget",
+   "spawn_rate",
+   "enemy_damage"
+  ],
+  "reward_mult": "1 + 0.8 * (D - 1)",
+  "reward_applies_to": [
+   "xp",
+   "score"
+  ],
+  "shown_in_hud": true
+ },
+ "stat_model": {
+  "damage": "base * (1 + Summe(damage_pct)/100) * Produkt(Spezialmultiplikatoren)",
+  "crit": "erwartet 1 + crit_chance * (crit_mult - 1)",
+  "dps": "damage * attack_rate * crit * (1 + extra_attacks * 0.6)",
+  "rule": "gleiche Quelle addiert sich, verschiedene Quellen multiplizieren sich"
+ }
+}

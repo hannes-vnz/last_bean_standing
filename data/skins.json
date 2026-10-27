@@ -1,0 +1,222 @@
+[
+ {
+  "id": "ranger_a",
+  "character": "ranger",
+  "name": "Waldläufer",
+  "tint": [
+   90,
+   170,
+   90
+  ],
+  "unlock_challenge": "skin_ranger_a"
+ },
+ {
+  "id": "ranger_b",
+  "character": "ranger",
+  "name": "Goldjäger",
+  "tint": [
+   255,
+   210,
+   80
+  ],
+  "unlock_challenge": "skin_ranger_b"
+ },
+ {
+  "id": "pyro_a",
+  "character": "pyro",
+  "name": "Glutrot",
+  "tint": [
+   230,
+   80,
+   40
+  ],
+  "unlock_challenge": "skin_pyro_a"
+ },
+ {
+  "id": "pyro_b",
+  "character": "pyro",
+  "name": "Weißglut",
+  "tint": [
+   255,
+   245,
+   200
+  ],
+  "unlock_challenge": "skin_pyro_b"
+ },
+ {
+  "id": "rogue_a",
+  "character": "rogue",
+  "name": "Mitternacht",
+  "tint": [
+   50,
+   60,
+   140
+  ],
+  "unlock_challenge": "skin_rogue_a"
+ },
+ {
+  "id": "rogue_b",
+  "character": "rogue",
+  "name": "Schattenfürst",
+  "tint": [
+   120,
+   60,
+   160
+  ],
+  "unlock_challenge": "skin_rogue_b"
+ },
+ {
+  "id": "guardian_a",
+  "character": "guardian",
+  "name": "Stahlgrau",
+  "tint": [
+   150,
+   160,
+   170
+  ],
+  "unlock_challenge": "skin_guardian_a"
+ },
+ {
+  "id": "guardian_b",
+  "character": "guardian",
+  "name": "Goldplatte",
+  "tint": [
+   230,
+   190,
+   70
+  ],
+  "unlock_challenge": "skin_guardian_b"
+ },
+ {
+  "id": "cryo_a",
+  "character": "cryo",
+  "name": "Gletscher",
+  "tint": [
+   120,
+   200,
+   240
+  ],
+  "unlock_challenge": "skin_cryo_a"
+ },
+ {
+  "id": "cryo_b",
+  "character": "cryo",
+  "name": "Polarlicht",
+  "tint": [
+   140,
+   255,
+   220
+  ],
+  "unlock_challenge": "skin_cryo_b"
+ },
+ {
+  "id": "summoner_a",
+  "character": "summoner",
+  "name": "Nekrogrün",
+  "tint": [
+   80,
+   160,
+   110
+  ],
+  "unlock_challenge": "skin_summoner_a"
+ },
+ {
+  "id": "summoner_b",
+  "character": "summoner",
+  "name": "Seelenlicht",
+  "tint": [
+   200,
+   230,
+   255
+  ],
+  "unlock_challenge": "skin_summoner_b"
+ },
+ {
+  "id": "storm_a",
+  "character": "storm",
+  "name": "Gewitterblau",
+  "tint": [
+   70,
+   110,
+   220
+  ],
+  "unlock_challenge": "skin_storm_a"
+ },
+ {
+  "id": "storm_b",
+  "character": "storm",
+  "name": "Himmelsgold",
+  "tint": [
+   255,
+   220,
+   120
+  ],
+  "unlock_challenge": "skin_storm_b"
+ },
+ {
+  "id": "bomber_a",
+  "character": "bomber",
+  "name": "Zunderorange",
+  "tint": [
+   240,
+   140,
+   40
+  ],
+  "unlock_challenge": "skin_bomber_a"
+ },
+ {
+  "id": "bomber_b",
+  "character": "bomber",
+  "name": "Funkenweiß",
+  "tint": [
+   250,
+   250,
+   240
+  ],
+  "unlock_challenge": "skin_bomber_b"
+ },
+ {
+  "id": "venom_a",
+  "character": "venom",
+  "name": "Giftgrün",
+  "tint": [
+   110,
+   200,
+   60
+  ],
+  "unlock_challenge": "skin_venom_a"
+ },
+ {
+  "id": "venom_b",
+  "character": "venom",
+  "name": "Schierlingsviolett",
+  "tint": [
+   150,
+   70,
+   180
+  ],
+  "unlock_challenge": "skin_venom_b"
+ },
+ {
+  "id": "sniper_a",
+  "character": "sniper",
+  "name": "Wüstentarn",
+  "tint": [
+   190,
+   160,
+   100
+  ],
+  "unlock_challenge": "skin_sniper_a"
+ },
+ {
+  "id": "sniper_b",
+  "character": "sniper",
+  "name": "Schneetarn",
+  "tint": [
+   235,
+   240,
+   245
+  ],
+  "unlock_challenge": "skin_sniper_b"
+ }
+]
