@@ -149,6 +149,13 @@ last-bean-standing/
 3. Python mit pygame (Empfehlung wegen RL) oder Godot (echte Engine, RL aufwändiger).
 4. Web-Version: **ja, als Ziel** (Freunde sollen per Link spielen können), Desktop zuerst. Siehe Abschnitt 17.
 
+**Entschieden am 27.10.2026:**
+- Name: Last Bean Standing; Technik: Python mit pygame-ce.
+- **Version 1.0 = Phase 1 komplett plus Online-Bestenliste** (M1 bis M6b, M5 abgespeckt auf Profil, Highscore, Spitzname). Phase 2/3 und RL danach.
+- Verteilung zuerst **nur Browser** (pygbag), gehostet über **GitHub Pages aus dem Branch `main`**.
+- Bestenlisten-Server: kostenloses Hosting mit GitHub als Basis (Deploy per GitHub Actions); Anbieter noch offen.
+- Charaktere: Bohnen-Stil freigegeben, aber **deutlicher als Bohne** (Nierenform, Naht, Keimblatt). Entwurf v2: `docs/art/characters_beans.png`.
+
 ## 16. Optik und Effekte (entschieden)
 **Richtung:** nicht fotorealistisch, Pixel-Art als einfachster brauchbarer Stil, aber mit auffälligen Projektil-Animationen und viel Rückmeldung ("Game Feel"). Pro Charakter steht die Effektbeschreibung in `data/characters.json` (Feld `vfx`) und in `docs/CONTENT.md`.
 

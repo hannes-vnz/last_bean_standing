@@ -5,3 +5,4 @@ __pycache__/
 profile.json
 .DS_Store
 *.db
+files/
