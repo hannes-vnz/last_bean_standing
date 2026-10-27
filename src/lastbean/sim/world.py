@@ -2,6 +2,7 @@
 
 M2 scope: stop-and-shoot (players fire only while standing), time-based wave budget,
 enemy scaling over time, XP orbs, level-ups with a choice of upgrade cards.
+M3 scope: static obstacles from the biome data (forest trees block movement and projectiles).
 Only mobs with an implemented behaviour spawn (`IMPLEMENTED_BEHAVIORS`).
 
 Determinism: only + - * / and sqrt (correctly rounded in IEEE 754), no trigonometry,
@@ -16,6 +17,7 @@ import struct
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
+from .arena import Obstacle, ObstacleMap, obstacles_from_content
 from .entities import (
     PLAYER_RADIUS,
     PROJECTILE_RADIUS,
@@ -34,6 +36,7 @@ from .events import (
     LevelUp,
     PlayerDied,
     PlayerHit,
+    ProjectileBlocked,
     RunEnded,
     RunStarted,
     ShotFired,
@@ -52,6 +55,7 @@ MAX_SPAWNS_PER_TICK = 8
 GRID_CELL = 64.0
 INV_SQRT2 = 1.0 / math.sqrt(2.0)
 IMPLEMENTED_BEHAVIORS = frozenset({"chaser"})
+MAX_TARGET_CHECKS = 8  # nearest enemies tested for a free line of fire
 # Extra attacks: 60 % damage (balance.json stat_model), fanned out by a fixed angle.
 EXTRA_ATTACK_DAMAGE = 0.6
 SPREAD_COS, SPREAD_SIN = 0.9887710779360422, 0.14943813247359922  # cos/sin(0.15 rad) as literals
@@ -79,6 +83,7 @@ class WorldConfig:
     upgrades: tuple[UpgradeDef, ...]
     scaling: Scaling
     biomes: tuple[BiomeArea, ...] = ()
+    obstacles: tuple[Obstacle, ...] = ()
     rarity_weights: dict[str, float] = field(default_factory=dict)
     level_up_choices: int = 3
     luck_shift: float = 0.0
@@ -113,6 +118,7 @@ class WorldConfig:
             upgrades=upgrades,
             scaling=Scaling.from_content(content),
             biomes=biome_areas_from_content(content),
+            obstacles=obstacles_from_content(content, max_phase),
             rarity_weights={k: float(v) for k, v in bal.rarity_weights.items()},
             level_up_choices=bal.level_up_choices,
             luck_shift=float(bal.raw["luck_shift_per_point"]),
@@ -205,6 +211,7 @@ class World:
         self._budget = 0.0
         self._pending_mob: MobStats | None = None
         self._grid = SpatialHash(GRID_CELL)
+        self.obstacles = ObstacleMap(cfg.obstacles)
         self._upgrade_defs = {u.id: u for u in cfg.upgrades}
         self._max_mob_radius = max((m.radius for m in cfg.mobs), default=PLAYER_RADIUS)
         cx, cy = cfg.arena_w / 2, cfg.arena_h / 2
@@ -311,8 +318,9 @@ class World:
             k = speed * INV_SQRT2 if (mx and my) else speed
             p.vx, p.vy = mx * k, my * k
             p.standing = not (mx or my)
-            p.x = min(max(p.x + p.vx * DT, r), cfg.arena_w - r)
-            p.y = min(max(p.y + p.vy * DT, r), cfg.arena_h - r)
+            x, y = self.obstacles.push_out(p.x + p.vx * DT, p.y + p.vy * DT, r)
+            p.x = min(max(x, r), cfg.arena_w - r)
+            p.y = min(max(y, r), cfg.arena_h - r)
             if p.i_frames > 0:
                 p.i_frames = max(0.0, p.i_frames - DT)
             if p.stats.regen_per_s:
@@ -378,6 +386,7 @@ class World:
 
     def _spawn_enemy(self, m: MobStats, x: float, y: float, events: list[Event]) -> None:
         sc, minutes = self.config.scaling, self.time_s / 60.0
+        x, y = self.obstacles.push_out(x, y, m.radius)
         hp = m.hp * sc.hp_mult(minutes)
         dmg = m.damage * sc.damage_mult(minutes) * self.difficulty
         speed = m.speed * sc.speed_mult(minutes)
@@ -433,9 +442,11 @@ class World:
                     e.y -= dy * push
                     o.x += dx * push
                     o.y += dy * push
+        obstacles = self.obstacles
         for e in self.enemies:
-            e.x = min(max(e.x, e.radius), cfg.arena_w - e.radius)
-            e.y = min(max(e.y, e.radius), cfg.arena_h - e.radius)
+            x, y = obstacles.push_out(e.x, e.y, e.radius)
+            e.x = min(max(x, e.radius), cfg.arena_w - e.radius)
+            e.y = min(max(y, e.radius), cfg.arena_h - e.radius)
 
     # ------------------------------------------------------------------ combat
 
@@ -449,12 +460,7 @@ class World:
             if p.shot_cooldown > 0:
                 continue
             # Stop-and-shoot: moving interrupts the attack; it fires as soon as you stand.
-            target, best = None, s.range * s.range
-            if p.standing:
-                for e in self.enemies:
-                    d2 = (e.x - p.x) ** 2 + (e.y - p.y) ** 2
-                    if d2 <= best:
-                        target, best = e, d2
+            target, best = self._pick_target(p) if p.standing else (None, 0.0)
             if target is None:
                 p.shot_cooldown = 0.0
                 continue
@@ -472,6 +478,20 @@ class World:
                 else:
                     rx, ry = rx * SPREAD_COS + ry * SPREAD_SIN, -rx * SPREAD_SIN + ry * SPREAD_COS
                     self._fire(p, rx, ry, s.damage * EXTRA_ATTACK_DAMAGE, life, events)
+
+    def _pick_target(self, p: Player) -> tuple[Enemy | None, float]:
+        """Nearest enemy in range with a free line of fire (trees give cover)."""
+        range2 = p.stats.range * p.stats.range
+        in_range = []
+        for e in self.enemies:
+            d2 = (e.x - p.x) ** 2 + (e.y - p.y) ** 2
+            if d2 <= range2:
+                in_range.append((d2, e.eid, e))
+        in_range.sort(key=lambda t: (t[0], t[1]))
+        for d2, _, e in in_range[:MAX_TARGET_CHECKS]:
+            if not self.obstacles.line_blocked(p.x, p.y, e.x, e.y, PROJECTILE_RADIUS):
+                return e, d2
+        return None, 0.0
 
     def _fire(self, p: Player, dx: float, dy: float, damage: float, life: int, events: list[Event]) -> None:
         s, speed = p.stats, self.config.character.projectile_speed
@@ -491,6 +511,9 @@ class World:
             pr.x += pr.vx * DT
             pr.y += pr.vy * DT
             pr.ticks_left -= 1
+            if self.obstacles.blocks_point(pr.x, pr.y, PROJECTILE_RADIUS):
+                events.append(ProjectileBlocked(self.tick, pr.owner, pr.x, pr.y))
+                continue
             for e in g.query(pr.x, pr.y, reach):
                 if e.eid in pr.hit_ids or e.eid in killed:
                     continue

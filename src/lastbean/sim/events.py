@@ -86,3 +86,9 @@ class EnemySpawned(Event):
     enemy_id: int
     kind: str
     biome: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectileBlocked(Event):
+    x: float
+    y: float
