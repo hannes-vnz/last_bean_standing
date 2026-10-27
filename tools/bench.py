@@ -27,7 +27,7 @@ def main() -> None:
     cfg = dataclasses.replace(cfg, character=dataclasses.replace(cfg.character, hp=10**9))
     steps = args.seconds * TICK_HZ
     rng = Rng(1)
-    inputs = [[PlayerInput(0, rng.randint(-1, 1), rng.randint(-1, 1))] for _ in range(steps)]
+    inputs = [[PlayerInput(0, rng.randint(-1, 1), rng.randint(-1, 1), choice=0)] for _ in range(steps)]
     world = World(1, cfg)
     # Warm-up: fill the arena with enemies before measuring.
     for _ in range(TICK_HZ * 3):
@@ -57,7 +57,9 @@ def main() -> None:
             renderer.present(window)
             draw_t += time.perf_counter() - t1
 
-    print(f"enemies alive (avg): {alive / steps:.0f}, kills: {world.players[0].kills}")
+    print(
+        f"enemies alive (avg): {alive / steps:.0f}, kills: {world.players[0].kills}, orbs on floor: {len(world.orbs)}"
+    )
     sps = steps / sim_t
     print(f"sim:  {sps:,.0f} steps/s, {1000 / sps:.3f} ms/step ({sps / TICK_HZ:.1f}x real time)")
     if renderer:

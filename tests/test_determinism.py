@@ -6,8 +6,13 @@ REFERENCE_U32 = [1096865841, 933661059, 3314798965]
 
 
 def scripted_inputs(n: int, seed: int) -> list[list[PlayerInput]]:
+    """Half a second of standing (shooting) or walking in a random direction, always picking card 0."""
     rng = Rng(seed ^ 0xABCDEF)
-    return [[PlayerInput(0, rng.randint(-1, 1), rng.randint(-1, 1))] for _ in range(n)]
+    out: list[list[PlayerInput]] = []
+    while len(out) < n:
+        mx, my = (0, 0) if rng.random() < 0.5 else (rng.randint(-1, 1), rng.randint(-1, 1))
+        out.extend([[PlayerInput(0, mx, my, choice=0)]] * 30)
+    return out[:n]
 
 
 @pytest.fixture
@@ -22,11 +27,12 @@ def run(make_config):
 
 
 def test_same_seed_and_inputs_give_same_state(run):
-    # 60 s with a crowd of enemies, shooting, hits, kills and contact damage.
-    inputs = scripted_inputs(60 * TICK_HZ, 1)
-    a, b = run(42, inputs, enemy_target=120), run(42, inputs, enemy_target=120)
+    # 3 minutes of the real wave budget: spawns, stop-and-shoot, kills, XP, level-ups and contact damage.
+    inputs = scripted_inputs(180 * TICK_HZ, 1)
+    a, b = run(42, inputs), run(42, inputs)
     assert a.state_hash() == b.state_hash()
-    assert a.players[0].kills > 0 and a.players[0].hp < a.players[0].max_hp
+    p = a.players[0]
+    assert p.kills > 0 and p.level > 1 and p.upgrades and p.hp < p.max_hp, p
 
 
 def test_different_seed_gives_different_state(run):

@@ -63,3 +63,26 @@ class PlayerDied(Event):
 @dataclass(frozen=True, slots=True)
 class RunEnded(Event):
     time_s: float
+
+
+@dataclass(frozen=True, slots=True)
+class LevelUp(Event):
+    level: int
+
+
+@dataclass(frozen=True, slots=True)
+class UpgradeOffered(Event):
+    upgrade_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class UpgradeChosen(Event):
+    upgrade_id: str
+    level: int
+
+
+@dataclass(frozen=True, slots=True)
+class EnemySpawned(Event):
+    enemy_id: int
+    kind: str
+    biome: str | None
