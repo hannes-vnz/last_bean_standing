@@ -43,8 +43,21 @@ class Renderer:
         self.palettes = {b.id: b.palette for b in content.biomes}
         self.ink = hex_rgb(style.ink)
         self.player_body = hex_rgb(style.player["body"])
-        self.enemy_colors = {"slimeling": hex_rgb(style.enemy["slime"]), "batswarm": hex_rgb(style.enemy["bat"])}
+        forest = self.palettes["forest"]
+        # Placeholder colours until sprites exist (M6): style.json where it has one, biome palettes otherwise.
+        self.enemy_colors = {
+            "slimeling": hex_rgb(style.enemy["slime"]),
+            "batswarm": hex_rgb(style.enemy["bat"]),
+            "rootguard": hex_rgb(forest.get("trunk") or "#8a6a4a"),
+            "sporeshooter": (212, 138, 224),
+            "ildra": (200, 80, 106),
+        }
         self.enemy_default = hex_rgb(style.enemy["slime"])
+        self.enemy_shot = hex_rgb(style.enemy_projectile["core"])
+        self.telegraph = hex_rgb(style.telegraph)
+        self.poison = (196, 120, 220)  # violet like enemy projectiles, stands out on green ground
+        self.grip = hex_rgb(forest.get("trunk") or "#8a6a4a")
+        self.boss_names = {b.id: b.name for b in content.bosses}
         self.shot_core = hex_rgb(style.player_projectile["core"])
         self.shot_halo = hex_rgb(style.player_projectile["halo"])
         self.hp_color = hex_rgb(style.heal_orb)
@@ -84,14 +97,39 @@ class Renderer:
                 c.fill(self.xp_color, (sx - 1, sy, 3, 1))
                 c.fill(self.xp_color, (sx, sy - 1, 1, 3))
 
+        self._draw_hazards(snap, cam_x, cam_y)
+        for cx, cy in snap.chests:
+            sx, sy = round(cx / UNITS_PER_PX) - cam_x, round(cy / UNITS_PER_PX) - cam_y
+            c.fill(ink, (sx - 6, sy - 5, 13, 11))
+            c.fill(self.crit_color, (sx - 5, sy - 4, 11, 9))
+            c.fill(ink, (sx - 5, sy - 1, 11, 1))
+            c.fill(WHITE, (sx - 1, sy - 2, 3, 3))
+
         for e in snap.enemies:
             sx, sy = round(e.x / UNITS_PER_PX) - cam_x, round(e.y / UNITS_PER_PX) - cam_y
             r = max(2, round(e.radius / UNITS_PER_PX))
-            if -r <= sx < CANVAS_W + r and -r <= sy < CANVAS_H + r:
+            if -r - 3 <= sx < CANVAS_W + r + 3 and -r - 3 <= sy < CANVAS_H + r + 3:
+                if e.elite:  # golden halo so elites stand out in a crowd
+                    pygame.draw.circle(c, self.crit_color, (sx, sy), r + 3)
                 pygame.draw.circle(c, ink, (sx, sy), r + 1)
                 pygame.draw.circle(c, self.enemy_colors.get(e.kind, self.enemy_default), (sx, sy), r)
-                if e.hp_frac < 1.0:
+                if e.boss:
+                    pygame.draw.circle(c, WHITE, (sx - r // 3, sy - r // 3), max(2, r // 4))
+                if e.shield_frac > 0:
+                    pygame.draw.circle(c, WHITE, (sx, sy), r + 1, 1)
+                if e.hp_frac < 1.0 and not e.boss:
                     c.fill(WHITE, (sx - 1, sy - 1, 2, 2))
+
+        for s in snap.enemy_shots:
+            sx, sy = round(s.x / UNITS_PER_PX) - cam_x, round(s.y / UNITS_PER_PX) - cam_y
+            if not (0 <= sx < CANVAS_W and 0 <= sy < CANVAS_H):
+                continue
+            if s.lobbed:  # spore in flight: small, the landing warning is drawn with the hazards
+                pygame.draw.circle(c, ink, (sx, sy), 3)
+                pygame.draw.circle(c, self.poison, (sx, sy), 2)
+            else:
+                pygame.draw.circle(c, ink, (sx, sy), 3)
+                pygame.draw.circle(c, self.enemy_shot, (sx, sy), 2)
 
         for p in snap.players:
             if not p.alive:
@@ -113,6 +151,8 @@ class Renderer:
                 c.set_at((sx, sy), self.shot_core)
 
         self._draw_hud(snap, focus)
+        if snap.boss_bar:
+            self._draw_boss_bar(snap.boss_bar)
         if debug:
             self._text(debug, (6, CANVAS_H - 16))
         if focus.offer and not snap.over:
@@ -134,12 +174,49 @@ class Renderer:
             hud += f"   Schwierigkeit {round(snap.difficulty * 100)} %"
         self._text(hud, (6, 9))
 
+    def _draw_hazards(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
+        """Warnings are coral and blink at 2 Hz (DESIGN.md section 16); active zones are soft and translucent."""
+        c, ink = self.canvas, self.ink
+        blink_on = (snap.tick // 15) % 2 == 0
+        overlay = None
+        for s in snap.enemy_shots:
+            if s.lobbed:
+                tx, ty = round(s.tx / UNITS_PER_PX) - cam_x, round(s.ty / UNITS_PER_PX) - cam_y
+                pygame.draw.circle(c, self.telegraph if blink_on else WHITE, (tx, ty), 20 // UNITS_PER_PX + 8, 1)
+        for h in snap.hazards:
+            sx, sy = round(h.x / UNITS_PER_PX) - cam_x, round(h.y / UNITS_PER_PX) - cam_y
+            r = round(h.radius / UNITS_PER_PX)
+            if sx + r < 0 or sx - r >= CANVAS_W or sy + r < 0 or sy - r >= CANVAS_H:
+                continue
+            if not h.armed:
+                pygame.draw.circle(c, self.telegraph if blink_on else WHITE, (sx, sy), r, 2)
+                continue
+            if overlay is None:
+                overlay = pygame.Surface((CANVAS_W, CANVAS_H), pygame.SRCALPHA)
+            color = self.poison if h.kind == "poison" else self.grip if h.kind == "grip" else self.telegraph
+            pygame.draw.circle(overlay, (*color, 150), (sx, sy), r)
+            pygame.draw.circle(overlay, (*ink, 230), (sx, sy), r, 2)
+        if overlay is not None:
+            c.blit(overlay, (0, 0))
+
+    def _draw_boss_bar(self, bar) -> None:
+        c, ink = self.canvas, self.ink
+        w = 300
+        rect = pygame.Rect((CANVAS_W - w) // 2, 30, w, 8)
+        c.fill(ink, rect.inflate(2, 2))
+        c.fill((90, 60, 100), rect)
+        c.fill(self.enemy_colors.get(bar.boss, self.telegraph), (rect.x, rect.y, round(w * bar.hp_frac), rect.h))
+        self._text(self.boss_names.get(bar.boss, bar.boss), (CANVAS_W // 2, 46), center=True)
+
     def _draw_offer(self, focus) -> None:
         c, ink = self.canvas, self.ink
         dim = pygame.Surface((CANVAS_W, CANVAS_H), pygame.SRCALPHA)
         dim.fill((*ink, 140))
         c.blit(dim, (0, 0))
-        self._text(f"Level {focus.level}! Wähle ein Upgrade", (CANVAS_W // 2, 70), self.big_font, center=True)
+        title = (
+            "Truhe! Wähle ein Upgrade" if focus.offer_source == "chest" else f"Level {focus.level}! Wähle ein Upgrade"
+        )
+        self._text(title, (CANVAS_W // 2, 70), self.big_font, center=True)
         n = len(focus.offer)
         w, h, gap = 180, 150, 14
         x0 = (CANVAS_W - n * w - (n - 1) * gap) // 2

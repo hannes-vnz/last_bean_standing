@@ -1,12 +1,34 @@
 """Headless, deterministic simulation (no pygame)."""
 
 from .arena import Obstacle, ObstacleMap
-from .entities import CharacterStats, Enemy, MobStats, Player, Projectile, Stats, XpOrb
+from .entities import (
+    BossStats,
+    CharacterStats,
+    Chest,
+    EliteRules,
+    Enemy,
+    EnemyShot,
+    Hazard,
+    HazardSpec,
+    MobStats,
+    Player,
+    Projectile,
+    Stats,
+    XpOrb,
+)
 from .events import (
+    BossKilled,
+    BossPhase,
+    BossSpawned,
+    ChestDropped,
+    ChestOpened,
+    EliteSpawned,
     EnemyHit,
     EnemyKilled,
+    EnemyShotFired,
     EnemySpawned,
     Event,
+    HazardActivated,
     LevelUp,
     PlayerDied,
     PlayerHit,
@@ -24,6 +46,20 @@ from .waves import Scaling
 from .world import DT, TICK_HZ, PlayerInput, Snapshot, World, WorldConfig
 
 __all__ = [
+    "BossKilled",
+    "BossPhase",
+    "BossSpawned",
+    "BossStats",
+    "Chest",
+    "ChestDropped",
+    "ChestOpened",
+    "EliteRules",
+    "EliteSpawned",
+    "EnemyShot",
+    "EnemyShotFired",
+    "Hazard",
+    "HazardActivated",
+    "HazardSpec",
     "DT",
     "TICK_HZ",
     "CharacterStats",

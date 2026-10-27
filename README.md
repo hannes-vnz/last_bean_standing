@@ -4,7 +4,7 @@ A small stop-and-shoot roguelite with bean mascots, built in Python with pygame-
 Time-based waves in a finite arena with four biomes, bosses, shrines and an endless swarm after 20:00.
 Portfolio project: clean code, tests, and later a reinforcement-learning agent that plays the game.
 
-**Status:** milestone M3: arena with biome zones, forest trees block movement and shots (cover). Playable to 5:00.
+**Status:** milestone M4: all phase-1 enemies (slimes, bat swarms, root guards, spore shooters), elites with affixes and chests, boss Ildra at 5:00.
 
 Play in the browser: https://hannes-vnz.github.io/last_bean_standing/
 
@@ -43,11 +43,11 @@ Measured with `python tools/bench.py --render` (Apple Silicon, Python 3.12, head
 
 | Enemies | Simulation | Drawing | Total per frame (budget 16.7 ms) |
 |---|---|---|---|
-| 200 | 1.4 ms | 2.2 ms | 3.6 ms |
-| 350 (cap) | 2.7 ms | 2.6 ms | 5.2 ms |
+| 200 | 1.6 ms | 1.9 ms | 3.5 ms |
+| 350 (cap) | 3.2 ms | 2.3 ms | 5.5 ms |
 | 200, browser (pygbag 0.9.3, F5) | 1.7 ms | 2.4 ms | 4.1 ms |
 
-Balancing (`python tools/balance.py --seeds 20`, heuristic bot as ranger): median death 3:24 (2:38 to 4:57), median level 3.
+Balancing (`python tools/balance.py --seeds 20`, heuristic bot as ranger): median death 3:01 (1:58 to 4:04), median level 3. A real run peaks at about 350 enemies and 2.9 ms simulation per step around 5:30.
 
 ## Assets
 

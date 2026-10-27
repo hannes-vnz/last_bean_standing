@@ -92,3 +92,58 @@ class EnemySpawned(Event):
 class ProjectileBlocked(Event):
     x: float
     y: float
+
+
+@dataclass(frozen=True, slots=True)
+class EliteSpawned(Event):
+    enemy_id: int
+    kind: str
+    affixes: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class BossSpawned(Event):
+    enemy_id: int
+    boss: str
+
+
+@dataclass(frozen=True, slots=True)
+class BossPhase(Event):
+    enemy_id: int
+    boss: str
+    phase: int
+
+
+@dataclass(frozen=True, slots=True)
+class BossKilled(Event):
+    enemy_id: int
+    boss: str
+    time_s: float
+
+
+@dataclass(frozen=True, slots=True)
+class EnemyShotFired(Event):
+    enemy_id: int
+    x: float
+    y: float
+    lobbed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class HazardActivated(Event):
+    kind: str
+    x: float
+    y: float
+    radius: float
+
+
+@dataclass(frozen=True, slots=True)
+class ChestDropped(Event):
+    x: float
+    y: float
+    min_rarity: str
+
+
+@dataclass(frozen=True, slots=True)
+class ChestOpened(Event):
+    min_rarity: str
