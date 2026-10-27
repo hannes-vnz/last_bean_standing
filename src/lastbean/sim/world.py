@@ -119,6 +119,7 @@ class World:
             p.y = min(max(p.y + p.vy * DT, r), cfg.arena_h - r)
 
         self.tick += 1
+        # Wave n starts at n * wave_interval_s: 0:00-0:30 is wave 0, boss wave 10 = 5:00 (decided, M0).
         wave = self.tick // (cfg.wave_interval_s * TICK_HZ)
         if wave != self.wave:
             self.wave = wave
