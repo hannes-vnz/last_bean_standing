@@ -28,6 +28,7 @@ Stop-and-Shoot-Roguelite: zeitbasierte, endlos härter werdende Wellen in einer 
 - Spiel (ab M0): `python -m lastbean`
 - Setup: `python -m venv .venv && .venv/bin/pip install -e ".[dev]"` (Python 3.11+); `make check` = Lint + Tests + Inhalt synchron
 - Benchmark Simulation: `python tools/bench.py` (Schritte pro Sekunde, Ergebnis messen und notieren)
+- Web: `python tools/build_web.py [--serve]` (pygbag; `web/main.py` muss pygame direkt importieren); Push auf `main` deployt GitHub Pages
 
 ## Struktur (Stand M2)
 - `sim/world.py`: `World(seed, WorldConfig.from_content(...))`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; `PlayerInput(player_id, move_x, move_y, choice)`; Level-up pausiert nur im Einzelspiel

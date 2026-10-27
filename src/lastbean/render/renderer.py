@@ -64,7 +64,7 @@ class Renderer:
         self.font = pygame.font.Font(None, 16)
         self.big_font = pygame.font.Font(None, 32)
 
-    def draw(self, snap: Snapshot, focus_player: int = 0) -> pygame.Surface:
+    def draw(self, snap: Snapshot, focus_player: int = 0, debug: str | None = None) -> pygame.Surface:
         c = self.canvas
         c.fill(self.void)
         focus = next((p for p in snap.players if p.player_id == focus_player), snap.players[0])
@@ -112,6 +112,8 @@ class Renderer:
                 c.set_at((sx, sy), self.shot_core)
 
         self._draw_hud(snap, focus)
+        if debug:
+            self._text(debug, (6, CANVAS_H - 16))
         if focus.offer and not snap.over:
             self._draw_offer(focus)
         if snap.over:
