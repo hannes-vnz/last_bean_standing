@@ -1,0 +1,32 @@
+PY ?= python
+
+.PHONY: install test lint format content check run bench server-test
+
+install:
+	$(PY) -m pip install -e ".[dev]"
+
+test:
+	$(PY) -m pytest -q
+
+lint:
+	ruff check
+	ruff format --check
+
+format:
+	ruff format
+	ruff check --fix
+
+content:
+	$(PY) tools/build_content.py
+
+check: lint test
+	git diff --exit-code -- data docs/CONTENT.md
+
+run:
+	$(PY) -m lastbean
+
+bench:
+	$(PY) tools/bench.py
+
+server-test:
+	cd server && $(PY) -m pytest -q

@@ -26,3 +26,10 @@ Stop-and-Shoot-Roguelite: zeitbasierte, endlos härter werdende Wellen in einer 
 - Tests: `python -m pytest -q`; Lint: `ruff check`
 - Inhalt prüfen: `python tools/build_content.py`
 - Spiel (ab M0): `python -m lastbean`
+- Setup: `python -m venv .venv && .venv/bin/pip install -e ".[dev]"` (Python 3.11+); `make check` = Lint + Tests + Inhalt synchron
+- Benchmark Simulation: `python tools/bench.py` (Schritte pro Sekunde, Ergebnis messen und notieren)
+
+## Struktur (Stand M0)
+- `sim/world.py`: `World(seed, WorldConfig)`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; Eingaben `PlayerInput(player_id, ...)`
+- `data/loader.py`: `load_content()` liefert typisierte `Content` (`data/schema.py`), sammelt alle Fehler in `ContentError`
+- `meta/profile.py`: `ProfileStore`-Schnittstelle (Datei, Speicher); `render/renderer.py`: 640x360-Fläche, ganzzahlig skaliert

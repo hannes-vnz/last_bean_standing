@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lastbean"
+version = "0.0.1"
+description = "Last Bean Standing: a stop-and-shoot roguelite with bean mascots"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Hannes Vincenz" }]
+dependencies = ["pygame-ce>=2.5"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+lastbean = "lastbean.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["tools/build_content.py", "tools/sprites", "server"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
