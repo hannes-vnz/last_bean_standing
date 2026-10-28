@@ -31,11 +31,11 @@
   "xp": 0.5,
   "min_time_s": 60,
   "biome_weights": {
-   "forest": 1,
-   "desert": 1,
-   "ice": 1,
-   "lava": 1,
-   "plaza": 1
+   "forest": 0.5,
+   "desert": 0.5,
+   "ice": 0.5,
+   "lava": 0.5,
+   "plaza": 0.5
   },
   "text": "Kommt in Gruppen zu 4, flattert unregelmäßig, sehr schnell.",
   "impl_phase": 1,

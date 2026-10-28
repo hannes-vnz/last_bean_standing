@@ -18,10 +18,10 @@ BALANCE = {
     "hp_mult": {"linear": 0.10, "quadratic": 0.012},                     # 1 + a*m + b*m^2, m = Minuten
     "damage_mult": {"linear": 0.05, "quadratic": 0.004},
     "speed_mult": {"linear": 0.01, "cap": 1.2},
-    "xp_to_next": {"base": 12, "linear": 8, "quadratic": 0.5},           # Level L -> L+1
+    "xp_to_next": {"base": 8, "linear": 5, "quadratic": 0.4},            # Level L -> L+1 (flacher seit 28.10.2026)
     "elite_every_n_waves": 5, "boss_waves": {"10": "ildra", "15": "skarra", "20": "kalthorn", "30": "ignarok"},
     "spawn_distance_px": [520, 700], "arena_tiles": [60, 60], "tile_px": 32,
-    "player_base": {"hp": 100, "pickup_radius_px": 70, "i_frames_s": 0.6},
+    "player_base": {"hp": 100, "pickup_radius_px": 130, "i_frames_s": 0.6},
     "score": {"per_second": 2, "per_kill": 5, "per_level": 20, "per_boss": 500, "victory_bonus": 20000, "swarm_per_10s": 1000},
     "rarity_weights": {"common": 60, "uncommon": 25, "rare": 10, "epic": 4, "legendary": 1},
     "luck_shift_per_point": 0.4, "level_up_choices": 3, "elite_chest_min_rarity": "rare",
@@ -45,7 +45,7 @@ def ch(id, name, title, arch, hp, speed, dmg, rate, rng, crit, weapon, passive, 
                 tags=tags, unlock_challenge=unlock, impl_phase=phase, skins=skins)
 
 CHARACTERS = [
- ch("ranger", "Fenn", "der Falkenauge", "Jäger: ausgewogen, durchschlagende Pfeile", 100, 150, 12, 1.6, 380, 5,
+ ch("ranger", "Fenn", "der Falkenauge", "Jäger: ausgewogen, durchschlagende Pfeile", 100, 180, 12, 2.0, 380, 5,
     dict(type="projectile", pattern="single", projectile_speed=640, pierce=1, aoe_radius=0, text="Ein Pfeil, durchschlägt 1 Gegner."),
     dict(id="far_sight", name="Weitblick", text="+12 % Reichweite. +8 % Schaden auf Ziele über 250 px.", effects=[dict(stat="range_pct", value=12), dict(stat="damage_pct_far", value=8, threshold_px=250)]),
     dict(id="arrow_storm", name="Pfeilhagel", cooldown_s=18, text="16 Pfeile in alle Richtungen (je 60 % Schaden)."),
@@ -185,7 +185,7 @@ def mob(id, name, beh, hp, speed, dmg, cost, xp, min_t, biomes, text, phase, **e
 ALL = dict(forest=1, desert=1, ice=1, lava=1, plaza=1)
 MOBS = [
  mob("slimeling", "Schleimling", "chaser", 12, 62, 5, 1, 1, 0, ALL, "Läuft geradeaus auf dich zu. Der Standardgegner.", 1, radius=12),
- mob("batswarm", "Fledermaus", "swarm", 5, 120, 3, 0.5, 0.5, 60, ALL, "Kommt in Gruppen zu 4, flattert unregelmäßig, sehr schnell.", 1, radius=9, group_size=4),
+ mob("batswarm", "Fledermaus", "swarm", 5, 120, 3, 0.5, 0.5, 60, {b: 0.5 for b in ALL}, "Kommt in Gruppen zu 4, flattert unregelmäßig, sehr schnell.", 1, radius=9, group_size=4),
  mob("rootguard", "Wurzelwächter", "chaser_tank", 55, 38, 10, 4, 4, 90, dict(forest=1, plaza=0.3, desert=0.2, ice=0.2, lava=0.2), "Langsam und zäh, kaum Rückstoß.", 1, radius=18, knockback_resist=0.8),
  mob("sporeshooter", "Sporenschütze", "ranged_lobbed", 16, 45, 4, 3, 3, 120, dict(forest=1, plaza=0.3, desert=0.2, ice=0.2, lava=0.2), "Hält 260 px Abstand und wirft Sporen, die eine Giftpfütze (4 Schaden/s, 3 s) hinterlassen.", 1, radius=12, keep_distance_px=260, shot_interval_s=2.4),
  mob("sandspitter", "Sandspeier", "ranged_direct", 14, 55, 7, 2, 2, 100, dict(desert=1, plaza=0.3, forest=0.2, ice=0.2, lava=0.2), "Hält 300 px Abstand und schießt gerade Sandgeschosse (Tempo 260).", 2, radius=12, keep_distance_px=300, shot_interval_s=1.8, projectile_speed=260),

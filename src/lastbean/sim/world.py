@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from .arena import Obstacle, ObstacleMap, obstacles_from_content
-from .enemies import BEHAVIORS, BOSS_BEHAVIORS, apply_affixes, damage_enemy, tick_affixes
+from .enemies import BEHAVIORS, BOSS_BEHAVIORS, COMPASS_16, apply_affixes, damage_enemy, tick_affixes
 from .entities import (
     BossStats,
     CharacterStats,
@@ -30,11 +30,13 @@ from .entities import (
     Hazard,
     HazardSpec,
     MobStats,
+    Pickup,
     Player,
     Projectile,
     XpOrb,
 )
 from .events import (
+    AbilityUsed,
     BossKilled,
     BossSpawned,
     ChestDropped,
@@ -46,6 +48,7 @@ from .events import (
     Event,
     HazardActivated,
     LevelUp,
+    PickupCollected,
     PlayerDied,
     PlayerHit,
     ProjectileBlocked,
@@ -60,11 +63,16 @@ from .rng import Rng
 from .score import RunResult, ScoreRules, compute_score
 from .spatial import SpatialHash
 from .tuning import (
+    ARROW_STORM_DAMAGE,
+    ARROW_STORM_SHOTS,
     BOSS_MIN_SPAWN_DISTANCE,
     CHEST_PICKUP_RADIUS,
     ENEMY_SHOT_RADIUS,
     EXTRA_ATTACK_DAMAGE,
+    MAGNET_DROP_PCT,
+    MAGNET_ORB_SPEED,
     ORB_SPEED,
+    PICKUP_RADIUS,
     PLAYER_RADIUS,
     PROJECTILE_RADIUS,
     SPREAD_COS,
@@ -91,12 +99,14 @@ class PlayerInput:
     """Input of one player for one tick. move_x/move_y are each -1, 0 or 1.
 
     `choice` picks an offered upgrade card (0-based index); ignored when nothing is offered.
+    `ability` triggers the character's active ability when it is ready.
     """
 
     player_id: int
     move_x: int = 0
     move_y: int = 0
     choice: int | None = None
+    ability: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,6 +196,7 @@ class PlayerView(NamedTuple):
     upgrades: tuple[tuple[str, int], ...]
     offer_source: str
     slowed: bool
+    ability_ready: float = 1.0  # 0 right after use, 1 when ready again
 
 
 class EnemyView(NamedTuple):
@@ -254,6 +265,7 @@ class Snapshot:
     hazards: tuple[HazardView, ...] = ()
     chests: tuple[tuple[float, float], ...] = ()
     boss_bar: BossBar | None = None
+    pickups: tuple[tuple[str, float, float], ...] = ()
 
 
 @dataclass
@@ -271,6 +283,7 @@ class World:
     hazards: list[Hazard] = field(default_factory=list)
     orbs: list[XpOrb] = field(default_factory=list)
     chests: list[Chest] = field(default_factory=list)
+    pickups: list[Pickup] = field(default_factory=list)
     rng: Rng = field(init=False)
 
     def __post_init__(self) -> None:
@@ -333,6 +346,7 @@ class World:
             return events
 
         self._move_players(inputs)
+        self._use_abilities(inputs, events)
         self._spawn(events)
         self._spawn_bosses(events)
         self._rebuild_grid()
@@ -428,6 +442,29 @@ class World:
                 p.i_frames = max(0.0, p.i_frames - DT)
             if p.stats.regen_per_s:
                 p.hp = min(p.stats.max_hp, p.hp + p.stats.regen_per_s * DT)
+
+    def _use_abilities(self, inputs: dict[int, PlayerInput], events: list[Event]) -> None:
+        ch = self.config.character
+        for p in self.players:
+            if not p.alive:
+                continue
+            if p.ability_cooldown > 0:
+                p.ability_cooldown = max(0.0, p.ability_cooldown - DT)
+            inp = inputs.get(p.player_id)
+            if not inp or not inp.ability or p.ability_cooldown > 0 or ch.active_id not in ABILITIES:
+                continue
+            p.ability_cooldown = ch.active_cooldown_s
+            ABILITIES[ch.active_id](self, p, events)
+            events.append(AbilityUsed(self.tick, p.player_id, ch.active_id, p.x, p.y))
+
+    def _arrow_storm(self, p: Player, events: list[Event]) -> None:
+        """Fenn's "Pfeilhagel": arrows in all directions at 60 % damage."""
+        s = p.stats
+        life = max(1, int(s.range / self.config.character.projectile_speed * TICK_HZ + 0.5))
+        step = len(COMPASS_16) // ARROW_STORM_SHOTS if len(COMPASS_16) >= ARROW_STORM_SHOTS else 1
+        for k in range(ARROW_STORM_SHOTS):
+            dx, dy = COMPASS_16[(k * step) % len(COMPASS_16)]
+            self._fire(p, dx, dy, s.damage * ARROW_STORM_DAMAGE, life, events)
 
     def _hurt(self, p: Player, damage: float, events: list[Event], use_i_frames: bool = True) -> None:
         """Damage a player. Hits respect and start i-frames; damage over time does not."""
@@ -648,6 +685,8 @@ class World:
         events.append(EnemyKilled(self.tick, killer, e.eid, e.kind, e.x, e.y))
         if e.xp > 0:
             self.orbs.append(XpOrb(e.x, e.y, e.xp * self.reward_mult))
+        if e.elite or (not e.boss and self.rng.random() * 100.0 < MAGNET_DROP_PCT):
+            self.pickups.append(Pickup("magnet", e.x, e.y))
         for p in self.players:
             if p.player_id == killer:
                 p.kills += 1
@@ -676,8 +715,8 @@ class World:
             p.shot_cooldown -= DT
             if p.shot_cooldown > 0:
                 continue
-            # Stop-and-shoot: moving interrupts the attack; it fires as soon as you stand.
-            target, best = self._pick_target(p) if p.standing else (None, 0.0)
+            # Auto-fire at the nearest visible enemy, also while moving (decided 28.10.2026).
+            target, best = self._pick_target(p)
             if target is None:
                 p.shot_cooldown = 0.0
                 continue
@@ -685,16 +724,19 @@ class World:
             d = math.sqrt(best) or 1.0
             dx, dy = (target.x - p.x) / d, (target.y - p.y) / d
             life = max(1, int(s.range / ch.projectile_speed * TICK_HZ + 0.5))
-            self._fire(p, dx, dy, s.damage, life, events)
+            damage = s.damage
+            if s.far_damage_pct and d > s.far_threshold:  # e.g. Fenn's passive "Weitblick"
+                damage *= 1.0 + s.far_damage_pct / 100.0
+            self._fire(p, dx, dy, damage, life, events)
             # Extra attacks fan out alternately left and right of the main shot.
             lx, ly, rx, ry = dx, dy, dx, dy
             for k in range(s.extra_attacks):
                 if k % 2 == 0:
                     lx, ly = lx * SPREAD_COS - ly * SPREAD_SIN, lx * SPREAD_SIN + ly * SPREAD_COS
-                    self._fire(p, lx, ly, s.damage * EXTRA_ATTACK_DAMAGE, life, events)
+                    self._fire(p, lx, ly, damage * EXTRA_ATTACK_DAMAGE, life, events)
                 else:
                     rx, ry = rx * SPREAD_COS + ry * SPREAD_SIN, -rx * SPREAD_SIN + ry * SPREAD_COS
-                    self._fire(p, rx, ry, s.damage * EXTRA_ATTACK_DAMAGE, life, events)
+                    self._fire(p, rx, ry, damage * EXTRA_ATTACK_DAMAGE, life, events)
 
     def _pick_target(self, p: Player) -> tuple[Enemy | None, float]:
         """Nearest enemy in range with a free line of fire (trees give cover)."""
@@ -838,19 +880,37 @@ class World:
                 events.append(ChestOpened(self.tick, owner.player_id, c.min_rarity))
                 self._offer(owner, events)
             self.chests = remaining_chests
+        if self.pickups:
+            remaining_pickups = []
+            for k in self.pickups:
+                r2 = (PICKUP_RADIUS + PLAYER_RADIUS) ** 2
+                owner = next((p for p in alive if (p.x - k.x) ** 2 + (p.y - k.y) ** 2 <= r2), None)
+                if owner is None:
+                    remaining_pickups.append(k)
+                    continue
+                events.append(PickupCollected(self.tick, owner.player_id, k.kind, k.x, k.y))
+                if k.kind == "magnet":
+                    for o in self.orbs:
+                        o.magnet_to = owner.player_id
+            self.pickups = remaining_pickups
         if not self.orbs:
             return
-        step = ORB_SPEED * DT
         remaining: list[XpOrb] = []
+        by_id = {p.player_id: p for p in alive}
         for o in self.orbs:
             owner, best = None, math.inf
-            for p in alive:
-                d2 = (p.x - o.x) ** 2 + (p.y - o.y) ** 2
-                if d2 <= p.stats.pickup_radius * p.stats.pickup_radius and d2 < best:
-                    owner, best = p, d2
+            magnet = by_id.get(o.magnet_to) if o.magnet_to is not None else None
+            if magnet is not None:
+                owner, best = magnet, (magnet.x - o.x) ** 2 + (magnet.y - o.y) ** 2
+            else:
+                for p in alive:
+                    d2 = (p.x - o.x) ** 2 + (p.y - o.y) ** 2
+                    if d2 <= p.stats.pickup_radius * p.stats.pickup_radius and d2 < best:
+                        owner, best = p, d2
             if owner is None:
                 remaining.append(o)
                 continue
+            step = (MAGNET_ORB_SPEED if magnet is not None else ORB_SPEED) * DT
             d = math.sqrt(best)
             if d <= PLAYER_RADIUS + step:
                 self._gain_xp(owner, o.value, events)
@@ -899,6 +959,7 @@ class World:
 
     def snapshot(self) -> Snapshot:
         sc = self.config.scaling
+        ch = self.config.character
         boss = next((e for e in self.enemies if e.boss), None)
         return Snapshot(
             tick=self.tick,
@@ -927,6 +988,7 @@ class World:
                     tuple(p.upgrades.items()),
                     p.offer_source,
                     p.slow_pct > 0,
+                    1.0 - p.ability_cooldown / ch.active_cooldown_s if ch.active_cooldown_s else 1.0,
                 )
                 for p in self.players
             ),
@@ -949,6 +1011,7 @@ class World:
             enemy_shots=tuple(EnemyShotView(s.x, s.y, s.lobbed, s.tx, s.ty) for s in self.enemy_shots),
             hazards=tuple(HazardView(h.spec.kind, h.x, h.y, h.spec.radius, h.delay <= 0) for h in self.hazards),
             chests=tuple((c.x, c.y) for c in self.chests),
+            pickups=tuple((k.kind, k.x, k.y) for k in self.pickups),
             boss_bar=BossBar(boss.boss, boss.hp / boss.max_hp, boss.phase) if boss else None,
         )
 
@@ -980,7 +1043,14 @@ class World:
             h.update(struct.pack("<3d", o.x, o.y, o.value))
         for c in self.chests:
             h.update(struct.pack("<2d", c.x, c.y))
+        for k in self.pickups:
+            h.update(k.kind.encode() + struct.pack("<2d", k.x, k.y))
+        h.update(struct.pack(f"<{len(self.players)}d", *(p.ability_cooldown for p in self.players)))
+        h.update(repr([o.magnet_to for o in self.orbs]).encode())
         return h.hexdigest()
+
+
+ABILITIES = {"arrow_storm": World._arrow_storm}
 
 
 def _sign(v: int) -> int:

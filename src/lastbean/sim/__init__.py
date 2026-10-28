@@ -11,12 +11,14 @@ from .entities import (
     Hazard,
     HazardSpec,
     MobStats,
+    Pickup,
     Player,
     Projectile,
     Stats,
     XpOrb,
 )
 from .events import (
+    AbilityUsed,
     BossKilled,
     BossPhase,
     BossSpawned,
@@ -30,6 +32,7 @@ from .events import (
     Event,
     HazardActivated,
     LevelUp,
+    PickupCollected,
     PlayerDied,
     PlayerHit,
     ProjectileBlocked,
@@ -47,6 +50,9 @@ from .waves import Scaling
 from .world import DT, TICK_HZ, PlayerInput, Snapshot, World, WorldConfig
 
 __all__ = [
+    "AbilityUsed",
+    "Pickup",
+    "PickupCollected",
     "RunResult",
     "ScoreRules",
     "compute_score",
