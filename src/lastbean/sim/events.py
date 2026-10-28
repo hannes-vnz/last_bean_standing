@@ -147,3 +147,17 @@ class ChestDropped(Event):
 @dataclass(frozen=True, slots=True)
 class ChestOpened(Event):
     min_rarity: str
+
+
+@dataclass(frozen=True, slots=True)
+class AbilityUsed(Event):
+    ability: str
+    x: float
+    y: float
+
+
+@dataclass(frozen=True, slots=True)
+class PickupCollected(Event):
+    kind: str
+    x: float
+    y: float

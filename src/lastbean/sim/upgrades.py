@@ -61,7 +61,17 @@ def modifier_sums(levels: dict[str, int], defs: dict[str, UpgradeDef]) -> dict[s
 
 
 def derive_stats(base: CharacterStats, mods: dict[str, float]) -> Stats:
-    """Same source adds up, different sources multiply (DESIGN.md section 4, `stat_model`)."""
+    """Same source adds up, different sources multiply (DESIGN.md section 4, `stat_model`).
+
+    The character's passive ability counts as one more source of the same stat keys.
+    """
+    mods = dict(mods)
+    far_pct, far_threshold = 0.0, 0.0
+    for stat, value, threshold in base.passive:
+        if stat == "damage_pct_far":
+            far_pct, far_threshold = far_pct + value, threshold
+        else:
+            mods[stat] = mods.get(stat, 0.0) + value
     pct = lambda key: 1.0 + mods.get(key, 0.0) / 100.0  # noqa: E731
     return Stats(
         max_hp=base.hp + mods.get("max_hp_flat", 0.0),
@@ -76,6 +86,8 @@ def derive_stats(base: CharacterStats, mods: dict[str, float]) -> Stats:
         pickup_radius=base.pickup_radius * pct("pickup_radius_pct"),
         regen_per_s=mods.get("regen_per_s", 0.0),
         damage_taken_mult=max(0.1, pct("damage_taken_pct")),
+        far_damage_pct=far_pct,
+        far_threshold=far_threshold,
     )
 
 

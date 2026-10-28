@@ -57,16 +57,16 @@ def test_offer_is_distinct_weighted_and_skips_maxed(make_config):
     assert roll_offer(rng, list(cfg.upgrades), maxed, cfg.rarity_weights, 3) == ("magnet",)
 
 
-def test_moving_interrupts_shooting(make_config):
+def test_fires_while_moving(make_config):
+    """Decided 28.10.2026: auto-fire also while walking (stop-and-shoot was dropped)."""
     w = World(1, make_config(enemy_target=0, mob={"speed": 0.0}))
     p = w.players[0]
     m = w.config.mobs[0]
     w.enemies.append(Enemy(0, m.id, p.x + 200, p.y, 1e9, 1e9, 0.0, m.damage, m.radius))
     w._next_eid = 1
     moving = [e for _ in range(2 * TICK_HZ) for e in w.step([PlayerInput(0, 0, 1)])]
-    assert not any(isinstance(e, ShotFired) for e in moving)
-    standing = w.step([PlayerInput(0)])
-    assert any(isinstance(e, ShotFired) for e in standing)  # fires the moment you stop
+    shots = sum(isinstance(e, ShotFired) for e in moving)
+    assert abs(shots - 2 * w.config.character.attack_rate) <= 1
 
 
 def test_level_up_pauses_and_choice_applies(make_config):

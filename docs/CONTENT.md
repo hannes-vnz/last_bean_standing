@@ -18,11 +18,11 @@ Alle Zahlen sind **Startwerte aus einer Modellrechnung**, nicht aus gespielten R
 
 | Minute | Welle | Budget | HP x | Schaden x | nötige HP/s | Level (ca.) | XP gesamt |
 |---|---|---|---|---|---|---|---|
-| 1 | 2 | 22 | 1.1 | 1.1 | 7 | 2 | 38 |
-| 5 | 10 | 87 | 1.8 | 1.4 | 48 | 9 | 487 |
-| 10 | 20 | 208 | 3.2 | 1.9 | 204 | 16 | 1986 |
-| 15 | 30 | 373 | 5.2 | 2.6 | 594 | 24 | 4938 |
-| 20 | 40 | 582 | 7.8 | 3.6 | 1391 | 32 | 9781 |
+| 1 | 2 | 22 | 1.1 | 1.1 | 7 | 3 | 38 |
+| 5 | 10 | 87 | 1.8 | 1.4 | 48 | 10 | 487 |
+| 10 | 20 | 208 | 3.2 | 1.9 | 204 | 19 | 1986 |
+| 15 | 30 | 373 | 5.2 | 2.6 | 594 | 28 | 4938 |
+| 20 | 40 | 582 | 7.8 | 3.6 | 1391 | 36 | 9781 |
 
 Die Spalte „nötige HP/s“ ist die Leistung, die du brauchst, um alles Erscheinende zu töten. Ein Start-Jäger macht rund 19 Schaden pro Sekunde auf ein Ziel. Das Spiel soll so gebaut sein, dass starke Builds (Flächenschaden, Durchschlag, Ketten) diese Kurve bis etwa Minute 14 bis 18 halten können.
 
@@ -30,7 +30,7 @@ Die Spalte „nötige HP/s“ ist die Leistung, die du brauchst, um alles Ersche
 
 | Name | Spielstil | HP | Tempo | Schaden | Schuss/s | Reichweite | Krit | Waffe | Passiv | Fertigkeit | Freischaltung | Phase |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Fenn der Falkenauge** (`ranger`) | Jäger: ausgewogen, durchschlagende Pfeile | 100 | 150 | 12 | 1.6 | 380 | 5 % | Ein Pfeil, durchschlägt 1 Gegner. | **Weitblick**: +12 % Reichweite. +8 % Schaden auf Ziele über 250 px. | **Pfeilhagel** (18 s): 16 Pfeile in alle Richtungen (je 60 % Schaden). | von Anfang an | 1 |
+| **Fenn der Falkenauge** (`ranger`) | Jäger: ausgewogen, durchschlagende Pfeile | 100 | 180 | 12 | 2.0 | 380 | 5 % | Ein Pfeil, durchschlägt 1 Gegner. | **Weitblick**: +12 % Reichweite. +8 % Schaden auf Ziele über 250 px. | **Pfeilhagel** (18 s): 16 Pfeile in alle Richtungen (je 60 % Schaden). | von Anfang an | 1 |
 | **Mira Aschenglut** (`pyro`) | Pyromantin: Flächenschaden und Brand | 80 | 140 | 14 | 1.1 | 320 | 5 % | Feuerball explodiert (Radius 64) und entzündet (3 s, 20 % Schaden/s). | **Hitzewelle**: Brennende Gegner erleiden +20 % Schaden. | **Inferno** (22 s): Feuerring (Radius 180) um dich, 4 s, 40 % Schaden/s. | Erreiche Minute 5 mit beliebigem Charakter. | 2 |
 | **Kaz Nachtmesser** (`rogue`) | Schurke: schnell, kritisch, kurze Reichweite | 85 | 190 | 7 | 2.2 | 210 | 20 % | Fächer aus 3 Wurfmessern. | **Nervenkitzel**: +15 % Lauftempo. +6 % Schaden je Gegner im Umkreis 150 px (max. 5). | **Schattenschritt** (5 s): Dash über 220 px, 0,3 s unverwundbar. | Räume eine Welle ab Welle 5, ohne Schaden zu nehmen. | 2 |
 | **Brun Eisenschulter** (`guardian`) | Wächter: Nahkampf-Tank mit Dornen | 160 | 120 | 20 | 0.9 | 110 | 0 % | Schockwelle um dich (Radius 110) mit Rückstoß. | **Eisenhaut**: -15 % erlittener Schaden. Reflektiert 25 % des Nahkampfschadens. | **Bollwerk** (25 s): Schild für 3 s, absorbiert 150 Schaden. | Erleide insgesamt 5000 Schaden. | 2 |
@@ -146,7 +146,7 @@ Auswahl: Gewichte gewöhnlich 60, ungewöhnlich 25, selten 10, episch 4, legend�
 | ID | Name | Verhalten | HP | Tempo | Schaden | Kosten | XP | ab Sek. | Biom | Beschreibung | Phase |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `slimeling` | Schleimling | chaser | 12 | 62 | 5 | 1 | 1 | 0 | alle | Läuft geradeaus auf dich zu. Der Standardgegner. | 1 |
-| `batswarm` | Fledermaus | swarm | 5 | 120 | 3 | 0.5 | 0.5 | 60 | alle | Kommt in Gruppen zu 4, flattert unregelmäßig, sehr schnell. | 1 |
+| `batswarm` | Fledermaus | swarm | 5 | 120 | 3 | 0.5 | 0.5 | 60 | forest | Kommt in Gruppen zu 4, flattert unregelmäßig, sehr schnell. | 1 |
 | `rootguard` | Wurzelwächter | chaser_tank | 55 | 38 | 10 | 4 | 4 | 90 | forest | Langsam und zäh, kaum Rückstoß. | 1 |
 | `sporeshooter` | Sporenschütze | ranged_lobbed | 16 | 45 | 4 | 3 | 3 | 120 | forest | Hält 260 px Abstand und wirft Sporen, die eine Giftpfütze (4 Schaden/s, 3 s) hinterlassen. | 1 |
 | `sandspitter` | Sandspeier | ranged_direct | 14 | 55 | 7 | 2 | 2 | 100 | desert | Hält 300 px Abstand und schießt gerade Sandgeschosse (Tempo 260). | 2 |

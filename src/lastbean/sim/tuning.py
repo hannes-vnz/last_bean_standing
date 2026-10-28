@@ -10,6 +10,15 @@ PROJECTILE_RADIUS = 4.0
 ORB_SPEED = 420.0  # XP orbs inside the pickup radius fly to the player
 CHEST_PICKUP_RADIUS = 22.0
 EXTRA_ATTACK_DAMAGE = 0.6  # balance.json stat_model
+
+# Pickups (Paket A: magnet; gold and healing follow with Paket C)
+PICKUP_RADIUS = 22.0
+MAGNET_DROP_PCT = 0.5  # chance per normal kill; elites always drop one
+MAGNET_ORB_SPEED = 900.0  # orbs pulled by a magnet fly this fast, from anywhere on the map
+
+# Active abilities (characters.json texts)
+ARROW_STORM_SHOTS = 16  # (text) "16 Pfeile in alle Richtungen (je 60 % Schaden)"
+ARROW_STORM_DAMAGE = 0.6  # (text)
 SPREAD_COS, SPREAD_SIN = 0.9887710779360422, 0.14943813247359922  # cos/sin(0.15 rad) as literals
 
 # Enemy projectiles and hazards

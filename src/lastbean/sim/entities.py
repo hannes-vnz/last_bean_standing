@@ -26,6 +26,9 @@ class CharacterStats:
     i_frames_s: float
     pickup_radius: float
     tags: tuple[str, ...] = ()
+    passive: tuple[tuple[str, float, float], ...] = ()  # (stat, value, threshold_px) of the passive ability
+    active_id: str = ""
+    active_cooldown_s: float = 0.0
 
     @classmethod
     def from_content(cls, content, character_id: str) -> CharacterStats:
@@ -45,6 +48,13 @@ class CharacterStats:
             i_frames_s=float(base["i_frames_s"]),
             pickup_radius=float(base["pickup_radius_px"]),
             tags=c.tags,
+            passive=tuple(
+                (e["stat"], float(e.get("value", 0.0)), float(e.get("threshold_px", 0.0)))
+                for e in c.passive.effects
+                if "stat" in e
+            ),
+            active_id=c.active.id,
+            active_cooldown_s=float(c.active.cooldown_s or 0.0),
         )
 
 
@@ -163,6 +173,8 @@ class Stats:
     pickup_radius: float
     regen_per_s: float
     damage_taken_mult: float
+    far_damage_pct: float = 0.0  # extra damage on targets farther than far_threshold
+    far_threshold: float = 0.0
 
 
 @dataclass(slots=True)
@@ -188,6 +200,7 @@ class Player:
     offer_source: str = ""  # "level" or "chest"
     slow_pct: float = 0.0
     damage_taken: float = 0.0
+    ability_cooldown: float = 0.0
 
     @property
     def max_hp(self) -> float:
@@ -279,6 +292,16 @@ class XpOrb:
     x: float
     y: float
     value: float
+    magnet_to: int | None = None  # player id once a magnet pulls it
+
+
+@dataclass(slots=True)
+class Pickup:
+    """Something lying on the map that is used up on touch (magnet; later gold, healing, ...)."""
+
+    kind: str
+    x: float
+    y: float
 
 
 @dataclass(slots=True)

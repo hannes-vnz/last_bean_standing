@@ -17,8 +17,8 @@ from typing import Any
 from .. import __version__
 from . import http
 
-# Set once the server is deployed (see server/README.md). Empty = offline only.
-DEFAULT_URL = ""
+# Cloudflare Worker from worker/ (see worker/README.md). Empty = offline only.
+DEFAULT_URL = "https://last-bean-standing.hannesvincenz.workers.dev"
 REFRESH_S = 60
 MAX_QUEUE = 50
 

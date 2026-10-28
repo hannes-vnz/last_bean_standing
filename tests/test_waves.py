@@ -19,7 +19,7 @@ def test_scaling_curves(make_config):
     assert sc.hp_mult(0) == 1.0 and round(sc.hp_mult(5), 1) == 1.8 and round(sc.hp_mult(10), 1) == 3.2
     assert round(sc.damage_mult(10), 1) == 1.9
     assert sc.speed_mult(5) == pytest.approx(1.05) and sc.speed_mult(60) == 1.2
-    assert sc.xp_needed(1) == 12 + 8 + 0.5
+    assert sc.xp_needed(1) == pytest.approx(8 + 5 + 0.4)  # flatter curve since 28.10.2026
 
 
 def spawned_costs(world: World, ticks: int) -> float:

@@ -22,9 +22,9 @@
   "cap": 1.2
  },
  "xp_to_next": {
-  "base": 12,
-  "linear": 8,
-  "quadratic": 0.5
+  "base": 8,
+  "linear": 5,
+  "quadratic": 0.4
  },
  "elite_every_n_waves": 5,
  "boss_waves": {
@@ -44,7 +44,7 @@
  "tile_px": 32,
  "player_base": {
   "hp": 100,
-  "pickup_radius_px": 70,
+  "pickup_radius_px": 130,
   "i_frames_s": 0.6
  },
  "score": {
