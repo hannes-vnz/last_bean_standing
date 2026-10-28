@@ -153,23 +153,79 @@ def _wrap_lines(r: Renderer, text: str, width: int) -> list[str]:
     return [*lines, line] if line else lines
 
 
-def draw_name_entry(r: Renderer, current: str, valid: bool, first_time: bool) -> list[Button]:
+KEY_ROWS = ("1234567890", "QWERTZUIOPÜ", "ASDFGHJKLÖÄ", "YXCVBNMß")
+
+
+def draw_name_entry(
+    r: Renderer, current: str, valid: bool, first_time: bool, keyboard: bool = False, upper: bool = True
+) -> list[Button]:
+    """Nickname entry. Touch devices get an on-screen keyboard (the browser's text dialog felt clumsy on
+    phones and tablets); with a real keyboard you just type."""
     _backdrop(r)
     cx = r.w // 2
-    top = _top(r, 230)
+    kb_h = 5 * 30 + 10 if keyboard else 0
+    top = _top(r, 150 + kb_h) if keyboard else _top(r, 230)
     r.text("Wie heißt deine Bohne?" if first_time else "Neuer Spitzname", (cx, top + 16), r.big_font, center=True)
     field = pygame.Rect(cx - min(120, r.w // 2 - 10), top + 44, min(240, r.w - 20), 30)
     _panel(r, field)
     caret = "_" if (pygame.time.get_ticks() // 400) % 2 else " "
     r.dark_text(current + caret, (field.x + 10, field.y + 9))
-    r.text("2 bis 16 Zeichen: Buchstaben, Ziffern, _ - .", (cx, field.bottom + 16), center=True)
-    r.text("Der Name erscheint in der Bestenliste.", (cx, field.bottom + 32), center=True)
-    items = [("Übernehmen" if valid else "Name eintippen", "ok" if valid else "type")]
-    if r.touch and valid:
-        items.append(("Ändern", "type"))
+    if not keyboard:
+        r.text("2 bis 16 Zeichen: Buchstaben, Ziffern, _ - .", (cx, field.bottom + 16), center=True)
+        r.text("Der Name erscheint in der Bestenliste.", (cx, field.bottom + 32), center=True)
+        items = [("Übernehmen" if valid else "Name eintippen", "ok" if valid else "type")]
+        if not first_time:
+            items.append(("Abbrechen", "cancel"))
+        return [Button(field, "type"), *_button_column(r, field.bottom + 52, items)]
+    buttons = _keyboard(r, field.bottom + 14, upper)
+    y = field.bottom + 14 + 5 * 30 + 6
+    items = [("Übernehmen", "ok")] if valid else []
     if not first_time:
         items.append(("Abbrechen", "cancel"))
-    return [Button(field, "type"), *_button_column(r, field.bottom + 52, items)]
+    if items:
+        buttons += _button_row(r, y, items)
+    else:
+        r.text("2 bis 16 Zeichen", (cx, y + 10), center=True)
+    return buttons
+
+
+def _keyboard(r: Renderer, top: int, upper: bool) -> list[Button]:
+    """Four rows of letter keys plus _ - . space and delete; keys big enough for a thumb."""
+    gap, key_h = 3, 27
+    key_w = min(34, (r.w - 16 - gap * 10) // 11)
+    buttons = []
+
+    def key(rect: pygame.Rect, label: str, action: str, wide: bool = False) -> None:
+        r.canvas.fill(r.ink, rect.inflate(2, 2))
+        r.canvas.fill((235, 228, 245) if wide else (255, 250, 240), rect)
+        img = r.font.render(label, True, r.ink)
+        r.canvas.blit(img, img.get_rect(center=rect.center))
+        buttons.append(Button(rect, action))
+
+    for row_i, row in enumerate(KEY_ROWS):
+        chars = row if upper or row_i == 0 else row.lower()
+        if row_i == 3:
+            chars = chars.replace("SS", "ß")  # "ß".upper() would be "SS"
+        n = len(chars) + (2 if row_i == 3 else 0)
+        x = (r.w - (n * key_w + (n - 1) * gap)) // 2
+        y = top + row_i * (key_h + gap)
+        if row_i == 3:
+            key(pygame.Rect(x, y, key_w, key_h), "aA", "key:shift", wide=True)
+            x += key_w + gap
+        for ch in chars:
+            key(pygame.Rect(x, y, key_w, key_h), ch, "key:" + ch)
+            x += key_w + gap
+        if row_i == 3:
+            key(pygame.Rect(x, y, key_w, key_h), "<", "key:back", wide=True)
+    y = top + 4 * (key_h + gap)
+    small = [("_", "key:_"), ("-", "key:-"), (".", "key:.")]
+    space_w = min(160, r.w - 16 - 3 * (key_w + gap) - gap)
+    x = (r.w - (3 * (key_w + gap) + space_w)) // 2
+    for label, action in small:
+        key(pygame.Rect(x, y, key_w, key_h), label, action)
+        x += key_w + gap
+    key(pygame.Rect(x, y, space_w, key_h), "Leerzeichen", "key: ", wide=True)
+    return buttons
 
 
 def draw_results(

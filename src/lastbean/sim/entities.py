@@ -256,6 +256,7 @@ class Player:
     banished: set[str] = field(default_factory=set)
     weapons: list = field(default_factory=list)  # WeaponState of each extra weapon, in pick order
     upgrade_power: dict[str, float] = field(default_factory=dict)  # summed card_tier_mult of every pick
+    card_tiers: dict[str, str] = field(default_factory=dict)  # best rarity picked per card id (for the icon frame)
     offer_tiers: tuple[str, ...] = ()  # rarity rolled for each offered card
     haste_pct: float = 0.0  # "Blutrausch": attack speed from recent kills
     haste_t: float = 0.0
