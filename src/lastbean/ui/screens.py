@@ -39,7 +39,7 @@ def _panel(r: Renderer, rect: pygame.Rect) -> None:
 def _button(r: Renderer, rect: pygame.Rect, label: str, action: str, primary: bool = False) -> Button:
     r.canvas.fill(r.ink, rect.inflate(4, 4))
     r.canvas.fill(r.crit_color if primary else (255, 250, 240), rect)
-    img = r.font.render(label, True, r.ink)
+    img = r.font.render(label, False, r.ink)
     r.canvas.blit(img, (rect.centerx - img.get_width() // 2, rect.centery - img.get_height() // 2))
     return Button(rect, action)
 
@@ -254,7 +254,7 @@ def _keyboard(r: Renderer, top: int, upper: bool) -> list[Button]:
     def key(rect: pygame.Rect, label: str, action: str, wide: bool = False) -> None:
         r.canvas.fill(r.ink, rect.inflate(2, 2))
         r.canvas.fill((235, 228, 245) if wide else (255, 250, 240), rect)
-        img = r.font.render(label, True, r.ink)
+        img = r.font.render(label, False, r.ink)
         r.canvas.blit(img, img.get_rect(center=rect.center))
         buttons.append(Button(rect, action))
 
@@ -332,11 +332,11 @@ def draw_board(r: Renderer, board: dict, profile: dict[str, Any], enabled: bool)
     for b in tabs:  # mark the active tab
         if b.action == f"period:{board['period']}":
             r.canvas.fill(r.crit_color, b.rect)
-            img = r.font.render(PERIOD_NAMES[board["period"]], True, r.ink)
+            img = r.font.render(PERIOD_NAMES[board["period"]], False, r.ink)
             r.canvas.blit(img, (b.rect.centerx - img.get_width() // 2, b.rect.centery - img.get_height() // 2))
         else:
             r.canvas.fill((255, 250, 240), b.rect)
-            img = r.font.render(PERIOD_NAMES[b.action.split(":")[1]], True, r.ink)
+            img = r.font.render(PERIOD_NAMES[b.action.split(":")[1]], False, r.ink)
             r.canvas.blit(img, (b.rect.centerx - img.get_width() // 2, b.rect.centery - img.get_height() // 2))
     panel = pygame.Rect(cx - min(200, r.w // 2 - 6), top + 72, min(400, r.w - 12), panel_h)
     _panel(r, panel)
@@ -384,7 +384,7 @@ def draw_board(r: Renderer, board: dict, profile: dict[str, Any], enabled: bool)
 
 
 def _right(r: Renderer, text: str, right_x: int, y: int) -> None:
-    img = r.font.render(text, True, r.ink)
+    img = r.font.render(text, False, r.ink)
     r.canvas.blit(img, (right_x - img.get_width(), y))
 
 
