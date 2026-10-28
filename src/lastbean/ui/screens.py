@@ -126,13 +126,23 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
     return buttons
 
 
-def draw_characters(r: Renderer, characters: list, current: str, best: dict[str, Any], skins: dict | None = None,
-                    skin_label: str = "", mode_label: str = "") -> list[Button]:  # fmt: skip
-    """Pick a bean: one card per playable character with sprite, role, passive and active ability."""
+def draw_characters(
+    r: Renderer,
+    characters: list,
+    current: str,
+    best: dict[str, Any],
+    skins: dict | None = None,
+    skin_label: str = "",
+    mode_label: str = "",
+    locked: dict | None = None,
+) -> list[Button]:
+    """Pick a bean: one card per character with sprite, role, passive and active ability.
+    Locked beans (`locked`: id -> challenge text) are greyed out and say how to unlock them."""
     _backdrop(r)
+    locked = locked or {}
     cx = r.w // 2
     wide = r.w > r.h
-    cols = 3 if wide else 2
+    cols = (5 if len(characters) > 6 else 3) if wide else 2
     rows = (len(characters) + cols - 1) // cols
     gap = 8
     cw = min(200, (r.w - 16 - gap * (cols - 1)) // cols)
@@ -145,10 +155,21 @@ def draw_characters(r: Renderer, characters: list, current: str, best: dict[str,
         rect = pygame.Rect(x0 + (i % cols) * (cw + gap), top + 36 + (i // cols) * (ch + gap), cw, ch)
         chosen = c.id == current
         r.canvas.fill(r.crit_color if chosen else r.ink, rect.inflate(6 if chosen else 4, 6 if chosen else 4))
-        r.canvas.fill((58, 42, 74), rect)
-        img = r.sprites.get(c.id, 2.0, tint=(skins or {}).get(c.id))
+        r.canvas.fill((58, 42, 74) if c.id not in locked else (40, 34, 48), rect)
+        img = r.sprites.get(c.id, 2.0, tint=(skins or {}).get(c.id) if c.id not in locked else (70, 64, 80))
         if img is not None:
             r.canvas.blit(img, (rect.x + 4, rect.y + 6))
+        if c.id in locked:  # how to get it
+            r.text(c.name, (rect.x + 42, rect.y + 4), r.mid_font)
+            r.text("Gesperrt", (rect.x + 42, rect.y + 20))
+            y = rect.y + 42
+            for part in _wrap(r, locked[c.id], rect.w - 12):
+                if y > rect.bottom - 12:
+                    break
+                r.text(part, (rect.x + 6, y))
+                y += 12
+            buttons.append(Button(rect, "locked"))
+            continue
         tx = rect.x + 42
         r.text(c.name, (tx, rect.y + 4), r.mid_font)
         r.text(c.title, (tx, rect.y + 22))
@@ -169,7 +190,7 @@ def draw_characters(r: Renderer, characters: list, current: str, best: dict[str,
     row += [(mode_label, "mode")] if mode_label else []
     buttons += _button_row(r, top + 36 + rows * (ch + gap) + 6, row, width=160)
     if not r.touch and r.w >= 500:
-        r.text("Antippen oder 1 bis 6 · Enter: die markierte Bohne", (cx, r.h - 14), center=True)
+        r.text("Antippen oder Zahlentaste · Enter: die markierte Bohne", (cx, r.h - 14), center=True)
     return buttons
 
 
