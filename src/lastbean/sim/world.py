@@ -97,6 +97,7 @@ from .tuning import (
     CHEST_PICKUP_RADIUS,
     CHILL_S,
     COURAGE_MIN_RARITY,
+    COURAGE_SPAWN_MULT,
     CURSE_CARD_RARITY,
     CURSE_MAX_COPIES,
     DASH_DISTANCE,
@@ -177,7 +178,7 @@ from .weapons import (
 )
 
 TICK_HZ = 60
-META_SPECIAL = frozenset({"rerolls", "banishes", "start_shield_hp", "show_shrines_on_map"})
+META_SPECIAL = frozenset({"rerolls", "banishes", "start_shield_hp", "show_shrines_on_map", "start_levels"})
 LEADERBOARD_WAVE_S = 30  # server/app.py and worker check wave = seconds // 30 + 1, whatever the bed pace
 DT = 1.0 / TICK_HZ
 MAX_SPAWNS_PER_TICK = 8
@@ -568,10 +569,16 @@ class World:
         self.bosses_defeated: list[str] = []
         self._wave_hurt = False
         self._run_wave = 0
+        self._courage_active = False
         if cfg.economy is not None:
             for p in self.players:
                 p.rerolls = cfg.economy.rerolls + int(meta.get("rerolls", 0.0))
                 p.banishes = cfg.economy.banishes + int(meta.get("banishes", 0.0))
+        if meta.get("start_levels", 0.0) > 0:  # run pack "Frühstart": free cards right at the start
+            for p in self.players:
+                p.level += int(meta["start_levels"])
+                p.pending_levels += int(meta["start_levels"])
+                self._offer(p, self._pending)
         if meta.get("start_shield_hp", 0.0) > 0:
             for p in self.players:  # workshop "Startschild": a shield that fades after a while
                 p.temp_shield, p.temp_shield_t = meta["start_shield_hp"], START_SHIELD_S
@@ -1096,6 +1103,8 @@ class World:
         per_wave *= self.stage_cfg.budget_mult
         if self.flood_s > 0:
             per_wave *= self._flood_factor(cfg.flood.budget_growth)
+        if self._courage_active:  # Mut-Schrein: more pests while someone holds the circle
+            per_wave *= COURAGE_SPAWN_MULT
         # Unspent budget is capped at one wave, so a full arena does not cause a burst later.
         self._budget = min(self._budget + per_wave / wave_ticks, per_wave)
         for _ in range(MAX_SPAWNS_PER_TICK):
@@ -2188,6 +2197,7 @@ class World:
             self._rebuild_grid()
 
     def _collect_pickups(self, events: list[Event]) -> None:
+        self._courage_active = False
         alive = [p for p in self.players if p.alive]
         if not alive:
             return
@@ -2299,6 +2309,8 @@ class World:
                 remaining.append(sh)
                 continue
             sh.charge += 1
+            if r.id == "courage":
+                self._courage_active = True
             if sh.charge < round(r.channel_s * TICK_HZ):
                 remaining.append(sh)
                 continue

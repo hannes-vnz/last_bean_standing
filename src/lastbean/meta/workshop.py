@@ -11,6 +11,13 @@ from typing import Any
 
 # Workshop stat names that the simulation calls differently.
 STAT_ALIASES = {"xp_pct": "xp_gain_pct"}
+# Run packs (shop.json run_packs): their effects are texts there; the numbers are copied from them.
+PACK_EFFECTS = {
+    "pack_provisions": ("heal_orb_chance_pct", 5.0),  # (text) "+5 % Heilkugel-Chance"
+    "pack_clover": ("luck", 10.0),  # (text) "+10 Glück"
+    "pack_map": ("show_shrines_on_map", 1.0),  # (text) "Schreine sind sichtbar"
+    "pack_headstart": ("start_levels", 2.0),  # (text) "Start bei Level 3 (2 Gratis-Upgradewahlen)"
+}
 
 
 def level_cost(item, level: int) -> int:
@@ -47,9 +54,35 @@ def refund(profile: dict[str, Any], item) -> int:
     return back
 
 
-def meta_mods(profile: dict[str, Any], shop) -> tuple[tuple[str, float], ...]:
-    """Workshop bonuses as (stat, total) for WorldConfig.meta_mods."""
+def buy_pack(profile: dict[str, Any], shop, pack_id: str) -> bool:
+    """Put a run pack in the bag for the next run (at most run_packs_max_per_run, each once)."""
+    pack = next((p for p in shop.run_packs if p["id"] == pack_id), None)
+    bag = profile.setdefault("packs", [])
+    if pack is None or pack_id in bag or len(bag) >= shop.run_packs_max_per_run:
+        return False
+    if profile.get("sparkles", 0) < pack["cost"]:
+        return False
+    profile["sparkles"] -= pack["cost"]
+    bag.append(pack_id)
+    return True
+
+
+def return_pack(profile: dict[str, Any], shop, pack_id: str) -> None:
+    """Take a pack out of the bag again before the run (full refund)."""
+    bag = profile.setdefault("packs", [])
+    pack = next((p for p in shop.run_packs if p["id"] == pack_id), None)
+    if pack is not None and pack_id in bag:
+        bag.remove(pack_id)
+        profile["sparkles"] = profile.get("sparkles", 0) + pack["cost"]
+
+
+def meta_mods(profile: dict[str, Any], shop, packs: tuple[str, ...] = ()) -> tuple[tuple[str, float], ...]:
+    """Workshop bonuses (plus the given run packs) as (stat, total) for WorldConfig.meta_mods."""
     out: dict[str, float] = {}
+    for pid in packs:
+        if pid in PACK_EFFECTS:
+            stat, value = PACK_EFFECTS[pid]
+            out[stat] = max(out.get(stat, 0.0), value) if stat == "show_shrines_on_map" else out.get(stat, 0.0) + value
     for item in shop.workshop:
         lv = levels(profile).get(item.id, 0)
         if lv:

@@ -230,7 +230,41 @@ def draw_workshop(r: Renderer, shop, profile: dict[str, Any]) -> list[Button]:
             r.canvas.fill((214, 204, 232), sell)
             r.dark_text("zurück", (sell.centerx, sell.centery - 5), center=True)
             buttons.append(Button(sell, f"ws_sell:{it.id}"))
-    buttons += _button_row(r, top + 44 + rows * (ch + gap), [("Fertig", "workshop_back")], width=140)
+    buttons += _button_row(r, top + 44 + rows * (ch + gap), [("Fertig", "workshop_back"), ("Vorrat", "ws_tab")],
+                           width=140)  # fmt: skip
+    return buttons
+
+
+def draw_packs(r: Renderer, shop, profile: dict[str, Any]) -> list[Button]:
+    """Vorrat: packs for the next run only (at most two), bought with Funkelsteine, returnable before the run."""
+    _backdrop(r)
+    cx = r.w // 2
+    bag = profile.get("packs", [])
+    top = _top(r, 40 + len(shop.run_packs) * 40 + 50)
+    r.text("Vorrat für den nächsten Lauf", (cx, top + 12), r.big_font, center=True)
+    r.text(f"{profile.get('sparkles', 0)} Funkelsteine · höchstens {shop.run_packs_max_per_run} Pakete", (cx, top + 30),
+           center=True)  # fmt: skip
+    w = min(420, r.w - 16)
+    buttons = []
+    for i, pack in enumerate(shop.run_packs):
+        rect = pygame.Rect(cx - w // 2, top + 42 + i * 40, w, 34)
+        packed = pack["id"] in bag
+        r.canvas.fill(r.ink, rect.inflate(2, 2))
+        r.canvas.fill((232, 246, 214) if packed else (255, 250, 240), rect)
+        r.dark_text(pack["name"], (rect.x + 6, rect.y + 4))
+        r.dark_text(_fit(r, pack["effect"], w - 80), (rect.x + 6, rect.y + 19))
+        btn = pygame.Rect(rect.right - 64, rect.y + 4, 58, 26)
+        if packed:
+            r.canvas.fill((214, 204, 232), btn)
+            r.dark_text("zurück", (btn.centerx, btn.y + 8), center=True)
+            buttons.append(Button(btn, f"pack_back:{pack['id']}"))
+        elif len(bag) < shop.run_packs_max_per_run:
+            can = profile.get("sparkles", 0) >= pack["cost"]
+            r.canvas.fill(r.crit_color if can else (220, 214, 204), btn)
+            r.dark_text(str(pack["cost"]), (btn.centerx, btn.y + 8), center=True)
+            buttons.append(Button(btn, f"pack_buy:{pack['id']}"))
+    y = top + 46 + len(shop.run_packs) * 40
+    buttons += _button_row(r, y, [("Fertig", "workshop_back"), ("Werkstatt", "ws_tab")], width=140)
     return buttons
 
 
