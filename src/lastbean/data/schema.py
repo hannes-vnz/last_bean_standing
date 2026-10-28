@@ -239,6 +239,21 @@ class Item:
 
 
 @dataclass(frozen=True, slots=True)
+class ExtraWeapon:
+    """A weapon besides the character's own, picked from level-up cards (Paket C2)."""
+
+    id: str
+    name: str
+    kind: str  # "fan", "nova", "aura", "orbit" or "lobbed"
+    rarity: str
+    text: str
+    level_text: str
+    base: dict[str, float]
+    per_level: dict[str, float]
+    impl_phase: int
+
+
+@dataclass(frozen=True, slots=True)
 class Content:
     balance: Balance
     characters: tuple[Character, ...]
@@ -256,6 +271,9 @@ class Content:
     swarm: dict[str, Any] = field(repr=False)
     items: tuple[Item, ...] = ()
     economy: dict[str, Any] = field(default_factory=dict, repr=False)
+    weapons: tuple[ExtraWeapon, ...] = ()
+    weapon_slots: int = 1  # including the character's own weapon
+    weapon_max_level: int = 1
 
     def character(self, cid: str) -> Character:
         return _by_id(self.characters, cid)
@@ -277,6 +295,9 @@ class Content:
 
     def item(self, iid: str) -> Item:
         return _by_id(self.items, iid)
+
+    def weapon(self, wid: str) -> ExtraWeapon:
+        return _by_id(self.weapons, wid)
 
 
 def _by_id(items, item_id):

@@ -30,6 +30,7 @@ class ShotFired(Event):
     y: float
     dx: float
     dy: float
+    weapon: str = ""  # extra weapon id, "" for the character's own
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,3 +188,13 @@ class PotBroken(Event):
 @dataclass(frozen=True, slots=True)
 class SeedsCollected(Event):
     amount: int
+
+
+@dataclass(frozen=True, slots=True)
+class WeaponPulse(Event):
+    """An area weapon went off: a nova ring around the player or a bursting bomb."""
+
+    weapon: str
+    x: float
+    y: float
+    radius: float

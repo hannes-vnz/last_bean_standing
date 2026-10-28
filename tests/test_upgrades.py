@@ -97,7 +97,8 @@ def test_several_levels_at_once_queue_offers(make_config):
         assert w.paused
         evs = w.step([PlayerInput(0, choice=0)])
         assert any(isinstance(e, UpgradeChosen) for e in evs)
-    assert not w.paused and sum(p.upgrades.values()) == 3
+    # cards can be upgrades or weapons (Paket C2)
+    assert not w.paused and sum(p.upgrades.values()) + sum(st.level for st in p.weapons) == 3
     assert sum(isinstance(e, UpgradeOffered) for e in events) == 1
 
 

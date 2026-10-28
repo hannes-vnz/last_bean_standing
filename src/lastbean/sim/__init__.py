@@ -47,11 +47,13 @@ from .events import (
     UpgradeChosen,
     UpgradeOffered,
     WaveStarted,
+    WeaponPulse,
 )
 from .rng import Rng
 from .score import RunResult, ScoreRules, compute_score
 from .upgrades import UpgradeDef
 from .waves import Scaling
+from .weapons import WEAPON_PREFIX, WeaponDef, WeaponState
 from .world import DT, TICK_HZ, PlayerInput, Snapshot, World, WorldConfig
 
 __all__ = [
@@ -113,6 +115,10 @@ __all__ = [
     "ShotFired",
     "Snapshot",
     "WaveStarted",
+    "WEAPON_PREFIX",
+    "WeaponDef",
+    "WeaponPulse",
+    "WeaponState",
     "World",
     "WorldConfig",
 ]

@@ -80,6 +80,15 @@ def _mmss(seconds: int) -> str:
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
+def _fit(r: Renderer, text: str, width: int) -> str:
+    """Shorten text with an ellipsis until it fits `width` pixels."""
+    if r.font.size(text)[0] <= width:
+        return text
+    while text and r.font.size(text + "…")[0] > width:
+        text = text[:-1]
+    return text + "…"
+
+
 def _top(r: Renderer, content_h: int) -> int:
     """Vertical start so that a block of `content_h` pixels sits in the middle."""
     return max(10, (r.h - content_h) // 2)
@@ -277,23 +286,27 @@ def online_line(status: str, rank: int | None, rank_character: int | None) -> st
 
 
 def draw_pause(r: Renderer, snap, muted: bool) -> list[Button]:
-    """Pause overlay with the current build (upgrades and their levels)."""
+    """Pause overlay with the current build: weapons, upgrades and items with their levels or stacks."""
     _dim(r, 160)
     cx = r.w // 2
-    top = _top(r, 240 if r.w > r.h else 330)
+    top = _top(r, 270 if r.w > r.h else 360)
     r.text("Pause", (cx, top + 14), r.big_font, center=True)
-    panel = pygame.Rect(cx - min(150, r.w // 2 - 10), top + 36, min(300, r.w - 20), 150)
+    panel = pygame.Rect(cx - min(150, r.w // 2 - 10), top + 36, min(300, r.w - 20), 180)
     _panel(r, panel)
     focus = snap.players[0]
     summary = f"Level {focus.level}   Kills {focus.kills}   {_mmss(int(snap.time_s))}"
     r.dark_text(summary, (cx, panel.y + 10), center=True)
-    ups = [(r.upgrades[uid].name, lvl) for uid, lvl in focus.upgrades if uid in r.upgrades]
-    if not ups:
-        r.dark_text("Noch keine Upgrades", (cx, panel.y + 40), center=True)
+    build = [f"{r.weapons[wid].name} {lvl}" for wid, lvl in focus.weapons if wid in r.weapons]
+    build += [f"{r.upgrades[uid].name} {lvl}" for uid, lvl in focus.upgrades if uid in r.upgrades]
+    build += [f"{r.items[iid].name}" + (f" x{n}" if n > 1 else "") for iid, n in focus.items if iid in r.items]
+    if not build:
+        r.dark_text("Noch keine Waffen, Upgrades oder Items", (cx, panel.y + 40), center=True)
     col_w = (panel.w - 20) // 2
-    for i, (name, lvl) in enumerate(ups[:14]):
-        col, row = i % 2, i // 2
-        r.dark_text(f"{name} {lvl}", (panel.x + 10 + col * col_w, panel.y + 32 + row * 16))
+    rows = (panel.h - 40) // 14
+    shown = build if len(build) <= rows * 2 else [*build[: rows * 2 - 1], f"+{len(build) - rows * 2 + 1} weitere"]
+    for i, line in enumerate(shown):
+        col, row = i // rows, i % rows  # column by column: weapons first, then upgrades, then items
+        r.dark_text(_fit(r, line, col_w - 4), (panel.x + 10 + col * col_w, panel.y + 30 + row * 14))
     items = [
         ("Weiter", "resume"),
         ("Neuer Lauf", "again"),

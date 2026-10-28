@@ -96,5 +96,7 @@ def test_run_to_five_minutes(make_config):
     assert kinds == {"slimeling", "batswarm", "rootguard", "sporeshooter"}
     assert [e.tick // TICK_HZ for e in events if isinstance(e, EliteSpawned)] == [150, 300]
     assert [(e.boss, e.tick // TICK_HZ) for e in events if isinstance(e, BossSpawned)] == [("ildra", 300)]
-    assert p.kills > 50 and sum(p.upgrades.values()) == p.level - 1  # chests give items, not cards
+    # every level gave one card (upgrade or weapon level), chests give items
+    assert p.kills > 50 and sum(p.upgrades.values()) + sum(st.level for st in p.weapons) == p.level - 1
+    assert p.weapons and len(p.weapons) <= w.config.weapon_slots - 1
     assert sum(p.items.values()) == sum(isinstance(e, ChestOpened) for e in events)

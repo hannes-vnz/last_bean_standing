@@ -216,6 +216,7 @@ class Player:
     rerolls: int = 0
     banishes: int = 0
     banished: set[str] = field(default_factory=set)
+    weapons: list = field(default_factory=list)  # WeaponState of each extra weapon, in pick order
 
     @property
     def max_hp(self) -> float:
@@ -261,6 +262,7 @@ class Projectile:
     ticks_left: int
     hits_left: int
     hit_ids: set[int] = field(default_factory=set)
+    weapon: str = ""  # extra weapon id, "" for the character's own
 
 
 @dataclass(frozen=True, slots=True)

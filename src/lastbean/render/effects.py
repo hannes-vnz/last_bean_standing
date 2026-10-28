@@ -128,6 +128,13 @@ class Effects:
                 if players and e.player_id in players:
                     x, y = players[e.player_id]
                     self.texts.append(FloatingText(x, y - 40, f"{e.price} Samen nötig", c["white"], False, 60))
+            elif isinstance(e, ev.WeaponPulse):  # own area weapons: warm ring, a bomb also bursts
+                bomb = e.weapon == "pumpkin_bomb"
+                color = c.get("pumpkin", c["crit"]) if bomb else c["crit"]
+                self.rings.append(Ring(e.x, e.y, e.radius * 0.3, e.radius * 0.7 / 10, 10, 10, color))
+                if bomb:
+                    self.burst(e.x, e.y, 14, color, speed=150, life=18, size=2)
+                    self.trauma = min(1.0, self.trauma + 0.15)
             elif isinstance(e, ev.PotBroken):
                 self.burst(e.x, e.y, 10, (226, 150, 120), speed=90, life=18, size=2)
 

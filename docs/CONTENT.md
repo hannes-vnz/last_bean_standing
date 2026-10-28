@@ -240,6 +240,19 @@ Samenkörner fallen von Gegnern (35 % je normaler Gegner, Elite 10, Boss 40) und
 | `gardeners_spade` | Spaten der Gärtnerin | epic | +1 zusätzlicher Schuss, Geschosse durchbohren +1 Gegner. |
 | `first_seed` | Die erste Saat | legendary | +30 % Schaden, +20 % Angriffstempo, +10 % Krit-Chance. |
 
+## Waffen (6, Karten beim Level-up)
+
+4 Waffenplätze (die Startwaffe belegt einen). Neue Waffen erscheinen als Karten beim Level-up, solange ein Platz frei ist; eine Waffe erneut wählen hebt ihre Stufe (höchstens 5). Waffen nutzen Schaden, Angriffstempo und Krit des Spielers.
+
+| ID | Name | Art | Seltenheit | Wirkung | je Stufe |
+|---|---|---|---|---|---|
+| `thorn_twig` | Dornenzweig | fan | common | Wirft alle 1,2 s einen Fächer aus 3 Dornen auf den nächsten Gegner. | +2 Schaden, +1 Dorn je 2 Stufen. |
+| `dandelion` | Pusteblume | fan | uncommon | Alle 2 s fliegen 8 Schirmchen in alle Richtungen, durchbohren 1 Gegner. | +2 Schaden, +2 Schirmchen. |
+| `pollen_cloud` | Pollenwolke | aura | common | Eine Wolke um dich (Radius 70) macht alle 0,5 s 4 Schaden. | +1,5 Schaden, +8 Radius. |
+| `bees` | Bienenschwarm | orbit | uncommon | 2 Bienen kreisen um dich (Radius 64) und stechen für 10 Schaden. | +3 Schaden, +1 Biene. |
+| `sun_pulse` | Sonnenpuls | nova | uncommon | Alle 3 s ein Lichtring um dich (Radius 110, 14 Schaden). | +5 Schaden, +10 Radius, -0,2 s Abklingzeit. |
+| `pumpkin_bomb` | Kürbisbombe | lobbed | rare | Wirft alle 2,5 s einen Kürbis auf einen Gegner (bis 320 px), der nach 0,9 s platzt (Radius 70, 30 Schaden). | +10 Schaden, +6 Radius, +1 Kürbis je 2 Stufen. |
+
 ## Punkte
 
 `Punkte = 2 x Sekunden + 5 x Kills + 20 x Level + 500 x Bosse` (Sieg über den Schnitter +20000; in der Schwarmflut +1000 je 10 s mal Flut-Multiplikator, der Schwierigkeitsfaktor erhöht die Punkte). Highscore je Charakter und gesamt, lokal gespeichert. Modus „Ewige Nacht“ (nach Challenge „Erreiche 20:00“): Gegner-HP x1,5, XP x1,25, Punkte x1,5.

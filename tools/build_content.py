@@ -402,6 +402,14 @@ def validate():
     item_ids = ids(ITEMS)
     if len(set(item_ids)) != len(item_ids): errs.append("doppelte IDs in items")
     if set(i["rarity"] for i in ITEMS) - set(BALANCE["rarity_weights"]): errs.append("Items: unbekannte Seltenheit")
+    if len(set(ids(WEAPONS))) != len(WEAPONS): errs.append("doppelte IDs in weapons")
+    for w_ in WEAPONS:
+        if w_["kind"] not in ("fan", "nova", "aura", "orbit", "lobbed"): errs.append(f"Waffe {w_['id']}: unbekannte Art")
+        if w_["rarity"] not in BALANCE["rarity_weights"]: errs.append(f"Waffe {w_['id']}: unbekannte Seltenheit")
+        if set(w_["per_level"]) - set(w_["base"]): errs.append(f"Waffe {w_['id']}: per_level ohne Grundwert")
+        if "damage" not in w_["base"] or w_["base"].get("cooldown_s", 0) <= 0: errs.append(f"Waffe {w_['id']}: Schaden und Abklingzeit nötig")
+        lv = w_["base"]["cooldown_s"] + w_["per_level"].get("cooldown_s", 0) * (WEAPON_RULES["max_level"] - 1)
+        if lv <= 0: errs.append(f"Waffe {w_['id']}: Abklingzeit auf Höchststufe <= 0")
     return errs
 
 
@@ -451,6 +459,30 @@ ECONOMY = dict(
     text="Samenkörner fallen von Gegnern (35 % je normaler Gegner, Elite 10, Boss 40) und aus Vasen. Saatkisten liegen auf der Karte und kosten Samenkörner; jede geöffnete Kiste macht die nächste 40 % teurer. Elite- und Bosskisten sind gratis und enthalten mindestens seltene bzw. epische Items.",
 )
 
+# ---------------------------------------------------------------------------- Waffen (Paket C2, 28.10.2026)
+# Zusätzliche Waffen neben der Startwaffe des Charakters. Sie erscheinen als Karten beim Level-up,
+# solange ein Platz frei ist; dieselbe Waffe erneut wählen hebt ihre Stufe. Werte auf Stufe L:
+# base + per_level * (L - 1), Anzahlen abgerundet. Schaden und Tempo skalieren mit den Schadens- und
+# Angriffstempo-Boni des Spielers, Krit gilt auch für Waffen. Entwurf, braucht Hannes' Freigabe.
+WEAPON_RULES = dict(slots=4, max_level=5,
+                    text="4 Waffenplätze (die Startwaffe belegt einen). Neue Waffen erscheinen als Karten beim Level-up, solange ein Platz frei ist; eine Waffe erneut wählen hebt ihre Stufe (höchstens 5). Waffen nutzen Schaden, Angriffstempo und Krit des Spielers.")
+def weapon(id, name, kind, rar, text, level_text, base, per_level):
+    return dict(id=id, name=name, kind=kind, rarity=rar, text=text, level_text=level_text, base=base, per_level=per_level, impl_phase=1)
+WEAPONS = [
+ weapon("thorn_twig", "Dornenzweig", "fan", "common", "Wirft alle 1,2 s einen Fächer aus 3 Dornen auf den nächsten Gegner.", "+2 Schaden, +1 Dorn je 2 Stufen.",
+        dict(damage=7, cooldown_s=1.2, count=3, spread_deg=30, speed=520, range=300, pierce=0), dict(damage=2, count=0.5)),
+ weapon("dandelion", "Pusteblume", "fan", "uncommon", "Alle 2 s fliegen 8 Schirmchen in alle Richtungen, durchbohren 1 Gegner.", "+2 Schaden, +2 Schirmchen.",
+        dict(damage=6, cooldown_s=2.0, count=8, spread_deg=360, speed=360, range=260, pierce=1), dict(damage=2, count=2)),
+ weapon("pollen_cloud", "Pollenwolke", "aura", "common", "Eine Wolke um dich (Radius 70) macht alle 0,5 s 4 Schaden.", "+1,5 Schaden, +8 Radius.",
+        dict(damage=4, cooldown_s=0.5, radius=70), dict(damage=1.5, radius=8)),
+ weapon("bees", "Bienenschwarm", "orbit", "uncommon", "2 Bienen kreisen um dich (Radius 64) und stechen für 10 Schaden.", "+3 Schaden, +1 Biene.",
+        dict(damage=10, cooldown_s=0.5, count=2, radius=64, hit_radius=10, turns_per_s=0.7), dict(damage=3, count=1)),
+ weapon("sun_pulse", "Sonnenpuls", "nova", "uncommon", "Alle 3 s ein Lichtring um dich (Radius 110, 14 Schaden).", "+5 Schaden, +10 Radius, -0,2 s Abklingzeit.",
+        dict(damage=14, cooldown_s=3.0, radius=110), dict(damage=5, radius=10, cooldown_s=-0.2)),
+ weapon("pumpkin_bomb", "Kürbisbombe", "lobbed", "rare", "Wirft alle 2,5 s einen Kürbis auf einen Gegner (bis 320 px), der nach 0,9 s platzt (Radius 70, 30 Schaden).", "+10 Schaden, +6 Radius, +1 Kürbis je 2 Stufen.",
+        dict(damage=30, cooldown_s=2.5, count=1, radius=70, range=320, flight_s=0.9), dict(damage=10, radius=6, count=0.5)),
+]
+
 # ---------------------------------------------------------------------------- Balance-Modell
 def budget(w): b = BALANCE["budget"]; return b["base"] + b["linear"] * w + b["quadratic"] * w * w
 def hp_mult(m): b = BALANCE["hp_mult"]; return 1 + b["linear"] * m + b["quadratic"] * m * m
@@ -473,7 +505,8 @@ def write_json():
     DATA.mkdir(exist_ok=True)
     files = {"balance.json": BALANCE, "characters.json": [dict(c, vfx=VFX[c["id"]]) for c in CHARACTERS], "upgrades.json": UPGRADES, "mobs.json": MOBS,
              "elite.json": dict(ELITE, affixes=ELITE_AFFIXES, mini_boss=MINI_BOSS), "shrines.json": dict(shrines=SHRINES, rules=SHRINE_RULES), "shop.json": dict(currency=CURRENCY, workshop_rules=WORKSHOP_RULES, workshop=WORKSHOP, run_packs=RUN_PACKS, cosmetics=COSMETICS), "swarm.json": SWARM, "bosses.json": BOSSES, "biomes.json": [dict(b, palette=PALETTES[b["id"]]) for b in BIOMES], "style.json": STYLE,
-             "challenges.json": CHALLENGES, "skins.json": SKINS, "modes.json": MODES, "items.json": dict(items=ITEMS, economy=ECONOMY)}
+             "challenges.json": CHALLENGES, "skins.json": SKINS, "modes.json": MODES, "items.json": dict(items=ITEMS, economy=ECONOMY),
+             "weapons.json": dict(WEAPON_RULES, weapons=WEAPONS)}
     for n, d in files.items():
         (DATA / n).write_text(json.dumps(d, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
@@ -554,6 +587,12 @@ def md():
     P("| ID | Name | Seltenheit | Wirkung |\n|---|---|---|---|")
     for i in ITEMS:
         P(f"| `{i['id']}` | {i['name']} | {i['rarity']} | {i['text']} |")
+    P("")
+    P(f"## Waffen ({len(WEAPONS)}, Karten beim Level-up)\n")
+    P(WEAPON_RULES["text"] + "\n")
+    P("| ID | Name | Art | Seltenheit | Wirkung | je Stufe |\n|---|---|---|---|---|---|")
+    for w_ in WEAPONS:
+        P(f"| `{w_['id']}` | {w_['name']} | {w_['kind']} | {w_['rarity']} | {w_['text']} | {w_['level_text']} |")
     P("")
     P("## Punkte\n")
     P("`Punkte = 2 x Sekunden + 5 x Kills + 20 x Level + 500 x Bosse` (Sieg über den Schnitter +20000; in der Schwarmflut +1000 je 10 s mal Flut-Multiplikator, der Schwierigkeitsfaktor erhöht die Punkte). Highscore je Charakter und gesamt, lokal gespeichert. Modus „Ewige Nacht“ (nach Challenge „Erreiche 20:00“): Gegner-HP x1,5, XP x1,25, Punkte x1,5.\n")

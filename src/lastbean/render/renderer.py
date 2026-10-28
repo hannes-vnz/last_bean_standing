@@ -6,6 +6,7 @@ dark outlines, own projectiles warm yellow, XP orbs mint, white text with dark o
 
 from __future__ import annotations
 
+import math
 from collections import OrderedDict
 
 import pygame
@@ -13,6 +14,7 @@ import pygame
 from ..data.schema import Content
 from ..sim.tuning import BOSS_RADIUS
 from ..sim.waves import biome_at
+from ..sim.weapons import WEAPON_PREFIX
 from ..sim.world import Snapshot, WorldConfig
 from .effects import Effects
 from .sprites import SpriteBank
@@ -80,6 +82,11 @@ class Renderer:
         self.crit_color = hex_rgb(style.crit_text)
         self.xp_color = hex_rgb(style.xp_orb)
         self.upgrades = {u.id: u for u in content.upgrades}
+        self.weapons = {w.id: w for w in content.weapons}
+        self.items = {i.id: i for i in content.items}
+        self.weapon_max_level = content.weapon_max_level
+        self.pollen = (250, 226, 140)  # warm pastel yellow: own area damage reads as "ours"
+        self.pumpkin = (240, 150, 70)
         self.rarity_colors = {
             "common": (236, 236, 236),
             "uncommon": hex_rgb(style.xp_orb),
@@ -141,6 +148,7 @@ class Renderer:
                     c.fill(self.xp_color, (sx, sy - 1, 1, 3))
 
         self._draw_hazards(snap, cam_x, cam_y)
+        self._draw_weapon_ground(snap, cam_x, cam_y)
         for kind, kx, ky in snap.pickups:
             sx, sy = round(kx / UNITS_PER_PX) - cam_x, round(ky / UNITS_PER_PX) - cam_y
             if kind == "magnet" and -8 <= sx < self.w + 8 and -8 <= sy < self.h + 8:
@@ -200,8 +208,10 @@ class Renderer:
             sx, sy = round(pr.x / UNITS_PER_PX) - cam_x, round(pr.y / UNITS_PER_PX) - cam_y
             if 0 <= sx < self.w and 0 <= sy < self.h:
                 pygame.draw.circle(c, ink, (sx, sy), 3 if pr.crit else 2)
-                pygame.draw.circle(c, self.shot_halo, (sx, sy), 2 if pr.crit else 1)
+                halo = WHITE if pr.weapon == "dandelion" else self.shot_halo  # fluffy seeds, still yellow-cored
+                pygame.draw.circle(c, halo, (sx, sy), 2 if pr.crit else 1)
                 c.set_at((sx, sy), self.shot_core)
+        self._draw_weapon_air(snap, cam_x, cam_y)
 
         if effects:
             self._draw_effects(effects, cam_x, cam_y)
@@ -404,6 +414,57 @@ class Renderer:
                     self._number_cache[(t.text, t.color, t.big)] = img
                 c.blit(img, (sx - img.get_width() // 2, sy - img.get_height() // 2))
 
+    def _draw_weapon_ground(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
+        """Pollen clouds and the landing marks of own bombs (yellow, unlike the coral enemy warnings)."""
+        c = self.canvas
+        if snap.auras:
+            overlay = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+            for _, ax, ay, radius in snap.auras:
+                sx, sy = round(ax / UNITS_PER_PX) - cam_x, round(ay / UNITS_PER_PX) - cam_y
+                r = round(radius / UNITS_PER_PX)
+                pygame.draw.circle(overlay, (*self.pollen, 60), (sx, sy), r)
+                pygame.draw.circle(overlay, (*self.pollen, 150), (sx, sy), r, 1)
+                for k in range(8):  # drifting pollen specks
+                    a = (snap.tick * 0.02 + k * 0.785) % 6.283
+                    px = sx + round(math.cos(a) * r * (0.35 + 0.08 * (k % 4)))
+                    py = sy + round(math.sin(a) * r * (0.35 + 0.08 * (k % 4)))
+                    overlay.fill((*self.pollen, 220), (px, py, 2, 2))
+            c.blit(overlay, (0, 0))
+        blink_on = (snap.tick // 10) % 2 == 0
+        for b in snap.bombs:
+            tx, ty = round(b.tx / UNITS_PER_PX) - cam_x, round(b.ty / UNITS_PER_PX) - cam_y
+            r = max(2, round(b.radius / UNITS_PER_PX))
+            if -r <= tx < self.w + r and -r <= ty < self.h + r:
+                pygame.draw.circle(c, self.pollen if blink_on else WHITE, (tx, ty), max(2, round(r * b.progress)), 1)
+
+    def _draw_weapon_air(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
+        """Bees and pumpkins in flight, drawn above everything on the ground."""
+        c, ink = self.canvas, self.ink
+        wing = (snap.tick // 4) % 2
+        for _, bx, by in snap.orbiters:
+            sx, sy = round(bx / UNITS_PER_PX) - cam_x, round(by / UNITS_PER_PX) - cam_y
+            if 0 <= sx < self.w and 0 <= sy < self.h:
+                c.fill(WHITE, (sx - 2, sy - 3 - wing, 2, 2))  # wings flap
+                c.fill(WHITE, (sx + 1, sy - 4 + wing, 2, 2))
+                c.fill(ink, (sx - 3, sy - 2, 7, 5))
+                c.fill(self.shot_core, (sx - 2, sy - 1, 5, 3))
+                c.fill(ink, (sx, sy - 1, 1, 3))  # stripe
+        for b in snap.bombs:
+            sx, sy = round(b.x / UNITS_PER_PX) - cam_x, round(b.y / UNITS_PER_PX) - cam_y
+            sy -= round(4 * 18 * b.progress * (1.0 - b.progress))  # arc, 18 px high
+            if 0 <= sx < self.w and 0 <= sy < self.h:
+                pygame.draw.circle(c, ink, (sx, sy), 4)
+                pygame.draw.circle(c, self.pumpkin, (sx, sy), 3)
+                c.fill((110, 170, 90), (sx, sy - 4, 1, 2))  # stalk
+
+    def _card(self, uid: str):
+        """(name, rarity, definition, max level) of an offered card: upgrade or weapon."""
+        if uid.startswith(WEAPON_PREFIX):
+            w = self.weapons[uid[len(WEAPON_PREFIX) :]]
+            return w.name, w.rarity, w, self.weapon_max_level
+        u = self.upgrades[uid]
+        return u.name, u.rarity, u, u.max_level
+
     def _outlined(self, text: str, font, color) -> pygame.Surface:
         inner = font.render(text, True, color)
         outline = font.render(text, True, self.ink)
@@ -474,27 +535,29 @@ class Renderer:
         self.text(title, (self.w // 2, top - 30), self.big_font, center=True)
         self.card_rects = rects
         for i, (uid, level) in enumerate(focus.offer):
-            u = self.upgrades[uid]
+            name, rarity, u, max_level = self._card(uid)
+            weapon = uid.startswith(WEAPON_PREFIX)
+            text = (u.text if level == 0 else u.level_text) if weapon else u.text
             card = rects[i].move(0, -4 if i == self.selected and not self.touch else 0)
             if i == self.selected and not self.touch:
                 c.fill(self.crit_color, card.inflate(8, 8))
             c.fill(ink, card)
             c.fill((255, 250, 240), card.inflate(-4, -4))
-            c.fill(self.rarity_colors.get(u.rarity, WHITE), (card.x + 2, card.y + 2, card.w - 4, 16))
+            c.fill(self.rarity_colors.get(rarity, WHITE), (card.x + 2, card.y + 2, card.w - 4, 16))
             c.fill(ink, (card.x + 2, card.y + 18, card.w - 4, 1))
-            label = RARITY_NAMES.get(u.rarity, u.rarity)
+            label = RARITY_NAMES.get(rarity, rarity) + (" · Waffe" if weapon else "")
             self.dark_text(label if self.touch else f"{i + 1}   {label}", (card.x + 8, card.y + 5))
-            stage = f"Stufe {level} -> {level + 1} / {u.max_level}"
+            stage = "Neue Waffe" if weapon and level == 0 else f"Stufe {level} -> {level + 1} / {max_level}"
             if wide:
-                self.dark_text(u.name, (card.centerx, card.y + 28), center=True)
+                self.dark_text(name, (card.centerx, card.y + 28), center=True)
                 self.dark_text(stage, (card.centerx, card.y + 44), center=True)
-                for j, line in enumerate(_wrap(u.text, self.font, card.w - 20)):
+                for j, line in enumerate(_wrap(text, self.font, card.w - 20)):
                     self.dark_text(line, (card.x + 10, card.y + 64 + j * 13))
             else:
-                self.dark_text(u.name, (card.x + 10, card.y + 26))
+                self.dark_text(name, (card.x + 10, card.y + 26))
                 img = self.font.render(stage, True, ink)
                 c.blit(img, (card.right - 10 - img.get_width(), card.y + 26))
-                for j, line in enumerate(_wrap(u.text, self.font, card.w - 20)[:3]):
+                for j, line in enumerate(_wrap(text, self.font, card.w - 20)[:3]):
                     self.dark_text(line, (card.x + 10, card.y + 44 + j * 13))
         if self.banish_mode:
             for rect in rects:
@@ -663,6 +726,7 @@ def effect_palette(r: Renderer) -> tuple[dict, dict]:
         "shot_halo": r.shot_halo,
         "telegraph": r.telegraph,
         "poison": r.poison,
+        "pumpkin": r.pumpkin,
         "leaf": hex_rgb(r.palettes["forest"].get("tree") or "#5aa05a"),
     }
     return colors, dict(r.enemy_colors)
