@@ -44,6 +44,8 @@ class RunResult:
     damage_taken: float
     score: int
     stage: int = 1  # garden bed reached (Paket F)
+    elites: int = 0  # elites killed (Funkelstein drops)
+    chests: int = 0  # chests opened
 
     def to_dict(self) -> dict:
         return asdict(self)

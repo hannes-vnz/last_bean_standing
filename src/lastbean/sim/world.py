@@ -147,6 +147,7 @@ from .tuning import (
     SKY_STRIKE_HEIGHT,
     SPREAD_COS,
     SPREAD_SIN,
+    START_SHIELD_S,
     STORM_DAMAGE,
     STORM_REACH,
     STORM_S,
@@ -172,6 +173,8 @@ from .weapons import (
 )
 
 TICK_HZ = 60
+META_SPECIAL = frozenset({"rerolls", "banishes", "start_shield_hp", "show_shrines_on_map"})
+LEADERBOARD_WAVE_S = 30  # server/app.py and worker check wave = seconds // 30 + 1, whatever the bed pace
 DT = 1.0 / TICK_HZ
 MAX_SPAWNS_PER_TICK = 8
 GRID_CELL = 64.0
@@ -261,6 +264,9 @@ class WorldConfig:
     player_count: int = 1
     score: ScoreRules | None = None  # from balance.json; needed for `result()`
     shrines: tuple[ShrineRules, ...] = ()
+    # Workshop bonuses bought between runs (meta/workshop.py): stat -> total, plus the specials
+    # rerolls, banishes, start_shield_hp and show_shrines_on_map.
+    meta_mods: tuple[tuple[str, float], ...] = ()
 
     @classmethod
     def from_content(
@@ -468,6 +474,7 @@ class Snapshot:
     stage_duration_s: float = 300.0
     flood: bool = False
     flood_wave: int = 0
+    shrine_radar: bool = False  # workshop: shrines on the minimap
     reward_mult: float = 1.0
     gate: tuple[float, float] | None = None
     victory: bool = False
@@ -525,6 +532,9 @@ class World:
             UpgradeDef(w.card_id, w.rarity, w.max_level, ("weapon",), (), w.impl_phase, True) for w in cfg.weapons
         )
         self._base_stats = derive_stats(cfg.character, {})
+        meta = dict(cfg.meta_mods)
+        self._meta_stats = {k: v for k, v in meta.items() if k not in META_SPECIAL}
+        self.shrine_radar = meta.get("show_shrines_on_map", 0.0) > 0
         self.chests_opened = 0
         self._locked_until: dict[int, int] = {}
         self._mobs = {m.id: m for m in cfg.mobs}
@@ -538,16 +548,21 @@ class World:
         cx, cy = cfg.arena_w / 2, cfg.arena_h / 2
         if not self.players:
             # Players spawn next to each other in the central clearing.
-            stats = derive_stats(cfg.character, {})
+            stats = derive_stats(cfg.character, self._meta_stats)
             self.players = [
                 Player(pid, cx + (pid - (cfg.player_count - 1) / 2) * 32.0, cy, stats.max_hp, stats)
                 for pid in range(cfg.player_count)
             ]
         self._pending: list[Event] = [RunStarted(0, None, self.seed)]
         self.bosses_killed = 0
+        self.elites_killed = 0
         if cfg.economy is not None:
             for p in self.players:
-                p.rerolls, p.banishes = cfg.economy.rerolls, cfg.economy.banishes
+                p.rerolls = cfg.economy.rerolls + int(meta.get("rerolls", 0.0))
+                p.banishes = cfg.economy.banishes + int(meta.get("banishes", 0.0))
+        if meta.get("start_shield_hp", 0.0) > 0:
+            for p in self.players:  # workshop "Startschild": a shield that fades after a while
+                p.temp_shield, p.temp_shield_t = meta["start_shield_hp"], START_SHIELD_S
         self._setup_stage()
         st = self.stage_cfg
         self._pending.append(StageStarted(0, None, st.index, st.name))
@@ -792,6 +807,8 @@ class World:
         power = {uid: p.upgrade_power.get(uid, float(level)) for uid, level in p.upgrades.items()}
         mods = modifier_sums(power, self._upgrade_defs, p.items, self._item_defs)
         mods = {k: v for k, v in mods.items() if k not in INSTANT_STATS}
+        for k, v in self._meta_stats.items():
+            mods[k] = mods.get(k, 0.0) + v
         for k, v in p.shrine_mods.items():
             mods[k] = mods.get(k, 0.0) + v
         p.stats = derive_stats(self.config.character, mods)
@@ -1279,6 +1296,8 @@ class World:
 
     def _kill(self, e: Enemy, killer: int | None, events: list[Event]) -> None:
         events.append(EnemyKilled(self.tick, killer, e.eid, e.kind, e.x, e.y))
+        if e.elite:
+            self.elites_killed += 1
         if e.xp > 0:
             self.orbs.append(XpOrb(e.x, e.y, e.xp * self.reward_mult))
         eco = self.config.economy
@@ -2287,7 +2306,7 @@ class World:
             character=self.config.character.id,
             seed=self.seed,
             seconds=seconds,
-            wave=seconds // self.config.wave_interval_s,  # over the whole run (the server checks it against the time)
+            wave=seconds // LEADERBOARD_WAVE_S,  # the leaderboard's wave clock (30 s), checked against the time
             kills=p.kills,
             level=p.level,
             bosses=self.bosses_killed,
@@ -2298,6 +2317,8 @@ class World:
             damage_taken=p.damage_taken,
             score=score,
             stage=self.stage_cfg.index,
+            elites=self.elites_killed,
+            chests=self.chests_opened,
         )
 
     # ------------------------------------------------------------------ views
@@ -2395,6 +2416,7 @@ class World:
             stage_time_s=self.stage_time_s,
             stage_duration_s=self.stage_cfg.duration_s,
             flood=self.flood_s > 0,
+            shrine_radar=self.shrine_radar,
             flood_wave=self.flood_wave,
             reward_mult=self.reward_mult,
             gate=self.gate,

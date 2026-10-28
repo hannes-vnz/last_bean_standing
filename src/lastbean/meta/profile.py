@@ -64,6 +64,9 @@ def normalize(data: Any) -> dict[str, Any]:
         "shake": settings.get("shake") is not False,  # screen shake
     }
     out["hints_seen"] = bool(data.get("hints_seen", False))
+    out["sparkles"] = _num(data.get("sparkles"))  # Funkelsteine
+    ws = data.get("workshop") if isinstance(data.get("workshop"), dict) else {}
+    out["workshop"] = {k: v for k, v in ws.items() if isinstance(k, str) and _num(v) > 0}
     out["prologue_seen"] = bool(data.get("prologue_seen", False))
     character = data.get("character")
     out["character"] = character if isinstance(character, str) and character.isidentifier() else "ranger"

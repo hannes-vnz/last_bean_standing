@@ -111,11 +111,16 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
     else:
         r.dark_text("Noch kein Rekord.", (cx, panel.y + 38), center=True)
     t = profile["totals"]
-    r.dark_text(f"Läufe {t['runs']}   Kills gesamt {t['kills']}", (cx, panel.y + 70), center=True)
-    items = [("Spielen", "play"), ("Bestenliste", "board"), ("Name ändern", "name"), ("Einstellungen", "settings")]
+    r.dark_text(f"Läufe {t['runs']}   Funkelsteine {profile.get('sparkles', 0)}", (cx, panel.y + 70), center=True)
+    items = [("Spielen", "play"), ("Werkstatt", "workshop"), ("Bestenliste", "board"), ("Name ändern", "name"),
+             ("Einstellungen", "settings")]  # fmt: skip
     if not web:
         items.append(("Beenden", "quit"))
-    buttons = _button_column(r, panel.bottom + 16, items)
+    if r.w > r.h:  # landscape: "Spielen" big, the rest in one row, so it fits the 360 pixel height
+        buttons = _button_column(r, panel.bottom + 14, items[:1])
+        buttons += _button_row(r, panel.bottom + 54, items[1:], width=118)
+    else:
+        buttons = _button_column(r, panel.bottom + 16, items)
     if not r.touch and r.w >= 500:  # keyboard hints only where a keyboard is likely and there is room
         r.text("Enter spielen · L Bestenliste · N Name · Leertaste Fähigkeit", (cx, r.h - 18), center=True)
     return buttons
@@ -183,6 +188,48 @@ PROLOGUE = (
     "Seine Fäulnis verdirbt Plagen und Beete.",
     "Du bist eine Bohne. Halte die Saat, so lange du kannst.",
 )
+
+
+def draw_workshop(r: Renderer, shop, profile: dict[str, Any]) -> list[Button]:
+    """Werkstatt: small permanent bonuses for Funkelsteine; every item can be sold back at full price."""
+    from ..meta.workshop import level_cost, levels
+
+    _backdrop(r)
+    cx = r.w // 2
+    items = shop.workshop
+    cols = 2 if r.w >= 520 else 1
+    rows = (len(items) + cols - 1) // cols
+    gap = 4
+    cw = min(300, (r.w - 16 - gap * (cols - 1)) // cols)
+    ch = max(24, min(34, (r.h - 100 - gap * (rows - 1)) // rows))
+    top = _top(r, 40 + rows * (ch + gap) + 40)
+    r.text("Werkstatt", (cx, top + 12), r.big_font, center=True)
+    r.text(f"{profile.get('sparkles', 0)} Funkelsteine · Verkaufen gibt alles zurück", (cx, top + 30), center=True)
+    x0 = (r.w - cols * cw - (cols - 1) * gap) // 2
+    owned = levels(profile)
+    buttons = []
+    for i, it in enumerate(items):
+        rect = pygame.Rect(x0 + (i // rows) * (cw + gap), top + 40 + (i % rows) * (ch + gap), cw, ch)
+        lv = owned.get(it.id, 0)
+        r.canvas.fill(r.ink, rect.inflate(2, 2))
+        r.canvas.fill((255, 250, 240) if lv < it.max_level else (232, 246, 214), rect)
+        r.dark_text(f"{it.name}  {lv}/{it.max_level}", (rect.x + 5, rect.y + 3))
+        r.dark_text(_fit(r, it.text, cw - 2 * 52 - 16), (rect.x + 5, rect.y + ch - 13))
+        bw = 52
+        buy = pygame.Rect(rect.right - 2 * bw - 6, rect.y + 3, bw, ch - 6)
+        sell = pygame.Rect(rect.right - bw - 3, rect.y + 3, bw, ch - 6)
+        if lv < it.max_level:
+            cost = level_cost(it, lv + 1)
+            can = profile.get("sparkles", 0) >= cost
+            r.canvas.fill(r.crit_color if can else (220, 214, 204), buy)
+            r.dark_text(str(cost), (buy.centerx, buy.centery - 5), center=True)
+            buttons.append(Button(buy, f"ws_buy:{it.id}"))
+        if lv:
+            r.canvas.fill((214, 204, 232), sell)
+            r.dark_text("zurück", (sell.centerx, sell.centery - 5), center=True)
+            buttons.append(Button(sell, f"ws_sell:{it.id}"))
+    buttons += _button_row(r, top + 44 + rows * (ch + gap), [("Fertig", "workshop_back")], width=140)
+    return buttons
 
 
 def draw_settings(r: Renderer, settings: dict[str, Any]) -> list[Button]:
@@ -330,7 +377,14 @@ def draw_results(
         _right(r, value, panel.right - 30, y)
     best = profile["highscores"]["overall"]
     if best and not flags.get("new_best"):
-        r.dark_text(f"Rekord: {best['score']}", (cx, panel.bottom - 22), center=True)
+        r.dark_text(f"Rekord: {best['score']}", (cx, panel.y + 30), center=True)
+    sparkles = result.get("sparkles") or {}
+    if sparkles:  # Funkelsteine of this run, itemised
+        y = panel.y + 56 + len(rows) * 16
+        r.canvas.fill(r.crit_color, (panel.x + 10, y, panel.w - 20, 30))
+        r.dark_text(f"+{sum(sparkles.values())} Funkelsteine", (cx, y + 3), center=True)
+        detail = " · ".join(f"{k} {v}" for k, v in sparkles.items())
+        r.dark_text(_fit(r, detail, panel.w - 24), (cx, y + 16), center=True)
     if online:
         r.text(online, (cx, panel.bottom + 14), center=True)
     return _button_row(r, panel.bottom + 30, [("Neuer Lauf", "again"), ("Menü", "menu")])

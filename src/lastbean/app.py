@@ -19,6 +19,7 @@ import pygame
 
 from .audio import Audio
 from .data import load_content
+from .meta import workshop
 from .meta.profile import ProfileStore, default_store, new_profile, record_run, set_nickname, valid_nickname
 from .online.leaderboard import REFRESH_S, Leaderboard
 from .render.effects import Effects
@@ -130,7 +131,7 @@ class Game:
         self.characters = [c for c in content.characters if c.impl_phase == 1]
         playable = {c.id for c in self.characters}
         self.character = self.profile.get("character") if self.profile.get("character") in playable else "ranger"
-        self.normal = WorldConfig.from_content(content, self.character)
+        self.normal = self._world_config(self.character)
         self.config = self.normal
         renderer.character_sprite = self.character
         self.fixed_seed = seed
@@ -160,8 +161,31 @@ class Game:
         self.character = cid
         self.profile["character"] = cid
         self.save()
-        self.normal = self.config = WorldConfig.from_content(self.content, cid)
+        self.normal = self.config = self._world_config(cid)
         self.renderer.character_sprite = cid
+
+    def _world_config(self, cid: str) -> WorldConfig:
+        """Config for runs with this bean, including the workshop bonuses."""
+        return WorldConfig.from_content(
+            self.content, cid, meta_mods=workshop.meta_mods(self.profile, self.content.shop)
+        )
+
+    def workshop_action(self, kind: str, item_id: str) -> None:
+        item = next((w for w in self.content.shop.workshop if w.id == item_id), None)
+        if item is None:
+            return
+        if kind == "ws_buy":
+            workshop.buy(self.profile, item)
+        else:
+            workshop.refund(self.profile, item)
+        self.save()
+
+    def apply_workshop(self) -> None:
+        """New bonuses count from the next run on."""
+        stress = self.config is not self.normal
+        self.normal = self._world_config(self.character)
+        if not stress:
+            self.config = self.normal
 
     def change_setting(self, key: str) -> None:
         """Settings screen buttons: volume steps 100-75-50-25-0, switches toggle."""
@@ -186,6 +210,9 @@ class Game:
         self.online = ("", None, None)
         if self.config is self.normal:
             self.flags = record_run(self.profile, self.result)
+            earned = workshop.payout(self.result, self.content.shop, self.world.victory)
+            self.result["sparkles"] = earned
+            self.profile["sparkles"] = self.profile.get("sparkles", 0) + sum(earned.values())
             if self.leaderboard.queue(self.profile, self.result):
                 self.online = ("sending", None, None)
             self.save()
@@ -502,6 +529,13 @@ async def run(
             game.state, acc = "play", 0.0
         elif action == "mute":
             audio.muted = not audio.muted
+        elif action == "workshop":
+            game.state = "workshop"
+        elif action == "workshop_back":
+            game.apply_workshop()
+            game.state = "menu"
+        elif action.startswith(("ws_buy:", "ws_sell:")):
+            game.workshop_action(*action.split(":", 1))
         elif action == "settings":
             game.settings_return = game.state
             game.state = "settings"
@@ -652,6 +686,9 @@ async def run(
                 elif game.state == "settings":
                     if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER):
                         do("settings_back")
+                elif game.state == "workshop":
+                    if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER):
+                        do("workshop_back")
                 elif game.state == "pause":
                     if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE, pygame.K_p):
                         do("resume")
@@ -740,6 +777,8 @@ async def run(
                 buttons = screens.draw_prologue(renderer)
             elif game.state == "settings":
                 buttons = screens.draw_settings(renderer, game.profile["settings"])
+            elif game.state == "workshop":
+                buttons = screens.draw_workshop(renderer, content.shop, game.profile)
             elif game.state == "board":
                 if time.monotonic() - game.board["fetched_at"] > REFRESH_S:
                     game.refresh_board()
