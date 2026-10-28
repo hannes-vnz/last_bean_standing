@@ -284,6 +284,7 @@ class Player:
     damage_taken: float = 0.0
     ability_cooldown: float = 0.0
     seeds: int = 0
+    sparkles: int = 0  # Funkelsteine found in this run
     items: dict[str, int] = field(default_factory=dict)
     rerolls: int = 0
     banishes: int = 0

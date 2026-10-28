@@ -6,6 +6,7 @@ Payout per run: floor(points / 100 x reward factor) plus drops (shop.json curren
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from typing import Any
 
@@ -92,19 +93,82 @@ def meta_mods(profile: dict[str, Any], shop, packs: tuple[str, ...] = ()) -> tup
 
 
 def payout(result: dict[str, Any], shop, final_boss_won: bool) -> dict[str, int]:
-    """Funkelsteine for one finished run, itemised for the results screen.
-
-    Kill drops use the expected value (kills x chance), so the payout does not need a random roll."""
+    """Funkelsteine for one finished run, itemised for the results screen: the share of the points and
+    everything picked up in the run (pests, elites, bosses, chests), plus the victory bonus."""
     drops = shop.raw["currency"]["run_drops"]
     factor = 1.0 + 0.8 * (float(result["difficulty"]) - 1.0)
-    bosses = int(result["bosses"])
     parts = {
         "Punkte": math.floor(int(result["score"]) / 100 * factor),
-        "Gegner": math.floor(int(result["kills"]) * drops["normal_kill_chance_pct"] / 100),
-        "Elite": int(result.get("elites", 0)) * drops["elite"],
-        "Bosse": (bosses - (1 if final_boss_won else 0)) * drops["biome_boss"],
-        "Truhen": int(result.get("chests", 0)) * drops["chest"],
+        "Gefunden": int(result.get("sparkles", 0)),
     }
     if final_boss_won:
-        parts["Schnitter"] = drops["final_boss"] + drops["victory_bonus"]
+        parts["Sieg"] = drops["victory_bonus"]
     return {k: int(v) for k, v in parts.items() if v}
+
+
+# ---------------------------------------------------------------------------- greenhouse (Paket K)
+
+
+def greenhouse(profile: dict[str, Any]) -> dict[str, list[str]]:
+    """What grows in the greenhouse: bought wonders and planted seeds (weapons)."""
+    g = profile.setdefault("greenhouse", {})
+    g.setdefault("wonders", [])
+    g.setdefault("seeds", [])
+    return g
+
+
+def _wonder(shop, wid: str) -> dict | None:
+    return next((w for w in shop.raw.get("wonders", []) if w["id"] == wid), None)
+
+
+def _seed(shop, weapon: str) -> dict | None:
+    return next((x for x in shop.raw.get("seeds", []) if x["weapon"] == weapon), None)
+
+
+def buy_greenhouse(profile: dict[str, Any], shop, kind: str, item_id: str) -> bool:
+    """kind "wonders" or "seeds": pay once, it stays (and can be sold back for the full price)."""
+    item = _wonder(shop, item_id) if kind == "wonders" else _seed(shop, item_id)
+    owned = greenhouse(profile)[kind]
+    if item is None or item_id in owned or profile.get("sparkles", 0) < item["cost"]:
+        return False
+    profile["sparkles"] -= item["cost"]
+    owned.append(item_id)
+    return True
+
+
+def sell_greenhouse(profile: dict[str, Any], shop, kind: str, item_id: str) -> None:
+    item = _wonder(shop, item_id) if kind == "wonders" else _seed(shop, item_id)
+    owned = greenhouse(profile)[kind]
+    if item is not None and item_id in owned:
+        owned.remove(item_id)
+        profile["sparkles"] = profile.get("sparkles", 0) + item["cost"]
+
+
+def wonder_effects(profile: dict[str, Any], shop) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for wid in greenhouse(profile)["wonders"]:
+        w = _wonder(shop, wid)
+        for k, v in (w or {}).get("effect", {}).items():
+            out[k] = out.get(k, 0.0) + float(v)
+    return out
+
+
+def apply_greenhouse(cfg, profile: dict[str, Any], shop):
+    """The run's config with the wonders (cards, weapon slots, chest price) and only grown weapons."""
+    fx = wonder_effects(profile, shop)
+    locked = {x["weapon"] for x in shop.raw.get("seeds", [])} - set(greenhouse(profile)["seeds"])
+    changes: dict[str, Any] = {"weapons": tuple(w for w in cfg.weapons if w.id not in locked)}
+    if fx.get("level_up_choices_add"):
+        changes["level_up_choices"] = cfg.level_up_choices + int(fx["level_up_choices_add"])
+    if fx.get("weapon_slots_add"):
+        changes["weapon_slots"] = cfg.weapon_slots + int(fx["weapon_slots_add"])
+    if fx.get("chest_discount_pct") and cfg.economy is not None:
+        price = cfg.economy.price_start * (1.0 - fx["chest_discount_pct"] / 100.0)
+        changes["economy"] = dataclasses.replace(cfg.economy, price_start=price)
+    extra = {k: v for k, v in fx.items() if k in ("revives", "start_weapon")}
+    if extra:
+        meta = dict(cfg.meta_mods)
+        for k, v in extra.items():
+            meta[k] = meta.get(k, 0.0) + v
+        changes["meta_mods"] = tuple(sorted(meta.items()))
+    return dataclasses.replace(cfg, **changes)

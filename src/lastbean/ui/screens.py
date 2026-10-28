@@ -7,6 +7,7 @@ Keyboard shortcuts keep working on desktop.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -31,16 +32,58 @@ def hit(buttons: list[Button], pos: tuple[int, int]) -> str | None:
     return None
 
 
+WOOD = (166, 112, 76)
+WOOD_DARK = (122, 78, 56)
+WOOD_LIGHT = (196, 142, 98)
+PAPER = (255, 250, 240)
+GOLD = (255, 212, 94)
+LEAF = (126, 217, 87)
+
+
 def _panel(r: Renderer, rect: pygame.Rect) -> None:
-    r.canvas.fill(r.ink, rect.inflate(4, 4))
-    r.canvas.fill((255, 250, 240), rect)
+    """Cream paper in a thin wooden frame."""
+    c = r.canvas
+    c.fill(r.ink, rect.inflate(8, 8))
+    c.fill(WOOD, rect.inflate(6, 6))
+    c.fill(WOOD_LIGHT, (rect.x - 3, rect.y - 3, rect.w + 6, 1))
+    c.fill(PAPER, rect)
+    c.fill((240, 230, 210), (rect.x, rect.bottom - 2, rect.w, 2))
+
+
+def _plank(r: Renderer, rect: pygame.Rect) -> None:
+    """A wooden sign: planks with grain lines and two nails."""
+    c = r.canvas
+    c.fill(r.ink, rect.inflate(4, 4))
+    c.fill(WOOD, rect)
+    c.fill(WOOD_LIGHT, (rect.x, rect.y, rect.w, 2))
+    c.fill(WOOD_DARK, (rect.x, rect.bottom - 3, rect.w, 3))
+    for k in range(1, 4):  # grain
+        y = rect.y + k * rect.h // 4
+        c.fill(WOOD_DARK, (rect.x + 6 + (k * 17) % 20, y, rect.w // 3, 1))
+    for nx in (rect.x + 5, rect.right - 7):
+        c.fill(r.ink, (nx, rect.y + 4, 2, 2))
+
+
+def _title(r: Renderer, text: str, pos: tuple[int, int]) -> None:
+    """Page title on a wooden sign."""
+    w = r.big_font.size(text)[0] + 28
+    sign = pygame.Rect(0, 0, min(w, r.w - 8), 26)
+    sign.center = pos
+    _plank(r, sign)
+    r.text(text, pos, r.big_font, center=True)
 
 
 def _button(r: Renderer, rect: pygame.Rect, label: str, action: str, primary: bool = False) -> Button:
-    r.canvas.fill(r.ink, rect.inflate(4, 4))
-    r.canvas.fill(r.crit_color if primary else (255, 250, 240), rect)
+    """Chunky button with a dark lip below, gold for the main action."""
+    c = r.canvas
+    face = GOLD if primary else PAPER
+    c.fill(r.ink, rect.inflate(4, 4).move(0, 2))
+    c.fill(r.ink, rect.inflate(4, 4))
+    c.fill(face, rect)
+    c.fill(tuple(max(0, v - 40) for v in face), (rect.x, rect.bottom - 3, rect.w, 3))
+    c.fill(tuple(min(255, v + 30) for v in face), (rect.x, rect.y, rect.w, 2))
     img = r.font.render(label, False, r.ink)
-    r.canvas.blit(img, (rect.centerx - img.get_width() // 2, rect.centery - img.get_height() // 2))
+    c.blit(img, (rect.centerx - img.get_width() // 2, rect.centery - img.get_height() // 2 - 1))
     return Button(rect, action)
 
 
@@ -70,10 +113,20 @@ def _dim(r: Renderer, alpha: int) -> None:
 
 
 def _backdrop(r: Renderer) -> None:
-    """The arena map, dimmed, as a friendly background."""
+    """The garden, softly dimmed and darker towards the edges."""
     aw, ah = r.arena_px
     r.draw_ground_at(aw, ah)  # canvas pixels to world units: the clearing in the middle of the map
-    _dim(r, 120)
+    key = ("vignette", r.w, r.h)
+    veil = r._number_cache.get(key)
+    if veil is None:
+        veil = pygame.Surface((r.w, r.h), pygame.SRCALPHA)
+        veil.fill((*r.ink, 90))
+        rings = 24
+        for k in range(rings):  # darker towards the rim, in soft steps
+            a = 90 + round(110 * ((rings - k) / rings) ** 2)
+            pygame.draw.rect(veil, (*r.ink, a), (k * 2, k * 2, r.w - k * 4, r.h - k * 4), 2)
+        r._number_cache[key] = veil
+    r.canvas.blit(veil, (0, 0))
 
 
 def _mmss(seconds: int) -> str:
@@ -94,41 +147,124 @@ def _top(r: Renderer, content_h: int) -> int:
     return max(10, (r.h - content_h) // 2)
 
 
-def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
+# Garden wisdom on the menu: tips with a wink (one every few seconds).
+GARDEN_TIPS = (
+    "Gartenweisheit: Wer stillsteht, schießt gezielter. Fragt Aya.",
+    "Gartenweisheit: Schnecken sind langsam. Ihre Königin nicht.",
+    "Gartenweisheit: Ein Schrein am Tag hält den Schnitter auf Trab.",
+    "Gartenweisheit: Die Flut zahlt besser, je länger du zockst.",
+    "Gartenweisheit: Goldene Rahmen bringen Glück. Meistens.",
+    "Gartenweisheit: Funkelsteine wachsen im Gewächshaus zu Wundern.",
+    "Gartenweisheit: Kompost riecht nach Abenteuer.",
+    "Gartenweisheit: Tipp die Bohne an. Sie mag das.",
+)
+BEAN_SAYS = ("Hallo!", "Auf ins Beet!", "Hihi!", "Nicht kitzeln!", "Bereit!", "Wo sind die Schnecken?", "Bohn-jour!")
+_logo_font = None
+
+
+def _logo(r: Renderer, cx: int, y: int, t: int) -> None:
+    """LAST BEAN STANDING in big wobbling letters, gold with a dark outline, a sprout on the B."""
+    global _logo_font
+    if _logo_font is None:
+        from ..render.pixelfont import body_font
+
+        _logo_font = body_font(3)
+    for row, word in enumerate(("Last Bean", "Standing")):
+        width = _logo_font.size(word)[0]
+        x = cx - width // 2
+        for k, ch in enumerate(word):
+            dy = round(2 * math.sin(t / 300 + k * 0.6))
+            gold = _logo_font.render(ch, False, GOLD if row == 0 else (255, 236, 170))
+            dark = _logo_font.render(ch, False, r.ink)
+            yy = y + row * 30 + dy
+            for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 3), (2, 3), (-2, 3)):
+                r.canvas.blit(dark, (x + ox, yy + oy))
+            r.canvas.blit(gold, (x, yy))
+            x += _logo_font.size(ch)[0] + 3
+    sprout_x = cx + _logo_font.size("Last Be")[0] // 2 - 4  # a little sprout grows out of the logo
+    r.canvas.fill(r.ink, (sprout_x, y - 9, 3, 9))
+    r.canvas.fill(LEAF, (sprout_x + 1, y - 8, 1, 8))
+    r.canvas.fill(r.ink, (sprout_x - 6, y - 12, 7, 5))
+    r.canvas.fill(LEAF, (sprout_x - 5, y - 11, 5, 3))
+
+
+def _showcase(r: Renderer, bean: str, x: int, y: int, t: int, poke_ms: int, tint=None) -> pygame.Rect:
+    """The chosen bean big on a little soil mound: breathing, hopping when poked, a speech bubble."""
+    c = r.canvas
+    pygame.draw.ellipse(c, r.ink, (x - 46, y + 18, 92, 22))
+    pygame.draw.ellipse(c, (122, 84, 64), (x - 44, y + 19, 88, 18))
+    pygame.draw.ellipse(c, (150, 106, 78), (x - 38, y + 20, 70, 8))
+    for k in range(5):  # grass tufts on the mound
+        gx = x - 36 + k * 18
+        c.fill(LEAF, (gx, y + 18, 2, 3))
+    since = t - poke_ms
+    hop = max(0, round(14 * math.sin(since / 90))) if 0 <= since < 280 else 0
+    squash = -1 if (t // 700) % 2 else 0
+    img = r.sprites.get(bean, 4.0, False, False, squash, tint)
+    rect = pygame.Rect(x - 40, y - 70, 80, 90)
+    if img is not None:
+        c.blit(img, (x - img.get_width() // 2, y + 24 - img.get_height() - hop))
+    if 0 <= since < 2200:  # speech bubble after a poke
+        text = BEAN_SAYS[(poke_ms // 7) % len(BEAN_SAYS)]
+        w = r.font.size(text)[0] + 12
+        bubble = pygame.Rect(min(x + 20, r.w - w - 6), y - 92, w, 18)
+        c.fill(r.ink, bubble.inflate(4, 4))
+        c.fill(PAPER, bubble)
+        c.fill(r.ink, (bubble.x + 6, bubble.bottom + 2, 4, 4))
+        r.dark_text(text, (bubble.x + 6, bubble.y + 5))
+    return rect
+
+
+def _gem(r: Renderer, x: int, y: int) -> None:
+    c = r.canvas
+    c.fill(r.ink, (x - 4, y - 5, 9, 11))
+    c.fill((255, 159, 192), (x - 3, y - 4, 7, 9))
+    c.fill((255, 214, 230), (x - 2, y - 3, 2, 4))
+
+
+def draw_menu(r: Renderer, profile: dict[str, Any], web: bool, bean: str = "ranger", poke_ms: int = -10_000,
+              tint=None) -> list[Button]:  # fmt: skip
+    """Main menu: logo, the chosen bean on its mound, big buttons, Funkelsteine and account in the corner."""
     _backdrop(r)
-    cx = r.w // 2
-    top = _top(r, 300)
-    r.text("Last Bean Standing", (cx, top + 16), r.big_font, center=True)
-    r.text("Der Schnitter kommt zur Ernte.", (cx, top + 42), center=True)
-    panel = pygame.Rect(cx - min(150, r.w // 2 - 10), top + 60, min(300, r.w - 20), 92)
-    _panel(r, panel)
-    r.dark_text(f"Hallo, {profile.get('nickname') or '?'}!", (cx, panel.y + 10), center=True)
-    best = profile["highscores"]["overall"]
-    if best:
-        r.dark_text(f"Rekord: {best['score']} Punkte", (cx, panel.y + 32), center=True)
-        r.dark_text(f"{_mmss(best['seconds'])}, {best['kills']} Kills, Level {best['level']}", (cx, panel.y + 48),
-                    center=True)  # fmt: skip
-    else:
-        r.dark_text("Noch kein Rekord.", (cx, panel.y + 38), center=True)
-    t = profile["totals"]
-    r.dark_text(f"Läufe {t['runs']}   Funkelsteine {profile.get('sparkles', 0)}", (cx, panel.y + 70), center=True)
-    items = [("Spielen", "play"), ("Werkstatt", "workshop"), ("Challenges", "challenges"), ("Bestenliste", "board"),
-             ("Name ändern", "name"), ("Einstellungen", "settings")]  # fmt: skip
-    if not web:
-        items.append(("Beenden", "quit"))
-    if r.w > r.h:  # landscape: "Spielen" big, the rest in one row, so it fits the 360 pixel height
-        buttons = _button_column(r, panel.bottom + 14, items[:1])
-        buttons += _button_row(r, panel.bottom + 54, items[1:], width=118)
-    else:
-        buttons = _button_column(r, panel.bottom + 16, items)
+    t = pygame.time.get_ticks()
+    wide = r.w > r.h
     signed_in = bool(profile.get("account", {}).get("session"))
-    acc = pygame.Rect(r.w - 96, 6, 90, 22)  # account in the corner: cloud save
-    r.canvas.fill(r.ink, acc.inflate(4, 4))
-    r.canvas.fill((232, 246, 214) if signed_in else (255, 250, 240), acc)
-    r.dark_text("Konto: an" if signed_in else "Anmelden", (acc.centerx, acc.y + 6), center=True)
-    buttons.append(Button(acc, "account"))
-    if not r.touch and r.w >= 500:  # keyboard hints only where a keyboard is likely and there is room
-        r.text("Enter spielen · L Bestenliste · N Name · Leertaste Fähigkeit", (cx, r.h - 18), center=True)
+    buttons: list[Button] = []
+    # top bar: Funkelsteine and account
+    _gem(r, 14, 16)
+    r.text(str(profile.get("sparkles", 0)), (22, 10))
+    acc = pygame.Rect(r.w - 96, 6, 90, 22)
+    buttons.append(_button(r, acc, "Konto: an" if signed_in else "Anmelden", "account"))
+    items = [("Gewächshaus", "workshop"), ("Challenges", "challenges"), ("Bestenliste", "board")]
+    small = [("Optionen", "settings"), ("Name", "name")] + ([] if web else [("Beenden", "quit")])
+    if wide:
+        _logo(r, r.w // 2, 26, t)
+        col_x, col_w = 24, 176
+        buttons.append(_button(r, pygame.Rect(col_x, 104, col_w, 40), "Spielen", "play", primary=True))
+        for k, (label, action) in enumerate(items):
+            buttons.append(_button(r, pygame.Rect(col_x, 154 + k * 38, col_w, 30), label, action))
+        for k, (label, action) in enumerate(small):
+            buttons.append(_button(r, pygame.Rect(col_x + k * 60, 274, 56, 24), label, action))
+        bean_x, bean_y = r.w * 2 // 3 + 20, 216
+    else:
+        _logo(r, r.w // 2, 46, t)
+        bean_x, bean_y = r.w // 2, 216
+        y = 316
+        buttons.append(_button(r, pygame.Rect(r.w // 2 - 100, y, 200, 42), "Spielen", "play", primary=True))
+        for k, (label, action) in enumerate(items):
+            buttons.append(_button(r, pygame.Rect(r.w // 2 - 100, y + 54 + k * 40, 200, 32), label, action))
+        for k, (label, action) in enumerate(small):
+            buttons.append(_button(r, pygame.Rect(r.w // 2 - 100 + k * 68, y + 180, 64, 26), label, action))
+    showcase = _showcase(r, bean, bean_x, bean_y, t, poke_ms, tint)
+    buttons.append(Button(showcase, "poke"))
+    best = profile["highscores"]["overall"]
+    sign = pygame.Rect(0, 0, 150, 34)
+    sign.midtop = (bean_x, bean_y + 44)
+    _plank(r, sign)
+    r.text(f"Hallo, {profile.get('nickname') or 'Bohne'}!", (sign.centerx, sign.y + 9), center=True)
+    r.text(f"Rekord {best['score']}" if best else "Noch kein Rekord", (sign.centerx, sign.y + 22), center=True)
+    tip = GARDEN_TIPS[(t // 6000) % len(GARDEN_TIPS)]
+    r.text(_fit(r, tip, r.w - 16), (r.w // 2, r.h - 14), center=True)
     return buttons
 
 
@@ -154,7 +290,7 @@ def draw_characters(
     cw = min(200, (r.w - 16 - gap * (cols - 1)) // cols)
     ch = min(118, (r.h - 120 - gap * (rows - 1)) // rows)
     top = _top(r, 40 + rows * (ch + gap) + 40)
-    r.text("Wähle deine Bohne", (cx, top + 14), r.big_font, center=True)
+    _title(r, "Wähle deine Bohne", (cx, top + 14))
     x0 = (r.w - cols * cw - (cols - 1) * gap) // 2
     buttons = []
     for i, c in enumerate(characters):
@@ -220,6 +356,135 @@ PROLOGUE = (
 )
 
 
+GREENHOUSE_TABS = (("wonders", "Wunder"), ("seeds", "Saatgut"), ("workshop", "Kraft"), ("packs", "Vorrat"))
+FLOWER_COLORS = ((255, 159, 192), (255, 212, 94), (150, 210, 255), (200, 160, 255), (255, 154, 60))
+
+
+def _pot(r: Renderer, x: int, y: int, grown: bool, color, t: int) -> None:
+    """A clay pot: a seed mound when not bought, a swaying flower when it grows."""
+    c = r.canvas
+    c.fill(r.ink, (x - 12, y, 25, 16))
+    c.fill((214, 120, 84), (x - 11, y + 1, 23, 14))
+    c.fill((236, 150, 108), (x - 13, y - 3, 27, 5))
+    c.fill(r.ink, (x - 13, y - 3, 27, 1))
+    c.fill((122, 84, 64), (x - 10, y - 2, 21, 3))
+    if not grown:
+        c.fill((150, 106, 78), (x - 2, y - 5, 5, 3))
+        c.fill((170, 190, 150), (x, y - 8, 1, 3))
+        return
+    sway = round(1.5 * math.sin(t / 400 + x))
+    c.fill(r.ink, (x - 1 + sway // 2, y - 22, 3, 20))
+    c.fill(LEAF, (x + sway // 2, y - 21, 1, 19))
+    c.fill(LEAF, (x - 6, y - 12, 5, 3))
+    c.fill(LEAF, (x + 2, y - 15, 5, 3))
+    fx, fy = x + sway, y - 26
+    for dx, dy in ((-4, 0), (4, 0), (0, -4), (0, 4)):
+        c.fill(r.ink, (fx + dx - 3, fy + dy - 3, 7, 7))
+        c.fill(color, (fx + dx - 2, fy + dy - 2, 5, 5))
+    c.fill(GOLD, (fx - 2, fy - 2, 5, 5))
+
+
+def draw_greenhouse(r: Renderer, content, profile: dict[str, Any], tab: str) -> list[Button]:
+    """Gewächshaus: wonders (change how runs go), seeds (weapons grow into the card pool), Kraft (small
+    permanent bonuses) and Vorrat (packs for the next run). Everything can be sold back for its full price."""
+    from ..meta.workshop import greenhouse, level_cost, levels
+
+    _backdrop(r)
+    t = pygame.time.get_ticks()
+    cx = r.w // 2
+    shop = content.shop
+    buttons: list[Button] = []
+    _title(r, "Gewächshaus", (cx, 18))
+    _gem(r, r.w - 70, 18)
+    r.text(str(profile.get("sparkles", 0)), (r.w - 62, 12))
+    tab_w = min(110, (r.w - 20) // 4 - 6)
+    x0 = cx - (tab_w + 6) * 2 + 3
+    for k, (key, label) in enumerate(GREENHOUSE_TABS):
+        rect = pygame.Rect(x0 + k * (tab_w + 6), 38, tab_w, 22)
+        buttons.append(_button(r, rect, label, f"gh_tab:{key}", primary=key == tab))
+    area = pygame.Rect(8, 70, r.w - 16, r.h - 70 - 42)
+    owned = greenhouse(profile)
+    money = profile.get("sparkles", 0)
+    if tab in ("wonders", "seeds"):
+        if tab == "wonders":
+            entries = [(w["id"], w["name"], w["text"], w["cost"]) for w in shop.raw.get("wonders", [])]
+        else:
+            weapons = {w.id: w for w in content.weapons}
+            entries = [(x["weapon"], weapons[x["weapon"]].name, weapons[x["weapon"]].text, x["cost"])
+                       for x in shop.raw.get("seeds", []) if x["weapon"] in weapons]  # fmt: skip
+        cols = 5 if r.w > r.h else 2
+        rows = (len(entries) + cols - 1) // cols
+        cw = (area.w - (cols - 1) * 6) // cols
+        ch = min(118, (area.h - (rows - 1) * 6) // rows)
+        for i, (iid, name, text, cost) in enumerate(entries):
+            cell = pygame.Rect(area.x + (i % cols) * (cw + 6), area.y + (i // cols) * (ch + 6), cw, ch)
+            grown = iid in owned[tab]
+            _panel(r, cell.inflate(-6, -6))
+            _pot(r, cell.centerx, cell.y + 30, grown, FLOWER_COLORS[i % len(FLOWER_COLORS)], t)
+            if tab == "seeds":  # the weapon's icon on a little sign in the pot
+                icon = r.icons.get("weapon:" + iid, None, 1)
+                if not grown:
+                    icon = icon.copy()
+                    icon.fill((130, 130, 130, 255), special_flags=pygame.BLEND_RGBA_MULT)
+                r.canvas.blit(icon, (cell.x + 8, cell.y + 8))
+            r.dark_text(_fit(r, name, cw - 12), (cell.centerx, cell.y + 48), center=True)
+            lines = _wrap(r, text, cw - 14)[: 3 if ch >= 118 and tab == "wonders" else 2]
+            for k, line in enumerate(lines):
+                r.dark_text(line, (cell.centerx, cell.y + 60 + k * 10), center=True)
+            btn = pygame.Rect(cell.x + 10, cell.bottom - 26, cw - 20, 18)
+            if grown:
+                buttons.append(_button(r, btn, "zurückgeben", f"gh_sell:{tab}:{iid}"))
+            else:
+                buttons.append(_button(r, btn, f"Pflanzen {cost}", f"gh_buy:{tab}:{iid}", primary=money >= cost))
+    elif tab == "workshop":
+        items = shop.workshop
+        cols = 2 if r.w >= 520 else 1
+        rows = (len(items) + cols - 1) // cols
+        cw = (area.w - (cols - 1) * 8) // cols
+        ch = max(20, min(30, (area.h - (rows - 1) * 4) // rows))
+        own = levels(profile)
+        for i, it in enumerate(items):
+            rect = pygame.Rect(area.x + (i // rows) * (cw + 8), area.y + (i % rows) * (ch + 4), cw, ch)
+            lv = own.get(it.id, 0)
+            r.canvas.fill(r.ink, rect.inflate(2, 2))
+            r.canvas.fill(PAPER if lv < it.max_level else (232, 246, 214), rect)
+            for k in range(it.max_level):  # level pips like little sprouts
+                r.canvas.fill(LEAF if k < lv else (210, 200, 186), (rect.x + 5 + k * 5, rect.y + (ch - 6) // 2, 3, 6))
+            text_x = rect.x + 8 + it.max_level * 5
+            room = rect.right - 2 * 52 - 12 - text_x
+            r.dark_text(_fit(r, f"{it.name}: {it.text}", room), (text_x, rect.y + (ch - 10) // 2))
+            bw = 52
+            if lv < it.max_level:
+                cost = level_cost(it, lv + 1)
+                buttons.append(_button(r, pygame.Rect(rect.right - 2 * bw - 6, rect.y + 2, bw, ch - 4), str(cost),
+                                       f"ws_buy:{it.id}", primary=money >= cost))  # fmt: skip
+            if lv:
+                buttons.append(_button(r, pygame.Rect(rect.right - bw - 3, rect.y + 2, bw, ch - 4), "zurück",
+                                       f"ws_sell:{it.id}"))  # fmt: skip
+    else:  # packs for the next run
+        bag = profile.get("packs", [])
+        r.text(f"Höchstens {shop.run_packs_max_per_run} Pakete, sie gelten nur für den nächsten Lauf.",
+               (cx, area.y + 2), center=True)  # fmt: skip
+        w = min(440, area.w)
+        for i, pack in enumerate(shop.run_packs):
+            rect = pygame.Rect(cx - w // 2, area.y + 16 + i * 38, w, 32)
+            packed = pack["id"] in bag
+            _panel(r, rect)
+            if packed:
+                r.canvas.fill((232, 246, 214), rect)
+            r.dark_text(pack["name"], (rect.x + 6, rect.y + 4))
+            r.dark_text(_fit(r, pack["effect"], w - 90), (rect.x + 6, rect.y + 18))
+            btn = pygame.Rect(rect.right - 70, rect.y + 5, 64, 22)
+            if packed:
+                buttons.append(_button(r, btn, "zurück", f"pack_back:{pack['id']}"))
+            elif len(bag) < shop.run_packs_max_per_run:
+                buttons.append(
+                    _button(r, btn, str(pack["cost"]), f"pack_buy:{pack['id']}", primary=money >= pack["cost"])
+                )
+    buttons += _button_row(r, r.h - 34, [("Fertig", "workshop_back")], width=140)
+    return buttons
+
+
 def draw_workshop(r: Renderer, shop, profile: dict[str, Any]) -> list[Button]:
     """Werkstatt: small permanent bonuses for Funkelsteine; every item can be sold back at full price."""
     from ..meta.workshop import level_cost, levels
@@ -233,7 +498,7 @@ def draw_workshop(r: Renderer, shop, profile: dict[str, Any]) -> list[Button]:
     cw = min(300, (r.w - 16 - gap * (cols - 1)) // cols)
     ch = max(24, min(34, (r.h - 100 - gap * (rows - 1)) // rows))
     top = _top(r, 40 + rows * (ch + gap) + 40)
-    r.text("Werkstatt", (cx, top + 12), r.big_font, center=True)
+    _title(r, "Werkstatt", (cx, top + 12))
     r.text(f"{profile.get('sparkles', 0)} Funkelsteine · Verkaufen gibt alles zurück", (cx, top + 30), center=True)
     x0 = (r.w - cols * cw - (cols - 1) * gap) // 2
     owned = levels(profile)
@@ -269,7 +534,7 @@ def draw_packs(r: Renderer, shop, profile: dict[str, Any]) -> list[Button]:
     cx = r.w // 2
     bag = profile.get("packs", [])
     top = _top(r, 40 + len(shop.run_packs) * 40 + 50)
-    r.text("Vorrat für den nächsten Lauf", (cx, top + 12), r.big_font, center=True)
+    _title(r, "Vorrat für den nächsten Lauf", (cx, top + 12))
     r.text(f"{profile.get('sparkles', 0)} Funkelsteine · höchstens {shop.run_packs_max_per_run} Pakete", (cx, top + 30),
            center=True)  # fmt: skip
     w = min(420, r.w - 16)
@@ -309,7 +574,7 @@ def draw_challenges(r: Renderer, content, profile: dict[str, Any], page: int, pl
     per_page = max(3, (r.h - top - 50) // (row_h + 4))
     pages = (len(items) + per_page - 1) // per_page
     page = min(page, pages - 1)
-    r.text(f"Challenges  {len(done)}/{len(items)}", (cx, 16), r.big_font, center=True)
+    _title(r, f"Challenges  {len(done)}/{len(items)}", (cx, 16))
     names = reward_names(content)
     w = min(520, r.w - 16)
     x = cx - w // 2
@@ -343,7 +608,7 @@ def draw_account(r: Renderer, profile: dict[str, Any], form: dict, status: str, 
     cx = r.w // 2
     acc = profile.get("account") or {}
     top = _top(r, 280)
-    r.text("Konto", (cx, top + 14), r.big_font, center=True)
+    _title(r, "Konto", (cx, top + 14))
     w = min(320, r.w - 20)
     panel = pygame.Rect(cx - w // 2, top + 36, w, 64)
     _panel(r, panel)
@@ -394,7 +659,7 @@ def draw_settings(r: Renderer, settings: dict[str, Any]) -> list[Button]:
     _backdrop(r)
     cx = r.w // 2
     top = _top(r, 250)
-    r.text("Einstellungen", (cx, top + 14), r.big_font, center=True)
+    _title(r, "Einstellungen", (cx, top + 14))
     items = [
         (f"Lautstärke: {settings['volume']} %", "set:volume"),
         ("Schadenszahlen: " + ("an" if settings["numbers"] else "aus"), "set:numbers"),
@@ -410,7 +675,7 @@ def draw_prologue(r: Renderer) -> list[Button]:
     _backdrop(r)
     cx = r.w // 2
     top = _top(r, 60 + len(PROLOGUE) * 34 + 60)
-    r.text("Die große Ernte", (cx, top + 14), r.big_font, center=True)
+    _title(r, "Die große Ernte", (cx, top + 14))
     for i, line in enumerate(PROLOGUE):
         for j, part in enumerate(_wrap_lines(r, line, r.w - 30)):
             r.text(part, (cx, top + 56 + i * 34 + j * 14), center=True)
@@ -449,7 +714,7 @@ def draw_name_entry(
     kb_h = 5 * 30 + 10 if keyboard else 0
     top = _top(r, 150 + kb_h) if keyboard else _top(r, 230)
     title = title or ("Wie heißt deine Bohne?" if first_time else "Neuer Spitzname")
-    r.text(title, (cx, top + 16), r.big_font, center=True)
+    _title(r, title, (cx, top + 16))
     if mask:  # password: dots instead of letters
         current = "*" * len(current)
     field = pygame.Rect(cx - min(120, r.w // 2 - 10), top + 44, min(240, r.w - 20), 30)
@@ -522,7 +787,7 @@ def draw_results(
     cx = r.w // 2
     top = _top(r, 290)
     title = "Sieg! Die Saat ist gerettet" if result.get("victory") else "Die Bohne ist gefallen"
-    r.text(title, (cx, top + 14), r.big_font, center=True)
+    _title(r, title, (cx, top + 14))
     panel = pygame.Rect(cx - min(140, r.w // 2 - 10), top + 38, min(280, r.w - 20), 184)
     _panel(r, panel)
     r.dark_text(f"{result['score']} Punkte", (cx, panel.y + 12), center=True)
@@ -573,7 +838,7 @@ def draw_board(r: Renderer, board: dict, profile: dict[str, Any], enabled: bool)
     rows = 10
     panel_h = 30 + rows * 18
     top = _top(r, 70 + panel_h + 80)
-    r.text("Bestenliste", (cx, top + 14), r.big_font, center=True)
+    _title(r, "Bestenliste", (cx, top + 14))
     tab_items = [(v, f"period:{k}") for k, v in PERIOD_NAMES.items()]
     if "eternal_night" in profile.get("unlocked", {}).get("modes", []):
         tab_items.append(("Nacht" if board.get("mode") == "eternal_night" else "Normal", "board_mode"))
@@ -656,7 +921,7 @@ def draw_pause(r: Renderer, snap, muted: bool) -> list[Button]:
     _dim(r, 160)
     cx = r.w // 2
     top = _top(r, 270 if r.w > r.h else 360)
-    r.text("Pause", (cx, top + 14), r.big_font, center=True)
+    _title(r, "Pause", (cx, top + 14))
     panel = pygame.Rect(cx - min(150, r.w // 2 - 10), top + 36, min(300, r.w - 20), 180)
     _panel(r, panel)
     focus = snap.players[0]

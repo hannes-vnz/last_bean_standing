@@ -259,6 +259,9 @@ class Effects:
                     "elite": "3 Elite-Gegner! Jeder lässt eine Truhe fallen",
                 }.get(e.kind, "")
                 self.subtitle = (f"{reward} · Schwierigkeit {round(e.difficulty * 100)} %", 110)
+            elif isinstance(e, ev.SparklesCollected) and players and e.player_id in players:
+                x, y = players[e.player_id]
+                self.texts.append(FloatingText(x, y - 30, f"+{e.amount} Funkel", (255, 159, 192), e.amount > 1, 50))
             elif isinstance(e, ev.PotBroken):
                 self.burst(e.x, e.y, 10, (226, 150, 120), speed=90, life=18, size=2)
 

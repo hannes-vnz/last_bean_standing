@@ -75,6 +75,11 @@ def normalize(data: Any) -> dict[str, Any]:
             "provider": acc.get("provider") if acc.get("provider") in ("password", "google", "apple") else "password",
             "synced_at": acc.get("synced_at") if isinstance(acc.get("synced_at"), int) else 0,
         }
+    gh = data.get("greenhouse") if isinstance(data.get("greenhouse"), dict) else {}
+    out["greenhouse"] = {
+        k: [x for x in gh.get(k, []) if isinstance(x, str)] if isinstance(gh.get(k), list) else []
+        for k in ("wonders", "seeds")
+    }
     packs = data.get("packs")
     out["packs"] = [x for x in packs if isinstance(x, str)][:2] if isinstance(packs, list) else []  # next run's packs
     # Challenges (meta/challenges.py): lifetime sums, completed ids, rewards, chosen skin per bean

@@ -37,11 +37,50 @@ def test_workshop_bonuses_reach_the_run(content):
 
 
 def test_payout_follows_shop_json(content):
-    result = dict(score=4200, kills=1000, difficulty=1.0, bosses=2, elites=3, chests=4)
-    parts = workshop.payout(result, content.shop, final_boss_won=False)
-    assert parts == {"Punkte": 42, "Gegner": 15, "Elite": 6, "Bosse": 40, "Truhen": 12}
-    won = workshop.payout(dict(result, bosses=3, difficulty=1.25), content.shop, final_boss_won=True)
-    assert won["Punkte"] == 50 and won["Bosse"] == 40 and won["Schnitter"] == 200
+    result = dict(score=4200, kills=1000, difficulty=1.0, bosses=2, sparkles=37)
+    assert workshop.payout(result, content.shop, final_boss_won=False) == {"Punkte": 42, "Gefunden": 37}
+    won = workshop.payout(dict(result, difficulty=1.25), content.shop, final_boss_won=True)
+    assert won == {"Punkte": 50, "Gefunden": 37, "Sieg": 100}
+
+
+def test_sparkles_drop_in_the_run(content):
+    import dataclasses
+
+    from lastbean.sim import PlayerInput
+    from lastbean.sim.events import SparklesCollected
+
+    cfg = WorldConfig.from_content(content)
+    cfg = dataclasses.replace(cfg, character=dataclasses.replace(cfg.character, hp=10**9))
+    w = World(2, cfg)
+    events = []
+    for _ in range(150 * 60):
+        p = w.players[0]
+        events += w.step([PlayerInput(0, 0, 0, 0 if p.offer else None)])
+    found = [e for e in events if isinstance(e, SparklesCollected)]
+    assert found and w.players[0].sparkles == sum(e.amount for e in found) == w.result().sparkles
+
+
+def test_greenhouse_wonders_and_seeds(content):
+    p = new_profile()
+    p["sparkles"] = 2500
+    base = WorldConfig.from_content(content)
+    cfg = workshop.apply_greenhouse(base, p, content.shop)
+    assert "sickle" not in {w.id for w in cfg.weapons} and "thorn_twig" in {w.id for w in cfg.weapons}
+    for wid in ("wonder_fourth_card", "wonder_weapon_slot", "wonder_second_seed", "wonder_starter", "wonder_chest_key"):
+        assert workshop.buy_greenhouse(p, content.shop, "wonders", wid)
+    assert workshop.buy_greenhouse(p, content.shop, "seeds", "sickle")
+    assert not workshop.buy_greenhouse(p, content.shop, "seeds", "sickle")  # once
+    assert p["sparkles"] == 2500 - 400 - 600 - 500 - 300 - 250 - 200
+    cfg = workshop.apply_greenhouse(base, p, content.shop)
+    assert cfg.level_up_choices == base.level_up_choices + 1 and cfg.weapon_slots == base.weapon_slots + 1
+    assert "sickle" in {w.id for w in cfg.weapons}
+    assert cfg.economy.chest_price(0) < base.economy.chest_price(0)
+    w = World(1, cfg)
+    pl = w.players[0]
+    assert pl.weapons and pl.stats.revives == 1  # Startpaket and Zweite Saat
+    workshop.sell_greenhouse(p, content.shop, "seeds", "sickle")
+    assert "sickle" not in p["greenhouse"]["seeds"] and p["sparkles"] == 2500 - 400 - 600 - 500 - 300 - 250
+    assert normalize(p)["greenhouse"]["wonders"] == p["greenhouse"]["wonders"]
 
 
 def test_every_bed_has_its_music(content):

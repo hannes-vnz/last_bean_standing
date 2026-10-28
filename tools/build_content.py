@@ -249,6 +249,18 @@ RUN_PACKS = dict(max_per_run=2, items=[
  dict(id="pack_map", name="Schatzkarte", cost=30, effect="Schreine sind in diesem Lauf auf der Karte sichtbar."),
  dict(id="pack_headstart", name="Frühstart", cost=60, effect="Start bei Level 3 (2 Gratis-Upgradewahlen)."),
 ])
+# Paket K (Hannes: "die Funkelsteine-Meta ist relativ useless, das System von außerhalb verbessern gar nicht so schlecht"):
+# Gewächshaus. Wunder ändern spürbar, wie ein Lauf läuft; Saatgut lässt Waffen erst in den Kartenpool wachsen
+# (die ersten sechs Waffen sind von Anfang an da). Funkelsteine fallen sichtbar im Lauf (run_drops).
+WONDERS = [
+ dict(id="wonder_fourth_card", name="Vierblatt", cost=400, effect=dict(level_up_choices_add=1), text="Beim Level-up stehen 4 Karten zur Wahl statt 3."),
+ dict(id="wonder_weapon_slot", name="Großes Beet", cost=600, effect=dict(weapon_slots_add=1), text="Ein fünfter Waffenplatz."),
+ dict(id="wonder_second_seed", name="Zweite Saat", cost=500, effect=dict(revives=1), text="Einmal pro Lauf wiederbeleben."),
+ dict(id="wonder_starter", name="Startpaket", cost=300, effect=dict(start_weapon=1), text="Jeder Lauf beginnt mit einer zufälligen Zusatzwaffe."),
+ dict(id="wonder_chest_key", name="Kistenschlüssel", cost=250, effect=dict(chest_discount_pct=25), text="Kisten auf der Karte kosten 25 % weniger Samen."),
+]
+SEEDS = [dict(weapon=w, cost=c) for w, c in [("leaf_boomerang", 120), ("nettle_trail", 120), ("garlic_mine", 150),
+         ("seed_shotgun", 150), ("cactus", 180), ("firefly", 200), ("sickle", 200), ("dragonfly", 220), ("sunbeam", 250)]]
 COSMETICS = dict(id="color_pots", name="Farbtöpfe", cost_each=150, per_character=3,
     variants=[dict(name="Zuckerwatte", hue_shift=40), dict(name="Minze", hue_shift=160), dict(name="Sonnenuntergang", hue_shift=-60)],
     text="Rein kosmetische Zusatzfarben für jeden Charakter (Paletten-Tausch der Ramp-Farben).")
@@ -594,7 +606,7 @@ def balance_rows():
 def write_json():
     DATA.mkdir(exist_ok=True)
     files = {"balance.json": BALANCE, "characters.json": [dict(c, vfx=VFX[c["id"]]) for c in CHARACTERS], "upgrades.json": UPGRADES, "mobs.json": MOBS,
-             "elite.json": dict(ELITE, affixes=ELITE_AFFIXES, mini_boss=MINI_BOSS), "shrines.json": dict(shrines=SHRINES, rules=SHRINE_RULES), "shop.json": dict(currency=CURRENCY, workshop_rules=WORKSHOP_RULES, workshop=WORKSHOP, run_packs=RUN_PACKS, cosmetics=COSMETICS), "swarm.json": SWARM, "bosses.json": BOSSES, "biomes.json": [dict(b, palette=PALETTES[b["id"]]) for b in BIOMES], "style.json": STYLE,
+             "elite.json": dict(ELITE, affixes=ELITE_AFFIXES, mini_boss=MINI_BOSS), "shrines.json": dict(shrines=SHRINES, rules=SHRINE_RULES), "shop.json": dict(currency=CURRENCY, workshop_rules=WORKSHOP_RULES, workshop=WORKSHOP, run_packs=RUN_PACKS, cosmetics=COSMETICS, wonders=WONDERS, seeds=SEEDS), "swarm.json": SWARM, "bosses.json": BOSSES, "biomes.json": [dict(b, palette=PALETTES[b["id"]]) for b in BIOMES], "style.json": STYLE,
              "challenges.json": CHALLENGES, "skins.json": SKINS, "modes.json": MODES, "items.json": dict(items=ITEMS, economy=ECONOMY),
              "weapons.json": dict(WEAPON_RULES, weapons=WEAPONS),
              "stages.json": dict(stages=STAGES, flood=FLOOD, gate=GATE, stat_labels=STAT_LABELS)}
@@ -698,6 +710,9 @@ def md():
         cost = sum(round(w_["base_cost"] * 1.5 ** (l - 1)) for l in range(1, w_["max_level"] + 1)); tot += cost
         P(f"| `{w_['id']}` | {w_['name']} | {w_['text']} | {w_['max_level']} | {w_['base_cost']} | {cost} |")
     P(f"\nAlle Werkstatt-Stufen zusammen kosten {tot} Funkelsteine. Bei etwa 60 Funkelsteinen je Lauf sind das rund {round(tot / 60)} Läufe, also ein langes, aber freiwilliges Ziel.\n")
+    P("### Gewächshaus: Wunder und Saatgut\n")
+    P("Wunder (einmal kaufen, gelten für jeden Lauf): " + "; ".join(f"**{w_['name']}** ({w_['cost']}): {w_['text']}" for w_ in WONDERS) + ".\n")
+    P("Saatgut (Waffe wächst in den Kartenpool): " + ", ".join(f"`{x['weapon']}` {x['cost']}" for x in SEEDS) + ". Die übrigen Waffen sind von Anfang an da.\n")
     P("### Startpakete (vor dem Lauf, verbrauchen sich)\n")
     P(f"Höchstens {RUN_PACKS['max_per_run']} je Lauf. " + "; ".join(f"**{x['name']}** ({x['cost']}): {x['effect']}" for x in RUN_PACKS["items"]) + ".\n")
     P(f"### Farbtöpfe (Kosmetik)\n\n{COSMETICS['text']} {COSMETICS['per_character']} Varianten je Charakter ({', '.join(v['name'] for v in COSMETICS['variants'])}) für je {COSMETICS['cost_each']} Funkelsteine, zusammen {COSMETICS['cost_each'] * COSMETICS['per_character'] * 10}.\n")

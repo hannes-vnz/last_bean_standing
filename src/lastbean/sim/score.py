@@ -47,6 +47,7 @@ class RunResult:
     elites: int = 0  # elites killed (Funkelstein drops)
     chests: int = 0  # chests opened
     shrines: int = 0  # shrines activated
+    sparkles: int = 0  # Funkelsteine found in the run
     mode: str = "normal"  # modes.json id; the leaderboard ranks each mode on its own
     stats: dict = field(default_factory=dict)  # challenge statistics (World.run_stats)
     boss_ids: list = field(default_factory=list)  # bosses defeated, by id

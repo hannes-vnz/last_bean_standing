@@ -70,6 +70,7 @@ from .events import (
     SeedsCollected,
     ShotFired,
     ShrineActivated,
+    SparklesCollected,
     StageStarted,
     SweepSwung,
     UpgradeChosen,
@@ -207,7 +208,9 @@ from .weapons import (
 )
 
 TICK_HZ = 60
-META_SPECIAL = frozenset({"rerolls", "banishes", "start_shield_hp", "show_shrines_on_map", "start_levels"})
+META_SPECIAL = frozenset(
+    {"rerolls", "banishes", "start_shield_hp", "show_shrines_on_map", "start_levels", "start_weapon"}
+)
 LEADERBOARD_WAVE_S = 30  # server/app.py and worker check wave = seconds // 30 + 1, whatever the bed pace
 DT = 1.0 / TICK_HZ
 MAX_SPAWNS_PER_TICK = 8
@@ -302,6 +305,8 @@ class WorldConfig:
     # rerolls, banishes, start_shield_hp and show_shrines_on_map.
     meta_mods: tuple[tuple[str, float], ...] = ()
     # Mode (modes.json): "normal" or e.g. "eternal_night" with its enemy HP, XP and score factors.
+    # Funkelstein drops (shop.json currency.run_drops): normal_kill_chance_pct, elite, biome_boss, final_boss, chest
+    sparkle_drops: tuple[tuple[str, float], ...] = ()
     mode: str = "normal"
     mode_hp_mult: float = 1.0
     mode_xp_mult: float = 1.0
@@ -384,6 +389,9 @@ class WorldConfig:
             max_alive_enemies=bal.max_alive_enemies,
             player_count=player_count,
             score=ScoreRules.from_content(content),
+            sparkle_drops=tuple(
+                (k, float(v)) for k, v in content.shop.raw.get("currency", {}).get("run_drops", {}).items()
+            ),
             shrines=tuple(
                 ShrineRules.from_content(s, len(content.stages)) for s in content.shrines if s.id in SHRINE_KINDS
             ),
@@ -425,6 +433,7 @@ class PlayerView(NamedTuple):
     card_tiers: tuple[tuple[str, str], ...] = ()  # best rarity picked per upgrade or "weapon:<id>"
     inferno: bool = False  # Mira's ring of fire is burning
     storm: bool = False  # Vex's thunderstorm is raging
+    sparkles: int = 0  # Funkelsteine found in this run
 
 
 class EnemyView(NamedTuple):
@@ -617,6 +626,10 @@ class World:
             for p in self.players:
                 p.rerolls = cfg.economy.rerolls + int(meta.get("rerolls", 0.0))
                 p.banishes = cfg.economy.banishes + int(meta.get("banishes", 0.0))
+        if meta.get("start_weapon", 0.0) > 0 and cfg.weapons:  # wonder "Startpaket": a random extra weapon
+            pick = Rng(self.seed ^ 0x57A27)
+            for p in self.players:
+                self._add_weapon(p, cfg.weapons[pick.randint(0, len(cfg.weapons) - 1)].id)
         if meta.get("start_levels", 0.0) > 0:  # run pack "Frühstart": free cards right at the start
             for p in self.players:
                 p.level += int(meta["start_levels"])
@@ -1509,6 +1522,7 @@ class World:
             self.bosses_defeated.append(e.boss)
         if e.elite:
             self.elites_killed += 1
+        self._drop_sparkles(e, events)
         if e.xp > 0:
             self.orbs.append(XpOrb(e.x, e.y, e.xp * self.reward_mult))
         eco = self.config.economy
@@ -1564,6 +1578,20 @@ class World:
                 self.gate = (gx, gy)
                 self._gate_ready_tick = self.tick + int(GATE_DELAY_S * TICK_HZ)
                 events.append(GateOpened(self.tick, None, gx, gy))
+
+    def _drop_sparkles(self, e: Enemy, events: list[Event]) -> None:
+        """Funkelsteine glitter on the ground: rarely from pests, always from elites and bosses."""
+        drops = dict(self.config.sparkle_drops)
+        if not drops:
+            return
+        if e.boss:
+            amount = drops.get("final_boss" if self.stage + 1 >= len(self.config.stages) else "biome_boss", 0.0)
+        elif e.elite:
+            amount = drops.get("elite", 0.0)
+        else:
+            amount = 1.0 if self.rng.random() * 100.0 < drops.get("normal_kill_chance_pct", 0.0) else 0.0
+        if amount:
+            self.orbs.append(XpOrb(e.x, e.y - 6.0, amount, kind="sparkle"))
 
     def _drop_chest(self, x: float, y: float, kind: str, events: list[Event]) -> None:
         """Elite and boss chests are free and hold at least a rare or epic item (items.json economy)."""
@@ -2479,6 +2507,9 @@ class World:
             events.append(SeedsCollected(self.tick, owner.player_id, amount))
         elif o.kind == "heal":
             owner.hp = min(owner.stats.max_hp, owner.hp + o.value)
+        elif o.kind == "sparkle":
+            owner.sparkles += int(o.value)
+            events.append(SparklesCollected(self.tick, owner.player_id, int(o.value), owner.sparkles))
         else:
             self._gain_xp(owner, o.value * owner.stats.xp_mult, events)
 
@@ -2504,6 +2535,9 @@ class World:
                 self.chests_opened += 1
             events.append(ChestOpened(self.tick, owner.player_id, c.kind))
             self._give_item(owner, c.kind, events)
+            chest_sparkles = dict(self.config.sparkle_drops).get("chest", 0.0)
+            if chest_sparkles:
+                self.orbs.append(XpOrb(c.x, c.y + 8.0, chest_sparkles, kind="sparkle"))
         self.chests = remaining
 
     def _count(self, key: str, amount: float = 1.0) -> None:
@@ -2616,6 +2650,7 @@ class World:
             chests=self.chests_opened,
             shrines=p.shrines_activated,
             stats=dict(self.run_stats),
+            sparkles=p.sparkles,
             mode=self.config.mode,
             boss_ids=list(self.bosses_defeated),
             owned=sorted(set(p.upgrades) | set(p.items)),
@@ -2670,6 +2705,7 @@ class World:
                     tuple(p.card_tiers.items()),
                     p.inferno_t > 0,
                     p.storm_t > 0,
+                    p.sparkles,
                 )
                 for p in self.players
             ),

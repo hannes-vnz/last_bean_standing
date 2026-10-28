@@ -166,9 +166,10 @@ class Game:
         self.first_name = not self.profile.get("nickname")
         self.settings_return = "menu"
         self.challenge_page = 0
+        self.poke_ms = -10_000
         self.mode = "normal"  # modes.json; "eternal_night" once its challenge is done
         self.recording = True  # stress-test runs are not recorded
-        self.workshop_tab = "workshop"
+        self.workshop_tab = "wonders"  # greenhouse tab: wonders, seeds, workshop (Kraft), packs (Vorrat)
         self.leaderboard = Leaderboard()
         self.account = Account()
         self.acc_form = {"acc_name": "", "acc_pw": ""}
@@ -196,12 +197,13 @@ class Game:
         self.renderer.character_sprite = cid
         self.apply_skin()
 
-    def _world_config(self, cid: str) -> WorldConfig:
-        """Config for runs with this bean, including the workshop bonuses."""
-        meta = workshop.meta_mods(self.profile, self.content.shop)
+    def _world_config(self, cid: str, packs: tuple[str, ...] = ()) -> WorldConfig:
+        """Config for runs with this bean: workshop bonuses, greenhouse wonders and seeds, run packs."""
+        meta = workshop.meta_mods(self.profile, self.content.shop, packs)
         unlocked = tuple(self.profile.get("unlocked", {}).get("upgrades", []))  # challenge rewards
-        return WorldConfig.from_content(self.content, cid, meta_mods=meta, mode=getattr(self, "mode", "normal"),
-                                        unlocked_upgrades=unlocked)  # fmt: skip
+        cfg = WorldConfig.from_content(self.content, cid, meta_mods=meta, mode=getattr(self, "mode", "normal"),
+                                       unlocked_upgrades=unlocked)  # fmt: skip
+        return workshop.apply_greenhouse(cfg, self.profile, self.content.shop)
 
     def toggle_mode(self) -> None:
         """Normal <-> eternal night (once unlocked); counts from the next run."""
@@ -265,8 +267,7 @@ class Game:
         config = self.config
         packs = tuple(self.profile.get("packs", []))
         if packs and self.config is self.normal:  # run packs count for this run only, then they are used up
-            meta = workshop.meta_mods(self.profile, self.content.shop, packs)
-            config = dataclasses.replace(self.config, meta_mods=meta)
+            config = self._world_config(self.character, packs)
             self.profile["packs"] = []
             self.save()
         self.recording = self.config is self.normal
@@ -721,6 +722,8 @@ async def run(
             pygame.key.stop_text_input()
         elif action == "account":
             game.open_account()
+        elif action == "poke":  # tap the bean on the menu: it hops and says something
+            game.poke_ms = pygame.time.get_ticks()
         elif action.startswith("acc_field:"):
             game.start_text_entry(action.split(":", 1)[1])
         elif action.startswith("acc_"):
@@ -746,8 +749,15 @@ async def run(
         elif action == "workshop_back":
             game.apply_workshop()
             game.state = "menu"
-        elif action == "ws_tab":
-            game.workshop_tab = "packs" if game.workshop_tab == "workshop" else "workshop"
+        elif action.startswith("gh_tab:"):
+            game.workshop_tab = action.split(":", 1)[1]
+        elif action.startswith(("gh_buy:", "gh_sell:")):
+            verb, kind, item_id = action.split(":", 2)
+            if verb == "gh_buy":
+                workshop.buy_greenhouse(game.profile, content.shop, kind, item_id)
+            else:
+                workshop.sell_greenhouse(game.profile, content.shop, kind, item_id)
+            game.save()
         elif action.startswith(("pack_buy:", "pack_back:")):
             kind, pid = action.split(":", 1)
             if kind == "pack_buy":
@@ -997,7 +1007,8 @@ async def run(
                     line = screens.online_line(*game.online)
                     buttons = screens.draw_results(renderer, game.result, game.flags, game.profile, line)
             elif game.state == "menu":
-                buttons = screens.draw_menu(renderer, game.profile, WEB)
+                buttons = screens.draw_menu(renderer, game.profile, WEB, game.character, game.poke_ms,
+                                            renderer.character_tint)  # fmt: skip
             elif game.state == "characters":
                 best = game.profile["highscores"].get("by_character", {})
                 choices = game.skin_choices()
@@ -1021,10 +1032,7 @@ async def run(
             elif game.state == "settings":
                 buttons = screens.draw_settings(renderer, game.profile["settings"])
             elif game.state == "workshop":
-                if game.workshop_tab == "packs":
-                    buttons = screens.draw_packs(renderer, content.shop, game.profile)
-                else:
-                    buttons = screens.draw_workshop(renderer, content.shop, game.profile)
+                buttons = screens.draw_greenhouse(renderer, content, game.profile, game.workshop_tab)
             elif game.state == "challenges":
                 buttons = screens.draw_challenges(renderer, content, game.profile, game.challenge_page,
                                                   game.starters)  # fmt: skip

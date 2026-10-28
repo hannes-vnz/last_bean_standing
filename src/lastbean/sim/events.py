@@ -202,6 +202,14 @@ class SeedsCollected(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class SparklesCollected(Event):
+    """Funkelsteine picked up in the run (meta currency, shop.json run_drops)."""
+
+    amount: int
+    total: int
+
+
+@dataclass(frozen=True, slots=True)
 class WeaponPulse(Event):
     """An area weapon went off: a nova ring around the player or a bursting bomb."""
 
