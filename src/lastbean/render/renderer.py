@@ -927,8 +927,13 @@ class Renderer:
         """Bees and pumpkins in flight, drawn above everything on the ground."""
         c, ink = self.canvas, self.ink
         wing = (snap.tick // 4) % 2
-        for _, bx, by in snap.orbiters:
+        for kind, bx, by in snap.orbiters:
             sx, sy = round(bx / UNITS_PER_PX) - cam_x, round(by / UNITS_PER_PX) - cam_y
+            if kind == "blades" and 0 <= sx < self.w and 0 <= sy < self.h:  # "Kreisende Klingen": spinning leaves
+                spin = (snap.tick // 3) % 2
+                c.fill(ink, (sx - 4, sy - 1, 9, 3) if spin else (sx - 1, sy - 4, 3, 9))
+                c.fill((223, 231, 242), (sx - 3, sy, 7, 1) if spin else (sx, sy - 3, 1, 7))
+                continue
             if 0 <= sx < self.w and 0 <= sy < self.h:
                 c.fill(WHITE, (sx - 2, sy - 3 - wing, 2, 2))  # wings flap
                 c.fill(WHITE, (sx + 1, sy - 4 + wing, 2, 2))

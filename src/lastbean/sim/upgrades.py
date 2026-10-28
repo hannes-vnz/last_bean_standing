@@ -14,8 +14,11 @@ from .rng import Rng
 
 RARITIES = ("common", "uncommon", "rare", "epic", "legendary")
 
+SUPPORTED_SPECIALS = frozenset({"gravity_pull", "standing_slow"})  # handled in World._upgrade_specials
 SUPPORTED_STATS = frozenset(
     {
+        "minions_add",
+        "orbit_blades",
         "damage_pct",
         "attack_speed_pct",
         "range_pct",
@@ -84,15 +87,33 @@ class UpgradeDef:
     effects: tuple[tuple[str, float], ...]  # (stat, per_level)
     impl_phase: int
     unlocked_at_start: bool
+    # Effects without a stat (Paket J): (name, numbers by key; lists hold one value per level)
+    specials: tuple[tuple[str, tuple[tuple[str, tuple[float, ...]], ...]], ...] = ()
 
     @classmethod
     def from_content(cls, u) -> UpgradeDef:
         effects = tuple((e["stat"], float(e["per_level"])) for e in u.effects if "stat" in e and "per_level" in e)
-        return cls(u.id, u.rarity, u.max_level, u.tags, effects, u.impl_phase, u.unlocked_at_start)
+        specials = tuple(
+            (
+                e["special"],
+                tuple(
+                    (k, tuple(float(x) for x in (v if isinstance(v, list) else [v])))
+                    for k, v in e.items()
+                    if k != "special" and isinstance(v, (int, float, list))
+                ),
+            )
+            for e in u.effects
+            if "special" in e
+        )
+        return cls(u.id, u.rarity, u.max_level, u.tags, effects, u.impl_phase, u.unlocked_at_start, specials)
 
     @property
     def supported(self) -> bool:
-        return bool(self.effects) and all(stat in SUPPORTED_STATS for stat, _ in self.effects)
+        return (
+            (bool(self.effects) or bool(self.specials))
+            and all(stat in SUPPORTED_STATS for stat, _ in self.effects)
+            and all(name in SUPPORTED_SPECIALS for name, _ in self.specials)
+        )
 
 
 def modifier_sums(levels: dict[str, float], defs: dict[str, UpgradeDef], items: dict[str, int] | None = None,
@@ -174,6 +195,8 @@ def derive_stats(base: CharacterStats, mods: dict[str, float]) -> Stats:
         revives=int(mods.get("revives", 0.0)),
         kill_haste_max_pct=mods.get("kill_haste_max_pct", 0.0),
         shrapnel_chance_pct=min(100.0, mods.get("shrapnel_chance_pct", 0.0)),
+        minions_add=int(mods.get("minions_add", 0.0)),
+        orbit_blades=int(mods.get("orbit_blades", 0.0)),
         burning_damage_mult=1.0 + special.get("damage_pct_vs_burning", (0.0, 0, 0))[0] / 100.0,
         nearby_damage_pct=special.get("damage_pct_per_nearby", (0.0, 0, 0))[0],
         nearby_radius=special.get("damage_pct_per_nearby", (0, 0.0, 0))[1],
