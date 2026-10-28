@@ -52,18 +52,27 @@ class SpriteBank:
     def __contains__(self, name: str) -> bool:
         return name in self._base
 
-    def get(self, name: str, scale: float = 1.0, flip: bool = False, flash: bool = False) -> pygame.Surface | None:
-        """Sprite `name`, scaled by `scale` (nearest neighbour), mirrored, or as a white silhouette."""
+    def get(
+        self, name: str, scale: float = 1.0, flip: bool = False, flash: bool = False, squash: int = 0
+    ) -> pygame.Surface | None:
+        """Sprite `name`, scaled by `scale` (nearest neighbour), mirrored, or as a white silhouette.
+
+        `squash` animates: -1 wide and flat (landing, hit), 1 narrow and tall (stepping up), 0 as drawn.
+        """
         base = self._base.get(name)
         if base is None:
             return None
-        key = (name, round(scale, 2), flip, flash)
+        key = (name, round(scale, 2), flip, flash, squash)
         surf = self._cache.get(key)
         if surf is None:
             surf = base
-            if scale != 1.0:
-                w, h = base.get_size()
-                surf = pygame.transform.scale(base, (max(1, round(w * scale)), max(1, round(h * scale))))
+            w, h = base.get_size()
+            w, h = max(1, round(w * scale)), max(1, round(h * scale))
+            if squash:
+                d = max(1, h // 10)
+                w, h = (w + 2 * d, h - d) if squash < 0 else (w - d, h + d)
+            if (w, h) != base.get_size():
+                surf = pygame.transform.scale(base, (w, h))
             if flip:
                 surf = pygame.transform.flip(surf, True, False)
             if flash:

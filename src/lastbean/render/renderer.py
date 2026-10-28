@@ -17,7 +17,7 @@ from ..data.schema import Content
 from ..sim.tuning import BOSS_RADIUS
 from ..sim.weapons import WEAPON_PREFIX
 from ..sim.world import Snapshot, WorldConfig
-from .effects import Effects
+from .effects import CORPSE_FRAMES, Effects
 from .icons import SIZE as ICON_SIZE
 from .icons import IconBank
 from .pixelfont import body_font, tiny_font
@@ -46,6 +46,12 @@ def hex_rgb(value: str) -> tuple[int, int, int]:
 def integer_scale(window_w: int, window_h: int) -> int:
     """Largest integer factor at which the canvas still fits the window (at least 1)."""
     return max(1, min(window_w // CANVAS_W, window_h // CANVAS_H))
+
+
+WALK_SQUASH = (1, 0, -1, 0)  # per walk phase: stretch, rest, squash, rest
+SHADOW = (60, 42, 40)
+# The bean's own shot per character (sprite id -> style in Renderer._draw_shot); others shoot seeds.
+SHOT_STYLES = {"ranger": "arrow", "pyro": "fireball", "rogue": "knife", "cryo": "ice", "storm": "spark"}
 
 
 class Renderer:
@@ -142,6 +148,7 @@ class Renderer:
             dx, dy = effects.shake()
             cam_x, cam_y = cam_x + dx, cam_y + dy
         flash = effects.flash if effects else {}
+        hurt = effects.hurt if effects else {}
 
         self._draw_ground(c, cam_x, cam_y)
         self._draw_motes(cam_x, cam_y)
@@ -188,6 +195,8 @@ class Renderer:
             if -20 <= sx < self.w + 20 and -20 <= sy < self.h + 20:
                 self._draw_chest(sx, sy, kind, snap.chest_price, focus.seeds)
 
+        if effects:
+            self._draw_corpses(effects, cam_x, cam_y)
         for e in snap.enemies:
             sx, sy = round(e.x / UNITS_PER_PX) - cam_x, round(e.y / UNITS_PER_PX) - cam_y
             r = max(2, round(e.radius / UNITS_PER_PX))
@@ -195,12 +204,22 @@ class Renderer:
                 if e.elite:  # golden halo so elites stand out in a crowd
                     pygame.draw.circle(c, self.crit_color, (sx, sy), r + 4)
                 flip = self._facing(e.eid, e.x)
-                img = self.sprites.get(e.kind, self._sprite_scale(e), flip, e.eid in flash)
+                scale = self._sprite_scale(e)
+                if e.eid in hurt:  # hit: squashed flat and pushed a pixel away from the bean
+                    squash = -1
+                    sx += 1 if e.x >= focus.x else -1
+                elif e.status == "frozen":
+                    squash = 0
+                else:  # waddle: stretch, rest, squash, rest (offset per enemy so crowds don't march in step)
+                    squash = WALK_SQUASH[((snap.tick + e.eid * 5) // 7) % 4]
+                img = self.sprites.get(e.kind, scale, flip, e.eid in flash, squash)
                 if img is not None and e.status == "frozen":  # frozen solid: icy blue
                     img = img.copy()
                     img.fill((90, 160, 255, 0), special_flags=pygame.BLEND_RGBA_ADD)
                 if img is not None:
-                    c.blit(img, (sx - img.get_width() // 2, sy - img.get_height() // 2))
+                    rest = self.sprites.get(e.kind, scale, flip)
+                    bottom = sy + rest.get_height() // 2  # feet stay on the ground while squashing
+                    c.blit(img, (sx - img.get_width() // 2, bottom - img.get_height()))
                 else:
                     pygame.draw.circle(c, ink, (sx, sy), r + 1)
                     color = WHITE if e.eid in flash else self.enemy_colors.get(e.kind, self.enemy_default)
@@ -226,10 +245,20 @@ class Renderer:
                 continue
             sx, sy = round(p.x / UNITS_PER_PX) - cam_x, round(p.y / UNITS_PER_PX) - cam_y
             blink = bool(p.invulnerable and (snap.tick // 4) % 2)
-            bob = 1 if (not p.standing and (snap.tick // 8) % 2) else 0  # little hop while walking
-            img = self.sprites.get(self.character_sprite, 1.0, self._facing(-1 - p.player_id, p.x), blink)
+            phase = (snap.tick // 6) % 4
+            walking = not p.standing
+            bob = (0, 2, 1, 0)[phase] if walking else 0  # hop while walking
+            squash = WALK_SQUASH[phase] if walking else (0 if (snap.tick // 40) % 2 else -1)  # idle: breathing
+            flip = self._facing(-1 - p.player_id, p.x)
+            img = self.sprites.get(self.character_sprite, 1.0, flip, blink, squash)
+            if effects and p.player_id == focus.player_id:
+                effects.footstep(p.x, p.y + 8 * UNITS_PER_PX, walking)
             if img is not None:
-                c.blit(img, (sx - img.get_width() // 2, sy - img.get_height() // 2 - bob))
+                rest = self.sprites.get(self.character_sprite, 1.0, flip)
+                if bob:
+                    c.fill(SHADOW, (sx - 5, sy + rest.get_height() // 2 - 1, 11, 2))
+                bottom = sy + rest.get_height() // 2 - bob
+                c.blit(img, (sx - img.get_width() // 2, bottom - img.get_height()))
             else:
                 body = pygame.Rect(sx - 8, sy - 8, 16, 16)
                 c.fill(ink, body)
@@ -265,6 +294,8 @@ class Renderer:
                     c.fill(ink, (sx - 4, sy - 4, 9, 9) if spin else (sx - 3, sy - 5, 7, 11))
                     c.fill((255, 154, 60), (sx - 3, sy - 3, 7, 7) if spin else (sx - 2, sy - 4, 5, 9))
                     c.set_at((sx, sy), (192, 96, 42))
+                    continue
+                if not pr.weapon and self._draw_shot(pr, sx, sy, snap.tick):
                     continue
                 pygame.draw.circle(c, ink, (sx, sy), 3 if pr.crit else 2)
                 halo = WHITE if pr.weapon == "dandelion" else self.shot_halo  # fluffy seeds, still yellow-cored
@@ -586,6 +617,76 @@ class Renderer:
         c.fill(ink, (sx - 3, sy + 1, 7, 7))
         c.fill(WHITE, (sx - 6, sy + 2, 3, 3))
         c.fill(WHITE, (sx + 4, sy + 2, 3, 3))
+
+    def _draw_corpses(self, fx: Effects, cam_x: int, cam_y: int) -> None:
+        """Dying pests: a white pop, then they flatten, widen and fade into the soil."""
+        c = self.canvas
+        for kind, x, y, left, scale in fx.corpses:
+            sx, sy = round(x / UNITS_PER_PX) - cam_x, round(y / UNITS_PER_PX) - cam_y
+            if not (-30 <= sx < self.w + 30 and -30 <= sy < self.h + 30):
+                continue
+            base = self.sprites.get(kind, scale)
+            if base is None:
+                continue
+            t = 1.0 - left / CORPSE_FRAMES  # 0 just died .. 1 gone
+            w, h = base.get_size()
+            if t < 0.2:  # pop: a bit bigger, white
+                img = self.sprites.get(kind, scale * 1.15, False, True)
+            else:
+                k = (t - 0.2) / 0.8
+                img = pygame.transform.scale(base, (max(1, round(w * (1 + 0.5 * k))), max(1, round(h * (1 - 0.8 * k)))))
+                img.set_alpha(round(255 * (1 - k)))
+            bottom = sy + h // 2
+            c.blit(img, (sx - img.get_width() // 2, bottom - img.get_height()))
+
+    def _draw_shot(self, pr, sx: int, sy: int, tick: int) -> bool:
+        """The bean's own shot, shaped per character and pointed along its flight. False: draw a seed."""
+        style = SHOT_STYLES.get(self.character_sprite)
+        if style is None:
+            return False
+        c, ink = self.canvas, self.ink
+        speed = math.hypot(pr.vx, pr.vy)
+        dx, dy = (pr.vx / speed, pr.vy / speed) if speed > 0 else (1.0, 0.0)
+        nx, ny = -dy, dx  # sideways
+
+        def at(along: float, side: float = 0.0) -> tuple[int, int]:
+            return round(sx + dx * along + nx * side), round(sy + dy * along + ny * side)
+
+        big = 1 if pr.crit else 0
+        if style == "arrow":  # wooden shaft, silver tip, green fletching
+            pygame.draw.line(c, ink, at(-7 - big), at(2 + big), 3)
+            pygame.draw.line(c, (176, 120, 66), at(-6 - big), at(0), 1)
+            pygame.draw.line(c, (126, 217, 87), at(-7 - big, -2), at(-5 - big), 1)
+            pygame.draw.line(c, (126, 217, 87), at(-7 - big, 2), at(-5 - big), 1)
+            c.set_at(at(1 + big), WHITE)
+        elif style == "fireball":  # flickering ball with a short flame trail
+            flick = tick // 3 % 2
+            for k, (r, col) in enumerate(((2, (255, 120, 50)), (2, (255, 170, 70)))):
+                pygame.draw.circle(c, col, at(-5 - k * 3), r - k + flick % 2)
+            pygame.draw.circle(c, ink, (sx, sy), 4 + big)
+            pygame.draw.circle(c, (255, 120, 50), (sx, sy), 3 + big)
+            pygame.draw.circle(c, (255, 212, 94), at(1), 1 + big)
+        elif style == "knife":  # spinning knife: silver blade, dark handle
+            a = tick * 0.6
+            bx, by = math.cos(a), math.sin(a)
+            p1, p2 = (round(sx - bx * 4), round(sy - by * 4)), (round(sx + bx * 4), round(sy + by * 4))
+            pygame.draw.line(c, ink, p1, p2, 3)
+            pygame.draw.line(c, (223, 231, 242), (sx, sy), p2, 1)
+            pygame.draw.line(c, (122, 84, 64), p1, (sx, sy), 1)
+        elif style == "ice":  # icicle: pale diamond with a white core
+            pts = [at(4 + big), at(0, 3), at(-5, 0), at(0, -3)]
+            pygame.draw.polygon(c, ink, pts)
+            pygame.draw.polygon(c, (150, 210, 255), [at(3 + big), at(0, 2), at(-4, 0), at(0, -2)])
+            c.set_at(at(1), WHITE)
+        elif style == "spark":  # crackling spark: jagged line along the flight
+            j = 2 if tick // 2 % 2 else -2
+            pts = [at(-7), at(-4, j), at(-1, -j), at(3)]
+            pygame.draw.lines(c, ink, False, pts, 3)
+            pygame.draw.lines(c, self.shot_core, False, pts, 1)
+            c.set_at(at(3), WHITE)
+        else:
+            return False
+        return True
 
     def _facing(self, key: int, x: float) -> bool:
         """True when the entity last moved left (sprites face right)."""
@@ -1178,7 +1279,6 @@ def _patch_shade(tx: int, ty: int, n: int) -> int:
     v = top + (bottom - top) * fy
     dither = ((tx & 1) * 2 + (ty & 1) * 3) % 4 / 4.0 - 0.375
     return max(0, min(n - 1, int(v * n + dither * 0.9)))
-
 
 
 def _load_tiles(biomes: set[str]) -> tuple[dict[str, list[pygame.Surface]], dict[str, pygame.Surface]]:

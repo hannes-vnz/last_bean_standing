@@ -14,6 +14,9 @@ from ..sim import events as ev
 
 MAX_PARTICLES = 2000
 FLASH_FRAMES = 2
+HURT_FRAMES = 6  # enemy squashes and is pushed back a pixel
+CORPSE_FRAMES = 14  # dying enemy pops, flattens and fades
+MAX_CORPSES = 80
 
 
 @dataclass(slots=True)
@@ -91,6 +94,9 @@ class Effects:
         self.texts: list[FloatingText] = []
         self.rings: list[Ring] = []
         self.flash: dict[int, int] = {}  # enemy id -> frames left
+        self.hurt: dict[int, int] = {}  # enemy id -> frames left of the hit squash
+        self.corpses: list[list] = []  # [kind, x, y, frames left, scale]
+        self._step = 0  # footstep dust counter
         self.trauma = 0.0
         self.hitstop = 0
         self.banner: tuple[str, int] | None = None
@@ -109,6 +115,8 @@ class Effects:
         self.texts.clear()
         self.rings.clear()
         self.flash.clear()
+        self.hurt.clear()
+        self.corpses.clear()
         self.trauma, self.hitstop, self.banner, self.toast = 0.0, 0, None, None
         self.bolts.clear()
         self.beams.clear()
@@ -128,6 +136,7 @@ class Effects:
         for e in events:
             if isinstance(e, ev.EnemyHit):
                 self.flash[e.enemy_id] = FLASH_FRAMES
+                self.hurt[e.enemy_id] = HURT_FRAMES
                 color = c["crit"] if e.crit else c["white"]
                 self.texts.append(FloatingText(e.x, e.y - 14, f"{e.damage:.0f}", color, e.crit, 36))
                 self.burst(e.x, e.y, 3, c["shot_halo"], speed=60, life=10)
@@ -135,6 +144,10 @@ class Effects:
                     self.hitstop = max(self.hitstop, 2)
             elif isinstance(e, ev.EnemyKilled):
                 self.burst(e.x, e.y, 8, self.kind_colors.get(e.kind, c["white"]), speed=110, life=22, size=2)
+                if len(self.corpses) >= MAX_CORPSES:
+                    self.corpses.pop(0)
+                self.corpses.append([e.kind, e.x, e.y, CORPSE_FRAMES, 1.0])
+                self.hurt.pop(e.enemy_id, None)
             elif isinstance(e, ev.EliteSpawned):
                 self.trauma = min(1.0, self.trauma + 0.2)
             elif isinstance(e, ev.BossSpawned):
@@ -238,6 +251,28 @@ class Effects:
         self.rings.append(Ring(x, y, 8, 5, 24, 24, self.colors["crit"]))
         self.burst(x, y, 24, self.colors["crit"], speed=140, life=30, size=2)
 
+    def footstep(self, x: float, y: float, moving: bool) -> None:
+        """Small dust puffs at the feet while walking (called by the renderer once per frame)."""
+        if not moving:
+            self._step = 0
+            return
+        self._step += 1
+        if self._step % 9 == 1:
+            r = self.rng
+            for _ in range(2):
+                self.particles.append(
+                    Particle(
+                        x + r.uniform(-6, 6),
+                        y,
+                        r.uniform(-20, 20),
+                        r.uniform(-25, -5),
+                        12,
+                        12,
+                        self.colors.get("dust", (214, 196, 170)),
+                        2,
+                    )
+                )
+
     def burst(self, x: float, y: float, n: int, color, speed: float = 80, life: int = 20, size: int = 1) -> None:
         r = self.rng
         for _ in range(n):
@@ -276,6 +311,10 @@ class Effects:
                 rings.append(g)
         self.rings = rings
         self.flash = {k: v - 1 for k, v in self.flash.items() if v > 1}
+        self.hurt = {k: v - 1 for k, v in self.hurt.items() if v > 1}
+        for cp in self.corpses:
+            cp[3] -= 1
+        self.corpses = [cp for cp in self.corpses if cp[3] > 0]
         for lst in (self.beams, self.sweeps):
             for item in lst:
                 item[-1] -= 1
