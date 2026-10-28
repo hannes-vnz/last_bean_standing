@@ -6,7 +6,7 @@ Portfolio project: clean code, tests, and later a reinforcement-learning agent t
 
 ![30 seconds of gameplay](docs/media/gameplay.gif)
 
-**Status:** milestone M6: pixel sprites, particles, hit flashes, damage numbers, screen shake, synthesised sound effects, on top of all phase-1 enemies, elites, boss Ildra, menu and local highscores.
+**Status:** milestone M6b (client): online leaderboard with offline queue (server hosting pending); M6: pixel sprites, particles, hit flashes, damage numbers, screen shake, synthesised sound effects, on top of all phase-1 enemies, elites, boss Ildra, menu and local highscores.
 
 Play in the browser: https://hannes-vnz.github.io/last_bean_standing/
 
@@ -15,7 +15,7 @@ Play in the browser: https://hannes-vnz.github.io/last_bean_standing/
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Python 3.11+
 pip install -e ".[dev]"
-python -m lastbean        # WASD/arrows move (you shoot while standing), 1/2/3 pick upgrades, M mute, Esc menu
+python -m lastbean        # WASD/arrows move (you shoot while standing), 1/2/3 pick upgrades, M mute, L leaderboard, Esc menu
 pytest                    # tests
 ruff check                # lint
 ```

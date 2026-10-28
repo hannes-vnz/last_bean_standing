@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev]" -r server/requirements.txt  # server deps: leaderboard round-trip test
       - run: ruff check
       - run: ruff format --check
       - run: pytest -q
