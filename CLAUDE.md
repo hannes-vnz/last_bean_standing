@@ -34,7 +34,7 @@ Roguelite mit Auto-Feuer nach Megabonk-Vorbild (eigene Optik: Bohnen verteidigen
 - `sim/world.py`: `World(seed, WorldConfig.from_content(...))`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; `PlayerInput(player_id, move_x, move_y, choice)`; Level-up pausiert nur im Einzelspiel; Beete als `StageConfig` (eigene Hindernisse, Boss, Faktoren), `stage`/`stage_tick`, Gartentor, Plagenflut; Boni mit Auslösern (`_weapon_hit`, `_on_hit_effects`, `_tick_statuses`), Kartenseltenheit (`offer_tiers`, `upgrade_power`)
 - `sim/weapons.py`: Zusatzwaffen (Fächer, Nova, Aura, Orbit, Wurf), deterministisches `cos_sin`
 - `sim/waves.py` (Budget, Skalierung, XP-Kurve, Biome), `sim/upgrades.py` (Stat-Summen, Kartenwahl), `sim/arena.py` (Hindernisse, Deckung), `sim/enemies.py` (Verhalten je `behavior`, Elite-Affixe, Boss-Muster), `sim/entities.py`, `sim/spatial.py`; neue Verhalten in `BEHAVIORS`/`BOSS_BEHAVIORS`, Hindernisarten in `OBSTACLE_KINDS`
-- `sim/shrines.py`: Schreine aus `shrines.json` (Gier, Mut) je Beet, Aufladen im Kreis, `World._charge_shrines`
+- `sim/shrines.py`: Schreine aus `shrines.json` (Gier, Mut, Fluchstein, Elite) je Beet, Aufladen im Kreis, `World._charge_shrines`
 - `sim/tuning.py`: Zahlen, die noch nicht in `data/` stehen (Annahmen, mit Hannes klären und dann ins JSON)
 - `online/leaderboard.py`: Senden mit Warteschlange im Profil, Rangliste; `online/http.py`: async HTTP ohne Threads (Desktop: asyncio, Browser: fetch); Server-URL `DEFAULT_URL` oder `LBS_LEADERBOARD_URL`
 - `bots.py`: Heuristik-Spieler; `tools/balance.py` misst Todeszeiten über viele Seeds

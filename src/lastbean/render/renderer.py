@@ -48,7 +48,7 @@ def integer_scale(window_w: int, window_h: int) -> int:
     return max(1, min(window_w // CANVAS_W, window_h // CANVAS_H))
 
 
-SHRINE_COLORS = {"greed": (255, 212, 94), "courage": (126, 217, 87)}
+SHRINE_COLORS = {"greed": (255, 212, 94), "courage": (126, 217, 87), "curse": (214, 92, 110), "elite": (255, 154, 60)}
 WALK_SQUASH = (1, 0, -1, 0)  # per walk phase: stretch, rest, squash, rest
 SHADOW = (60, 42, 40)
 # The bean's own shot per character (sprite id -> style in Renderer._draw_shot); others shoot seeds.

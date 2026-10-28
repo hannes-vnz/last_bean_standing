@@ -252,7 +252,12 @@ class Effects:
                 self.rings.append(Ring(e.x, e.y, 10, 7, 30, 30, gold))
                 self.burst(e.x, e.y, 30, gold, speed=160, life=34, size=2)
                 self.banner = (f"{e.name}!", 110)
-                reward = f"+{GREED_XP_PCT:.0f} % XP" if e.kind == "greed" else "Gratis-Karte (mind. selten)"
+                reward = {
+                    "greed": f"+{GREED_XP_PCT:.0f} % XP",
+                    "courage": "Gratis-Karte (mind. selten)",
+                    "curse": "Der nächste Boss kommt doppelt, Bonus-Karte (legendär)",
+                    "elite": "3 Elite-Gegner! Jeder lässt eine Truhe fallen",
+                }.get(e.kind, "")
                 self.subtitle = (f"{reward} · Schwierigkeit {round(e.difficulty * 100)} %", 110)
             elif isinstance(e, ev.PotBroken):
                 self.burst(e.x, e.y, 10, (226, 150, 120), speed=90, life=18, size=2)
