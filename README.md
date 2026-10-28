@@ -6,7 +6,7 @@ Portfolio project: clean code, tests, and later a reinforcement-learning agent t
 
 ![30 seconds of gameplay](docs/media/gameplay.gif)
 
-**Status:** milestone M6b (client): online leaderboard with offline queue (server hosting pending); M6: pixel sprites, particles, hit flashes, damage numbers, screen shake, synthesised sound effects, on top of all phase-1 enemies, elites, boss Ildra, menu and local highscores.
+**Status:** working towards 1.0 (docs/ROADMAP.md): big map, items and seed chests, story frame (docs/STORY.md), phones first; earlier: online leaderboard, pixel sprites, particles, hit flashes, damage numbers, screen shake, synthesised sound effects, on top of all phase-1 enemies, elites, boss Ildra, menu and local highscores.
 
 Play in the browser, made for phones and tablets first (touch joystick, portrait or landscape): https://hannes-vnz.github.io/last_bean_standing/  
 On iPhone: Share → Add to Home Screen for fullscreen. Pinch with two fingers (or mouse wheel, +/-) to zoom.
@@ -50,7 +50,7 @@ Measured with `python tools/bench.py --render` (Apple Silicon, Python 3.12, head
 | 350 (cap) | 2.6 ms | 2.2 ms | 4.8 ms |
 | 200, browser (pygbag 0.9.3, F5) | 1.7 ms | 2.4 ms | 4.1 ms |
 
-Balancing (`python tools/balance.py --seeds 20`, heuristic bot as ranger): median death 3:14 (2:23 to 4:34) at median level 14; level 2 after about 10 s, level 10 at about 1:40. A real run peaks at about 350 enemies and 2.9 ms simulation per step around 5:30.
+Balancing (`python tools/balance.py --seeds 20`, heuristic bot as ranger): median death 3:26 (2:44 to 6:03) at median level 15; level 2 after about 10 s, level 10 at about 1:40. A real run peaks at about 350 enemies and 2.9 ms simulation per step around 5:30.
 
 ## Assets
 

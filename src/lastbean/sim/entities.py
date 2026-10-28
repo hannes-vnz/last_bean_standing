@@ -175,6 +175,16 @@ class Stats:
     damage_taken_mult: float
     far_damage_pct: float = 0.0  # extra damage on targets farther than far_threshold
     far_threshold: float = 0.0
+    xp_mult: float = 1.0
+    gold_mult: float = 1.0
+    luck: float = 0.0
+    cooldown_mult: float = 1.0
+    elite_damage_mult: float = 1.0
+    standing_damage_mult: float = 1.0
+    thorns: float = 0.0
+    heal_per_kill: float = 0.0
+    i_frames_mult: float = 1.0
+    explode_on_kill_pct: float = 0.0
 
 
 @dataclass(slots=True)
@@ -201,6 +211,11 @@ class Player:
     slow_pct: float = 0.0
     damage_taken: float = 0.0
     ability_cooldown: float = 0.0
+    seeds: int = 0
+    items: dict[str, int] = field(default_factory=dict)
+    rerolls: int = 0
+    banishes: int = 0
+    banished: set[str] = field(default_factory=set)
 
     @property
     def max_hp(self) -> float:
@@ -293,6 +308,7 @@ class XpOrb:
     y: float
     value: float
     magnet_to: int | None = None  # player id once a magnet pulls it
+    kind: str = "xp"  # "xp", "seeds" or "heal": all fly to the player the same way
 
 
 @dataclass(slots=True)

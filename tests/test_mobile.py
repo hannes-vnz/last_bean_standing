@@ -148,3 +148,13 @@ def test_window_to_canvas(renderer):
     window = pygame.Surface((600, 1300))
     r.present(window)
     assert r.window_to_canvas(300, 650) == (150, 325)
+
+
+@pytest.mark.parametrize("size", [(300, 650), (640, 360)])
+def test_prologue_fits(renderer, size):
+    from lastbean.ui import screens
+
+    r = renderer(size)
+    buttons = screens.draw_prologue(r)
+    assert [b.action for b in buttons] == ["prologue_done"]
+    assert pygame.Rect(0, 0, *size).contains(buttons[0].rect)

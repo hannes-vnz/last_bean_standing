@@ -399,7 +399,57 @@ def validate():
         if set(m["biome_weights"]) - biomes: errs.append(f"Mob {m['id']}: unbekanntes Biom")
     for u in UPGRADES:
         if u["rarity"] in ("epic", "legendary") and u["unlocked_at_start"]: errs.append(f"{u['id']}: epische/legendäre Upgrades müssen gesperrt starten")
+    item_ids = ids(ITEMS)
+    if len(set(item_ids)) != len(item_ids): errs.append("doppelte IDs in items")
+    if set(i["rarity"] for i in ITEMS) - set(BALANCE["rarity_weights"]): errs.append("Items: unbekannte Seltenheit")
     return errs
+
+
+# ---------------------------------------------------------------------------- Items und Laufwirtschaft (Paket C, 28.10.2026)
+# Story "Die große Ernte" (docs/STORY.md): Items sind Gartenwerkzeug und Gärtnerkram aus Saatkisten,
+# Gold heißt Samenkörner. Items wirken über dieselben Stat-Schlüssel wie Upgrades und stapeln sich.
+def item(id, name, rar, text, **effects):
+    return dict(id=id, name=name, rarity=rar, text=text, effects=[dict(stat=k, value=v) for k, v in effects.items()])
+ITEMS = [
+ item("watering_can", "Gießkanne", "common", "+8 % Angriffstempo.", attack_speed_pct=8),
+ item("compost", "Kompost", "common", "+12 Max-HP.", max_hp_flat=12),
+ item("garden_gloves", "Gartenhandschuhe", "common", "+8 % Schaden.", damage_pct=8),
+ item("straw_hat", "Strohhut", "common", "-5 % erlittener Schaden.", damage_taken_pct=-5),
+ item("seed_pouch", "Samenbeutel", "common", "+15 % Samenkörner.", gold_gain_pct=15),
+ item("rake", "Rechen", "common", "+20 % Aufsammelradius.", pickup_radius_pct=20),
+ item("snail_shell", "Schneckenhaus", "common", "+0,4 HP pro Sekunde.", regen_per_s=0.4),
+ item("sprout_boots", "Keimstiefel", "common", "+6 % Lauftempo.", move_speed_pct=6),
+ item("magnifier", "Lupe", "common", "+5 % Krit-Chance.", crit_chance_pct=5),
+ item("sundial", "Sonnenuhr", "common", "-10 % Abklingzeit der Fähigkeit.", cooldown_pct=-10),
+ item("earthworm", "Regenwurm", "common", "+10 % XP.", xp_gain_pct=10),
+ item("garden_twine", "Gartenschnur", "common", "+8 % Reichweite.", range_pct=8),
+ item("clover", "Kleeblatt", "uncommon", "+1 Glück: seltenere Karten und Items.", luck=1),
+ item("trellis", "Rankhilfe", "uncommon", "Geschosse durchbohren +1 Gegner.", pierce_add=1),
+ item("pruning_shears", "Gartenschere", "uncommon", "+25 % Krit-Schaden.", crit_mult_add_pct=25),
+ item("scarecrow", "Vogelscheuche", "uncommon", "+20 % Schaden gegen Elites und Bosse.", elite_damage_pct=20),
+ item("deep_roots", "Tiefe Wurzeln", "uncommon", "+20 % Schaden, solange du stehst.", standing_damage_pct=20),
+ item("nettle", "Brennnessel", "uncommon", "Gegner, die dich berühren, nehmen 8 Schaden.", thorns_flat=8),
+ item("honey_pot", "Honigtopf", "uncommon", "Heilt 0,3 HP pro Kill.", heal_per_kill=0.3),
+ item("cold_frame", "Frühbeetfenster", "uncommon", "+30 % Schutzzeit nach Treffern.", i_frames_pct=30),
+ item("seed_bomb", "Samenbombe", "uncommon", "8 % Chance: Kills explodieren (Radius 60, 50 % Schaden).", explode_on_kill_pct=8),
+ item("twin_pod", "Zwillingsschote", "rare", "+1 zusätzlicher Schuss.", extra_attacks=1),
+ item("sunflower", "Sonnenblume", "rare", "+15 % Schaden, +10 % Reichweite.", damage_pct=15, range_pct=10),
+ item("beehive", "Bienenstock", "rare", "+15 % Angriffstempo, +5 % Lauftempo.", attack_speed_pct=15, move_speed_pct=5),
+ item("rain_barrel", "Regentonne", "rare", "+30 Max-HP, +0,5 HP pro Sekunde.", max_hp_flat=30, regen_per_s=0.5),
+ item("golden_leaf", "Goldblatt", "rare", "+30 % Samenkörner, +1 Glück.", gold_gain_pct=30, luck=1),
+ item("oak_acorn", "Eichel der alten Eiche", "epic", "+25 % Schaden, +25 Max-HP.", damage_pct=25, max_hp_flat=25),
+ item("greenhouse", "Gewächshaus", "epic", "+30 % XP, +40 % Aufsammelradius.", xp_gain_pct=30, pickup_radius_pct=40),
+ item("gardeners_spade", "Spaten der Gärtnerin", "epic", "+1 zusätzlicher Schuss, Geschosse durchbohren +1 Gegner.", extra_attacks=1, pierce_add=1),
+ item("first_seed", "Die erste Saat", "legendary", "+30 % Schaden, +20 % Angriffstempo, +10 % Krit-Chance.", damage_pct=30, attack_speed_pct=20, crit_chance_pct=10),
+]
+ECONOMY = dict(
+    currency=dict(id="seeds", name="Samenkörner", normal_drop_pct=35, normal_value=1, elite_value=10, boss_value=40),
+    chests=dict(count=90, price_start=15, price_growth_pct=40, item_min_rarity={"map": "common", "elite": "rare", "boss": "epic"}),
+    pots=dict(count=160, contents=dict(seeds=70, heal=20, magnet=5, nothing=5), seeds_min=3, seeds_max=6),
+    heal_orb_hp=15,
+    rerolls_per_run=2, banishes_per_run=2,
+    text="Samenkörner fallen von Gegnern (35 % je normaler Gegner, Elite 10, Boss 40) und aus Vasen. Saatkisten liegen auf der Karte und kosten Samenkörner; jede geöffnete Kiste macht die nächste 40 % teurer. Elite- und Bosskisten sind gratis und enthalten mindestens seltene bzw. epische Items.",
+)
 
 # ---------------------------------------------------------------------------- Balance-Modell
 def budget(w): b = BALANCE["budget"]; return b["base"] + b["linear"] * w + b["quadratic"] * w * w
@@ -423,7 +473,7 @@ def write_json():
     DATA.mkdir(exist_ok=True)
     files = {"balance.json": BALANCE, "characters.json": [dict(c, vfx=VFX[c["id"]]) for c in CHARACTERS], "upgrades.json": UPGRADES, "mobs.json": MOBS,
              "elite.json": dict(ELITE, affixes=ELITE_AFFIXES, mini_boss=MINI_BOSS), "shrines.json": dict(shrines=SHRINES, rules=SHRINE_RULES), "shop.json": dict(currency=CURRENCY, workshop_rules=WORKSHOP_RULES, workshop=WORKSHOP, run_packs=RUN_PACKS, cosmetics=COSMETICS), "swarm.json": SWARM, "bosses.json": BOSSES, "biomes.json": [dict(b, palette=PALETTES[b["id"]]) for b in BIOMES], "style.json": STYLE,
-             "challenges.json": CHALLENGES, "skins.json": SKINS, "modes.json": MODES}
+             "challenges.json": CHALLENGES, "skins.json": SKINS, "modes.json": MODES, "items.json": dict(items=ITEMS, economy=ECONOMY)}
     for n, d in files.items():
         (DATA / n).write_text(json.dumps(d, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
@@ -499,6 +549,12 @@ def md():
         P(f"| `{b['id']}` | {b['name']} | {b['rect_tiles']} | {b['effect']} | {b.get('impl_phase', 1)} |")
     P("\nLayout (seit 28.10.2026 große Karte): Lichtung in der Mitte (30 x 30, überlagert die Quadranten), Wald oben links, Wüste oben rechts, Eis unten links, Lava unten rechts. Hindernisse sind pro Biom mit festem Seed verteilt.\n")
     P("Biom-Farben (Pastell): " + "; ".join(f"{b['name']}: Boden {PALETTES[b['id']]['ground']}, Details {PALETTES[b['id']]['detail']}" for b in BIOMES) + ". Gefahren (Lava, Sand, Eisglanz) heben sich über die Farbe `hazard` ab.\n")
+    P(f"## Items ({len(ITEMS)}, aus Saatkisten)\n")
+    P(ECONOMY["text"] + "\n")
+    P("| ID | Name | Seltenheit | Wirkung |\n|---|---|---|---|")
+    for i in ITEMS:
+        P(f"| `{i['id']}` | {i['name']} | {i['rarity']} | {i['text']} |")
+    P("")
     P("## Punkte\n")
     P("`Punkte = 2 x Sekunden + 5 x Kills + 20 x Level + 500 x Bosse` (Sieg über den Schnitter +20000; in der Schwarmflut +1000 je 10 s mal Flut-Multiplikator, der Schwierigkeitsfaktor erhöht die Punkte). Highscore je Charakter und gesamt, lokal gespeichert. Modus „Ewige Nacht“ (nach Challenge „Erreiche 20:00“): Gegner-HP x1,5, XP x1,25, Punkte x1,5.\n")
     P("## Funkelsteine, Werkstatt und Startpakete (Meta-Währung)\n")

@@ -127,6 +127,8 @@ class Audio:
                 self.play("level")
             elif isinstance(e, ev.ChestOpened):
                 self.play("chest")
+            elif isinstance(e, ev.PotBroken):
+                self.play("blocked")
             elif isinstance(e, ev.BossSpawned):
                 self.play("boss")
             elif isinstance(e, ev.HazardActivated) and e.kind == "explosion":

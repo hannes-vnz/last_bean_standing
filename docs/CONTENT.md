@@ -203,6 +203,43 @@ Layout (seit 28.10.2026 große Karte): Lichtung in der Mitte (30 x 30, überlage
 
 Biom-Farben (Pastell): Lichtung (Start): Boden #b9e08f, Details #9fcf72; Wald: Boden #a6dd82, Details #83c564; Wüste: Boden #f6dfa8, Details #e8c47a; Eis: Boden #d6ecff, Details #b4d6f5; Lava: Boden #ffc9b0, Details #ff9f86. Gefahren (Lava, Sand, Eisglanz) heben sich über die Farbe `hazard` ab.
 
+## Items (30, aus Saatkisten)
+
+Samenkörner fallen von Gegnern (35 % je normaler Gegner, Elite 10, Boss 40) und aus Vasen. Saatkisten liegen auf der Karte und kosten Samenkörner; jede geöffnete Kiste macht die nächste 40 % teurer. Elite- und Bosskisten sind gratis und enthalten mindestens seltene bzw. epische Items.
+
+| ID | Name | Seltenheit | Wirkung |
+|---|---|---|---|
+| `watering_can` | Gießkanne | common | +8 % Angriffstempo. |
+| `compost` | Kompost | common | +12 Max-HP. |
+| `garden_gloves` | Gartenhandschuhe | common | +8 % Schaden. |
+| `straw_hat` | Strohhut | common | -5 % erlittener Schaden. |
+| `seed_pouch` | Samenbeutel | common | +15 % Samenkörner. |
+| `rake` | Rechen | common | +20 % Aufsammelradius. |
+| `snail_shell` | Schneckenhaus | common | +0,4 HP pro Sekunde. |
+| `sprout_boots` | Keimstiefel | common | +6 % Lauftempo. |
+| `magnifier` | Lupe | common | +5 % Krit-Chance. |
+| `sundial` | Sonnenuhr | common | -10 % Abklingzeit der Fähigkeit. |
+| `earthworm` | Regenwurm | common | +10 % XP. |
+| `garden_twine` | Gartenschnur | common | +8 % Reichweite. |
+| `clover` | Kleeblatt | uncommon | +1 Glück: seltenere Karten und Items. |
+| `trellis` | Rankhilfe | uncommon | Geschosse durchbohren +1 Gegner. |
+| `pruning_shears` | Gartenschere | uncommon | +25 % Krit-Schaden. |
+| `scarecrow` | Vogelscheuche | uncommon | +20 % Schaden gegen Elites und Bosse. |
+| `deep_roots` | Tiefe Wurzeln | uncommon | +20 % Schaden, solange du stehst. |
+| `nettle` | Brennnessel | uncommon | Gegner, die dich berühren, nehmen 8 Schaden. |
+| `honey_pot` | Honigtopf | uncommon | Heilt 0,3 HP pro Kill. |
+| `cold_frame` | Frühbeetfenster | uncommon | +30 % Schutzzeit nach Treffern. |
+| `seed_bomb` | Samenbombe | uncommon | 8 % Chance: Kills explodieren (Radius 60, 50 % Schaden). |
+| `twin_pod` | Zwillingsschote | rare | +1 zusätzlicher Schuss. |
+| `sunflower` | Sonnenblume | rare | +15 % Schaden, +10 % Reichweite. |
+| `beehive` | Bienenstock | rare | +15 % Angriffstempo, +5 % Lauftempo. |
+| `rain_barrel` | Regentonne | rare | +30 Max-HP, +0,5 HP pro Sekunde. |
+| `golden_leaf` | Goldblatt | rare | +30 % Samenkörner, +1 Glück. |
+| `oak_acorn` | Eichel der alten Eiche | epic | +25 % Schaden, +25 Max-HP. |
+| `greenhouse` | Gewächshaus | epic | +30 % XP, +40 % Aufsammelradius. |
+| `gardeners_spade` | Spaten der Gärtnerin | epic | +1 zusätzlicher Schuss, Geschosse durchbohren +1 Gegner. |
+| `first_seed` | Die erste Saat | legendary | +30 % Schaden, +20 % Angriffstempo, +10 % Krit-Chance. |
+
 ## Punkte
 
 `Punkte = 2 x Sekunden + 5 x Kills + 20 x Level + 500 x Bosse` (Sieg über den Schnitter +20000; in der Schwarmflut +1000 je 10 s mal Flut-Multiplikator, der Schwierigkeitsfaktor erhöht die Punkte). Highscore je Charakter und gesamt, lokal gespeichert. Modus „Ewige Nacht“ (nach Challenge „Erreiche 20:00“): Gegner-HP x1,5, XP x1,25, Punkte x1,5.

@@ -61,13 +61,15 @@ class Effects:
         self.trauma = 0.0
         self.hitstop = 0
         self.banner: tuple[str, int] | None = None
+        self.toast: tuple[str, int] | None = None  # small message, e.g. the item just found
+        self.item_info: dict[str, tuple[str, str]] = {}  # item id -> (name, text), set by the app
 
     def reset(self) -> None:
         self.particles.clear()
         self.texts.clear()
         self.rings.clear()
         self.flash.clear()
-        self.trauma, self.hitstop, self.banner = 0.0, 0, None
+        self.trauma, self.hitstop, self.banner, self.toast = 0.0, 0, None, None
 
     # ------------------------------------------------------------------ events
 
@@ -116,6 +118,18 @@ class Effects:
                 self.level_up(*players[e.player_id])
             elif isinstance(e, ev.ChestDropped):
                 self.burst(e.x, e.y, 12, c["crit"], speed=90, life=26)
+            elif isinstance(e, ev.ItemGained):
+                name, text = self.item_info.get(e.item_id, (e.item_id, ""))
+                stack = f" x{e.count}" if e.count > 1 else ""
+                self.toast = (f"{name}{stack}: {text}", 180)
+                if players and e.player_id in players:
+                    self.level_up(*players[e.player_id])
+            elif isinstance(e, ev.ChestLocked):
+                if players and e.player_id in players:
+                    x, y = players[e.player_id]
+                    self.texts.append(FloatingText(x, y - 40, f"{e.price} Samen nötig", c["white"], False, 60))
+            elif isinstance(e, ev.PotBroken):
+                self.burst(e.x, e.y, 10, (226, 150, 120), speed=90, life=18, size=2)
 
     def level_up(self, x: float, y: float) -> None:
         self.rings.append(Ring(x, y, 8, 5, 24, 24, self.colors["crit"]))
@@ -163,6 +177,9 @@ class Effects:
         if self.banner:
             text, frames = self.banner
             self.banner = (text, frames - 1) if frames > 1 else None
+        if self.toast:
+            text, frames = self.toast
+            self.toast = (text, frames - 1) if frames > 1 else None
 
     def shake(self, max_px: int = 6) -> tuple[int, int]:
         """Screen offset from trauma: strength grows with trauma squared."""
