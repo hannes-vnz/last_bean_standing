@@ -65,3 +65,15 @@ def test_simulation_counts_challenge_statistics(content):
     r = w.result().to_dict()
     assert r["stats"]["crits"] > 0 and r["stats"]["kills_seedbed"] == r["kills"]
     assert "flawless_wave" in r["stats"] or r["damage_taken"] > 0
+
+
+def test_eternal_night_mode(content):
+    normal = World(4, WorldConfig.from_content(content))
+    night = World(4, WorldConfig.from_content(content, mode="eternal_night"))
+    assert night.config.mode_hp_mult == 1.5 and night.config.mode_score_mult == 1.5
+    assert night.reward_mult == normal.reward_mult * 1.25
+    mob = normal.config.mobs[0]
+    a, b = normal._spawn_enemy(mob, 10.0, 10.0, []), night._spawn_enemy(mob, 10.0, 10.0, [])
+    assert b.max_hp == a.max_hp * 1.5
+    r = night.result().to_dict()
+    assert r["mode"] == "eternal_night" and night.snapshot().mode == "eternal_night"

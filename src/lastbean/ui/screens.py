@@ -127,7 +127,7 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
 
 
 def draw_characters(r: Renderer, characters: list, current: str, best: dict[str, Any], skins: dict | None = None,
-                    skin_label: str = "") -> list[Button]:  # fmt: skip
+                    skin_label: str = "", mode_label: str = "") -> list[Button]:  # fmt: skip
     """Pick a bean: one card per playable character with sprite, role, passive and active ability."""
     _backdrop(r)
     cx = r.w // 2
@@ -166,6 +166,7 @@ def draw_characters(r: Renderer, characters: list, current: str, best: dict[str,
                 y += 12
         buttons.append(Button(rect, f"char:{c.id}"))
     row = [("Zurück", "menu")] + ([(skin_label, "skin")] if skin_label else [])
+    row += [(mode_label, "mode")] if mode_label else []
     buttons += _button_row(r, top + 36 + rows * (ch + gap) + 6, row, width=160)
     if not r.touch and r.w >= 500:
         r.text("Antippen oder 1 bis 6 · Enter: die markierte Bohne", (cx, r.h - 14), center=True)
@@ -482,8 +483,13 @@ def draw_board(r: Renderer, board: dict, profile: dict[str, Any], enabled: bool)
     panel_h = 30 + rows * 18
     top = _top(r, 70 + panel_h + 80)
     r.text("Bestenliste", (cx, top + 14), r.big_font, center=True)
-    tabs = _button_row(r, top + 32, [(v, f"period:{k}") for k, v in PERIOD_NAMES.items()], width=90)
+    tab_items = [(v, f"period:{k}") for k, v in PERIOD_NAMES.items()]
+    if "eternal_night" in profile.get("unlocked", {}).get("modes", []):
+        tab_items.append(("Nacht" if board.get("mode") == "eternal_night" else "Normal", "board_mode"))
+    tabs = _button_row(r, top + 32, tab_items, width=90)
     for b in tabs:  # mark the active tab
+        if not b.action.startswith("period:"):
+            continue
         if b.action == f"period:{board['period']}":
             r.canvas.fill(r.crit_color, b.rect)
             img = r.font.render(PERIOD_NAMES[board["period"]], False, r.ink)
