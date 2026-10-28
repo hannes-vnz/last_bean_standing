@@ -540,7 +540,7 @@ class Renderer:
         for chx, chy, kind in snap.chests:
             dot = self.crit_color if kind != "map" else (150, 90, 50)
             c.set_at((box.x + int(chx * sx), box.y + int(chy * sy)), dot)
-        for kind, hx, hy, _, _ in snap.shrines:
+        for kind, hx, hy, _, _ in snap.shrines if snap.shrine_radar else ():  # workshop "Schrein-Radar"
             hx_, hy_ = box.x + int(hx * sx), box.y + int(hy * sy)
             c.fill(self.ink, (hx_ - 1, hy_ - 1, 3, 3))
             c.set_at((hx_, hy_), SHRINE_COLORS.get(kind, WHITE))

@@ -17,6 +17,7 @@ EXTRA_ATTACK_DAMAGE = 0.6  # balance.json stat_model
 # Shrines (shrines.json; counts there are per run, spread evenly over the beds)
 GREED_XP_PCT = 10.0  # (text) Gier-Schrein: "+10 % XP-Gewinn ... je Aktivierung (stapelt)"
 SHRINE_START_CLEARANCE = 300.0  # no shrine right at the start of a bed
+START_SHIELD_S = 20.0  # (text) workshop "Startschild": "verfällt nach 20 s"
 COURAGE_MIN_RARITY = "rare"  # (text) Mut-Schrein: "Gratis-Upgradewahl mit mindestens Seltenheit selten"
 
 # Performance (28.10.2026, measured: cost grows with the enemy count)
