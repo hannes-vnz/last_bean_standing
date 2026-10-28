@@ -9,8 +9,11 @@ from __future__ import annotations
 import pygame
 
 from ..data.schema import Content
+from ..sim.tuning import BOSS_RADIUS
 from ..sim.waves import biome_at
 from ..sim.world import Snapshot, WorldConfig
+from .effects import Effects
+from .sprites import SpriteBank
 
 CANVAS_W, CANVAS_H = 640, 360
 # World units per canvas pixel (DESIGN.md section 16: 1 tile = 32 units = 16 px).
@@ -72,19 +75,33 @@ class Renderer:
             "legendary": hex_rgb(style.crit_text),
         }
         self.selected = 0
+        self.sprites = SpriteBank()
+        self.character_sprite = "ranger"
+        self.base_radius = {m.id: float(m.radius) for m in content.mobs}
+        self.base_radius.update({b.id: BOSS_RADIUS for b in content.bosses})
+        self._last_x: dict[int, float] = {}
+        self._flipped: dict[int, bool] = {}
+        self._number_cache: dict = {}
         self.set_arena(WorldConfig.from_content(content))
         # Outside the arena: ink darkened, so the ink border and outlines stay visible.
         self.void = tuple(v * 3 // 5 for v in self.ink)
         self.font = pygame.font.Font(None, 16)
         self.big_font = pygame.font.Font(None, 32)
+        self.mid_font = pygame.font.Font(None, 22)
 
-    def draw(self, snap: Snapshot, focus_player: int = 0, debug: str | None = None) -> pygame.Surface:
+    def draw(
+        self, snap: Snapshot, focus_player: int = 0, debug: str | None = None, effects: Effects | None = None
+    ) -> pygame.Surface:
         c = self.canvas
         c.fill(self.void)
         focus = next((p for p in snap.players if p.player_id == focus_player), snap.players[0])
         # Camera: top-left corner of the view in canvas pixels, rounded to whole pixels.
         cam_x = round(focus.x / UNITS_PER_PX) - CANVAS_W // 2
         cam_y = round(focus.y / UNITS_PER_PX) - CANVAS_H // 2
+        if effects:
+            dx, dy = effects.shake()
+            cam_x, cam_y = cam_x + dx, cam_y + dy
+        flash = effects.flash if effects else {}
 
         self._draw_ground(c, cam_x, cam_y)
         ink = self.ink
@@ -108,17 +125,19 @@ class Renderer:
         for e in snap.enemies:
             sx, sy = round(e.x / UNITS_PER_PX) - cam_x, round(e.y / UNITS_PER_PX) - cam_y
             r = max(2, round(e.radius / UNITS_PER_PX))
-            if -r - 3 <= sx < CANVAS_W + r + 3 and -r - 3 <= sy < CANVAS_H + r + 3:
+            if -r - 16 <= sx < CANVAS_W + r + 16 and -r - 16 <= sy < CANVAS_H + r + 16:
                 if e.elite:  # golden halo so elites stand out in a crowd
-                    pygame.draw.circle(c, self.crit_color, (sx, sy), r + 3)
-                pygame.draw.circle(c, ink, (sx, sy), r + 1)
-                pygame.draw.circle(c, self.enemy_colors.get(e.kind, self.enemy_default), (sx, sy), r)
-                if e.boss:
-                    pygame.draw.circle(c, WHITE, (sx - r // 3, sy - r // 3), max(2, r // 4))
+                    pygame.draw.circle(c, self.crit_color, (sx, sy), r + 4)
+                flip = self._facing(e.eid, e.x)
+                img = self.sprites.get(e.kind, self._sprite_scale(e), flip, e.eid in flash)
+                if img is not None:
+                    c.blit(img, (sx - img.get_width() // 2, sy - img.get_height() // 2))
+                else:
+                    pygame.draw.circle(c, ink, (sx, sy), r + 1)
+                    color = WHITE if e.eid in flash else self.enemy_colors.get(e.kind, self.enemy_default)
+                    pygame.draw.circle(c, color, (sx, sy), r)
                 if e.shield_frac > 0:
-                    pygame.draw.circle(c, WHITE, (sx, sy), r + 1, 1)
-                if e.hp_frac < 1.0 and not e.boss:
-                    c.fill(WHITE, (sx - 1, sy - 1, 2, 2))
+                    pygame.draw.circle(c, WHITE, (sx, sy), r + 2, 1)
 
         for s in snap.enemy_shots:
             sx, sy = round(s.x / UNITS_PER_PX) - cam_x, round(s.y / UNITS_PER_PX) - cam_y
@@ -135,11 +154,16 @@ class Renderer:
             if not p.alive:
                 continue
             sx, sy = round(p.x / UNITS_PER_PX) - cam_x, round(p.y / UNITS_PER_PX) - cam_y
-            blink = p.invulnerable and (snap.tick // 4) % 2
-            body = pygame.Rect(sx - 8, sy - 8, 16, 16)
-            c.fill(ink, body)
-            c.fill(WHITE if blink else self.player_body, body.inflate(-2, -2))
-            bar = pygame.Rect(sx - 9, sy - 13, 18, 3)
+            blink = bool(p.invulnerable and (snap.tick // 4) % 2)
+            bob = 1 if (not p.standing and (snap.tick // 8) % 2) else 0  # little hop while walking
+            img = self.sprites.get(self.character_sprite, 1.0, self._facing(-1 - p.player_id, p.x), blink)
+            if img is not None:
+                c.blit(img, (sx - img.get_width() // 2, sy - img.get_height() // 2 - bob))
+            else:
+                body = pygame.Rect(sx - 8, sy - 8, 16, 16)
+                c.fill(ink, body)
+                c.fill(WHITE if blink else self.player_body, body.inflate(-2, -2))
+            bar = pygame.Rect(sx - 9, sy - 15, 18, 3)
             c.fill(ink, bar)
             c.fill(self.hp_color, (bar.x + 1, bar.y + 1, round(16 * p.hp / p.max_hp), 1))
 
@@ -150,7 +174,11 @@ class Renderer:
                 pygame.draw.circle(c, self.shot_halo, (sx, sy), 2 if pr.crit else 1)
                 c.set_at((sx, sy), self.shot_core)
 
+        if effects:
+            self._draw_effects(effects, cam_x, cam_y)
         self._draw_hud(snap, focus)
+        if effects and effects.banner:
+            self.text(effects.banner[0], (CANVAS_W // 2, 70), self.big_font, center=True)
         if snap.boss_bar:
             self._draw_boss_bar(snap.boss_bar)
         if debug:
@@ -170,6 +198,52 @@ class Renderer:
         if snap.difficulty != 1.0:
             hud += f"   Schwierigkeit {round(snap.difficulty * 100)} %"
         self.text(hud, (6, 9))
+
+    def _facing(self, key: int, x: float) -> bool:
+        """True when the entity last moved left (sprites face right)."""
+        last = self._last_x.get(key)
+        self._last_x[key] = x
+        flipped = self._flipped.get(key, False)
+        if last is not None and abs(x - last) > 0.05:
+            flipped = x < last
+            self._flipped[key] = flipped
+        return flipped
+
+    def _sprite_scale(self, e) -> float:
+        """Elites are drawn bigger by their size factor; base sprites match the base radius."""
+        base = self.base_radius.get(e.kind)
+        return e.radius / base if base else 1.0
+
+    def _draw_effects(self, fx: Effects, cam_x: int, cam_y: int) -> None:
+        c = self.canvas
+        for g in fx.rings:
+            sx, sy = round(g.x / UNITS_PER_PX) - cam_x, round(g.y / UNITS_PER_PX) - cam_y
+            pygame.draw.circle(c, g.color, (sx, sy), max(1, round(g.radius / UNITS_PER_PX)), 2)
+        for p in fx.particles:
+            sx, sy = round(p.x / UNITS_PER_PX) - cam_x, round(p.y / UNITS_PER_PX) - cam_y
+            if 0 <= sx < CANVAS_W and 0 <= sy < CANVAS_H:
+                size = p.size if p.life > p.max_life // 3 else 1
+                c.fill(p.color, (sx, sy, size, size))
+        for t in fx.texts:
+            sx, sy = round(t.x / UNITS_PER_PX) - cam_x, round(t.y / UNITS_PER_PX) - cam_y
+            if 0 <= sx < CANVAS_W and 0 <= sy < CANVAS_H:
+                font = self.font if not t.big else self.mid_font
+                img = self._number_cache.get((t.text, t.color, t.big))
+                if img is None:
+                    img = self._outlined(t.text, font, t.color)
+                    if len(self._number_cache) > 500:
+                        self._number_cache.clear()
+                    self._number_cache[(t.text, t.color, t.big)] = img
+                c.blit(img, (sx - img.get_width() // 2, sy - img.get_height() // 2))
+
+    def _outlined(self, text: str, font, color) -> pygame.Surface:
+        inner = font.render(text, True, color)
+        outline = font.render(text, True, self.ink)
+        surf = pygame.Surface((inner.get_width() + 2, inner.get_height() + 2), pygame.SRCALPHA)
+        for dx, dy in ((0, 1), (2, 1), (1, 0), (1, 2)):
+            surf.blit(outline, (dx, dy))
+        surf.blit(inner, (1, 1))
+        return surf
 
     def _draw_hazards(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
         """Warnings are coral and blink at 2 Hz (DESIGN.md section 16); active zones are soft and translucent."""
@@ -305,3 +379,17 @@ def _wrap(text: str, font: pygame.font.Font, width: int) -> list[str]:
             lines.append(line)
             line = word
     return [*lines, line] if line else lines
+
+
+def effect_palette(r: Renderer) -> tuple[dict, dict]:
+    """Colours the effects use, taken from the renderer's style colours."""
+    colors = {
+        "white": WHITE,
+        "crit": r.crit_color,
+        "shot_core": r.shot_core,
+        "shot_halo": r.shot_halo,
+        "telegraph": r.telegraph,
+        "poison": r.poison,
+        "leaf": hex_rgb(r.palettes["forest"].get("tree") or "#5aa05a"),
+    }
+    return colors, dict(r.enemy_colors)

@@ -17,9 +17,11 @@ import time
 
 import pygame
 
+from .audio import Audio
 from .data import load_content
 from .meta.profile import ProfileStore, default_store, new_profile, record_run, set_nickname, valid_nickname
-from .render.renderer import CANVAS_H, CANVAS_W, Renderer
+from .render.effects import Effects
+from .render.renderer import CANVAS_H, CANVAS_W, Renderer, effect_palette
 from .sim import DT, PlayerInput, World, WorldConfig
 from .ui import screens
 
@@ -171,6 +173,8 @@ async def run(
     pygame.display.set_caption("Last Bean Standing")
     window = pygame.display.set_mode((CANVAS_W * 2, CANVAS_H * 2), 0 if WEB else pygame.RESIZABLE)
     renderer = Renderer(content)
+    effects = Effects(*effect_palette(renderer))
+    audio = Audio()
     game = Game(content, renderer, store or default_store(), seed, autostart)
     if game.state == "name":
         game.start_name_entry()
@@ -188,6 +192,8 @@ async def run(
                     game.handle_name_event(event)
                 elif event.type != pygame.KEYDOWN:
                     continue
+                elif event.key == pygame.K_m:
+                    audio.muted = not audio.muted
                 elif event.key == pygame.K_F3:
                     show_timings = not show_timings
                 elif event.key == pygame.K_F5:
@@ -197,6 +203,7 @@ async def run(
                 elif game.state == "menu":
                     if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
                         game.new_run()
+                        effects.reset()
                         acc = 0.0
                     elif event.key == pygame.K_n:
                         game.start_name_entry()
@@ -205,6 +212,7 @@ async def run(
                 elif game.state == "results":
                     if event.key == pygame.K_r:
                         game.new_run()
+                        effects.reset()
                         acc = 0.0
                     elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_ESCAPE):
                         game.state = "menu"
@@ -213,25 +221,35 @@ async def run(
                 elif event.key == pygame.K_F4:
                     game.config = game.normal if game.config is not game.normal else stress_config(game.normal)
                     game.new_run()
+                    effects.reset()
                     acc = 0.0
                 elif game.world.paused:
                     choice = card_choice(event.key, renderer)
             acc += min(clock.tick(60 if WEB else 120) / 1000.0, DT * MAX_STEPS_PER_FRAME)
             t0 = time.perf_counter()
             world = game.world
+            frame_events: list = []
             if game.state == "play":
                 if world.paused:
                     acc = 0.0
                     if choice is not None:
-                        world.step([PlayerInput(0, choice=choice)])
+                        frame_events += world.step([PlayerInput(0, choice=choice)])
                         renderer.selected = 0
                     elif game.config is not game.normal:
-                        world.step([PlayerInput(0, choice=0)])  # stress test picks automatically
+                        frame_events += world.step([PlayerInput(0, choice=0)])  # stress test picks automatically
+                elif effects.hitstop > 0:  # hit-stop: the picture holds for a few frames, the run just waits
+                    effects.hitstop -= 1
+                    acc = 0.0
                 else:
                     inputs = [read_input(0)]
                     while acc >= DT and not world.paused and not world.over:
-                        world.step(inputs)
+                        frame_events += world.step(inputs)
                         acc -= DT
+                if frame_events:
+                    positions = {p.player_id: (p.x, p.y) for p in world.players}
+                    effects.handle(frame_events, renderer.boss_names, positions)
+                audio.handle(frame_events)
+                effects.update()
                 if world.over:
                     game.finish_run()
             else:
@@ -240,7 +258,7 @@ async def run(
             t1 = time.perf_counter()
             if game.state in ("play", "results"):
                 debug = f"{timer.text(world)}  {bench_result}" if show_timings else None
-                renderer.draw(world.snapshot(), debug=debug)
+                renderer.draw(world.snapshot(), debug=debug, effects=effects)
                 if game.state == "results":
                     screens.draw_results(renderer, game.result, game.flags, game.profile)
             elif game.state == "menu":

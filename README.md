@@ -4,7 +4,9 @@ A small stop-and-shoot roguelite with bean mascots, built in Python with pygame-
 Time-based waves in a finite arena with four biomes, bosses, shrines and an endless swarm after 20:00.
 Portfolio project: clean code, tests, and later a reinforcement-learning agent that plays the game.
 
-**Status:** milestone M5: menu, nickname, score and local highscores (file on desktop, localStorage in the browser), on top of all phase-1 enemies, elites and boss Ildra.
+![30 seconds of gameplay](docs/media/gameplay.gif)
+
+**Status:** milestone M6: pixel sprites, particles, hit flashes, damage numbers, screen shake, synthesised sound effects, on top of all phase-1 enemies, elites, boss Ildra, menu and local highscores.
 
 Play in the browser: https://hannes-vnz.github.io/last_bean_standing/
 
@@ -13,7 +15,7 @@ Play in the browser: https://hannes-vnz.github.io/last_bean_standing/
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Python 3.11+
 pip install -e ".[dev]"
-python -m lastbean        # WASD/arrows move (you shoot while standing), 1/2/3 pick upgrades, Esc quits
+python -m lastbean        # WASD/arrows move (you shoot while standing), 1/2/3 pick upgrades, M mute, Esc menu
 pytest                    # tests
 ruff check                # lint
 ```
@@ -43,8 +45,8 @@ Measured with `python tools/bench.py --render` (Apple Silicon, Python 3.12, head
 
 | Enemies | Simulation | Drawing | Total per frame (budget 16.7 ms) |
 |---|---|---|---|
-| 200 | 1.6 ms | 1.9 ms | 3.5 ms |
-| 350 (cap) | 3.2 ms | 2.3 ms | 5.5 ms |
+| 200 | 1.4 ms | 1.8 ms | 3.2 ms |
+| 350 (cap) | 2.6 ms | 2.2 ms | 4.8 ms |
 | 200, browser (pygbag 0.9.3, F5) | 1.7 ms | 2.4 ms | 4.1 ms |
 
 Balancing (`python tools/balance.py --seeds 20`, heuristic bot as ranger): median death 3:01 (1:58 to 4:04), median level 3. A real run peaks at about 350 enemies and 2.9 ms simulation per step around 5:30.
