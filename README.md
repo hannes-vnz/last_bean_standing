@@ -9,7 +9,7 @@ Portfolio project: clean code, tests, and later a reinforcement-learning agent t
 **Status:** milestone M6b (client): online leaderboard with offline queue (server hosting pending); M6: pixel sprites, particles, hit flashes, damage numbers, screen shake, synthesised sound effects, on top of all phase-1 enemies, elites, boss Ildra, menu and local highscores.
 
 Play in the browser, made for phones and tablets first (touch joystick, portrait or landscape): https://hannes-vnz.github.io/last_bean_standing/  
-On iPhone: Share → Add to Home Screen for fullscreen.
+On iPhone: Share → Add to Home Screen for fullscreen. Pinch with two fingers (or mouse wheel, +/-) to zoom.
 
 ## Quick start
 

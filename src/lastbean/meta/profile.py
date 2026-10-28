@@ -54,6 +54,9 @@ def normalize(data: Any) -> dict[str, Any]:
     online = data.get("online") if isinstance(data.get("online"), dict) else {}
     best_rank = online.get("best_rank")
     out["online"] = {"best_rank": best_rank if isinstance(best_rank, int) and best_rank > 0 else None}
+    settings = data.get("settings") if isinstance(data.get("settings"), dict) else {}
+    zoom = settings.get("zoom")
+    out["settings"] = {"zoom": zoom if isinstance(zoom, int) and 100 <= zoom <= 1000 else None}
     return out
 
 

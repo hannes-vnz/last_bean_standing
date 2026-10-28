@@ -47,7 +47,32 @@ def main() -> None:
     ]
     cmd += [] if args.serve else ["--build"]
     subprocess.run([*cmd, str(STAGE)], check=True, cwd=ROOT)
+    if not args.serve:
+        index = STAGE / "build" / "web" / "index.html"
+        index.write_text(
+            index.read_text(encoding="utf-8").replace("LBS_BEAN_DATA_URI", bean_data_uri()), encoding="utf-8"
+        )
     print("web build:", STAGE / "build" / "web")
+
+
+def bean_data_uri() -> str:
+    """Fenn's sprite as an inline PNG for the loading screen (shown before Python is ready)."""
+    import base64
+    import json
+    import os
+
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    import pygame
+
+    sprite = json.loads((ROOT / "assets" / "sprites" / "sprites.json").read_text(encoding="utf-8"))["ranger"]
+    surf = pygame.Surface((sprite["w"], sprite["h"]), pygame.SRCALPHA)
+    for y, row in enumerate(sprite["rows"]):
+        for x, ch in enumerate(row):
+            if ch != ".":
+                surf.set_at((x, y), pygame.Color(sprite["pal"][ch]))
+    path = STAGE / "bean.png"
+    pygame.image.save(surf, str(path))
+    return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
 
 
 if __name__ == "__main__":

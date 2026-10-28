@@ -41,26 +41,57 @@ class Joystick:
 
 
 class TouchState:
-    """Tracks fingers. One finger outside the buttons steers; short touches count as taps."""
+    """Tracks fingers. One finger outside the buttons steers; short touches count as taps;
+    two fingers pinch to zoom (the stick is released while pinching)."""
 
     def __init__(self) -> None:
         self.stick: Joystick | None = None
         self._down: dict[int, tuple[float, float]] = {}
+        self._now: dict[int, tuple[float, float]] = {}
+        self._pinch_start: float | None = None
+        self.pinching = False
 
     def down(self, finger: int, x: float, y: float, steer: bool) -> None:
         self._down[finger] = (x, y)
-        if steer and self.stick is None:
+        self._now[finger] = (x, y)
+        if len(self._now) == 2:
+            self.stick = None
+            self.pinching = True
+            self._pinch_start = self._spread()
+        elif steer and self.stick is None and not self.pinching:
             self.stick = Joystick(finger, x, y, x, y)
 
     def move(self, finger: int, x: float, y: float) -> None:
+        if finger in self._now:
+            self._now[finger] = (x, y)
         if self.stick and self.stick.finger == finger:
             self.stick.x, self.stick.y = x, y
+
+    def pinch_ratio(self) -> float | None:
+        """Current finger spread divided by the spread when the pinch began (>1 = fingers apart)."""
+        if not self.pinching or len(self._now) < 2 or not self._pinch_start:
+            return None
+        return self._spread() / self._pinch_start
+
+    def rebase_pinch(self) -> None:
+        """Call after applying a zoom step, so the next step needs a fresh movement."""
+        if self.pinching and len(self._now) >= 2:
+            self._pinch_start = self._spread()
+
+    def _spread(self) -> float:
+        (ax, ay), (bx, by) = list(self._now.values())[:2]
+        return max(1.0, math.sqrt((ax - bx) ** 2 + (ay - by) ** 2))
 
     def up(self, finger: int, x: float, y: float) -> bool:
         """Release a finger. Returns True when it was a tap (little movement)."""
         start = self._down.pop(finger, None)
+        self._now.pop(finger, None)
         if self.stick and self.stick.finger == finger:
             self.stick = None
+        if self.pinching:
+            if not self._now:
+                self.pinching = False  # all fingers lifted: next touch steers again
+            return False
         if start is None:
             return False
         return (x - start[0]) ** 2 + (y - start[1]) ** 2 <= TAP_MAX_MOVE**2
@@ -71,3 +102,5 @@ class TouchState:
     def reset(self) -> None:
         self.stick = None
         self._down.clear()
+        self._now.clear()
+        self.pinching = False

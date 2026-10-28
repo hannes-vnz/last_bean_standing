@@ -40,11 +40,44 @@ def test_knob_is_clamped():
 def test_touch_state_steering_and_taps():
     t = TouchState()
     t.down(1, 50, 300, steer=True)
-    t.down(2, 280, 600, steer=True)  # second finger does not take over the stick
     t.move(1, 90, 300)
     assert t.direction() == (1, 0)
-    assert t.up(2, 282, 601) is True  # short touch = tap
-    assert t.up(1, 90, 300) is False and t.direction() == (0, 0)
+    assert t.up(1, 90, 300) is False and t.direction() == (0, 0)  # a drag is no tap
+    t.down(2, 200, 400, steer=False)
+    assert t.up(2, 203, 401) is True  # short touch = tap
+
+
+def test_two_fingers_pinch_instead_of_steering():
+    t = TouchState()
+    t.down(1, 100, 300, steer=True)
+    t.down(2, 200, 300, steer=True)
+    assert t.stick is None and t.pinching and t.pinch_ratio() == pytest.approx(1.0)
+    t.move(2, 250, 300)
+    assert t.pinch_ratio() == pytest.approx(1.5)  # fingers apart = zoom in
+    t.rebase_pinch()
+    assert t.pinch_ratio() == pytest.approx(1.0)
+    assert t.up(2, 250, 300) is False and t.up(1, 100, 300) is False  # ending a pinch is no tap
+    t.down(3, 60, 300, steer=True)
+    assert t.stick is not None and not t.pinching  # next touch steers again
+
+
+def test_zoom_steps_are_clamped():
+    from lastbean.ui.layout import ZOOM_STEPS, zoom_step
+
+    assert zoom_step(300, -1) == 270 and zoom_step(300, 1) == 330
+    assert zoom_step(ZOOM_STEPS[0], -5) == ZOOM_STEPS[0] and zoom_step(ZOOM_STEPS[-1], 5) == ZOOM_STEPS[-1]
+    assert zoom_step(365, 0) == 360  # snaps to the nearest step
+    assert logical_size(390, 844, compact=True, short=240) == (240, 520)
+
+
+def test_zoom_is_saved_in_profile():
+    from lastbean.meta.profile import new_profile, normalize
+
+    p = new_profile()
+    assert p["settings"]["zoom"] is None
+    p["settings"]["zoom"] = 270
+    assert normalize(p)["settings"]["zoom"] == 270
+    assert normalize({"settings": {"zoom": "gross"}})["settings"]["zoom"] is None
 
 
 def test_combine_input_prefers_stick():

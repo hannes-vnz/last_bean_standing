@@ -62,20 +62,8 @@ async def custom_site():
     # TODO: test for window.webkitAudioContext and block aio loop until gesture if accessing media manager play
     # before a gesture is recorded ( touch or click )
 
-    # test/wait user media interaction
-    if not platform.window.MM.UME:
-
-        # now that apk is mounted we have access to font cache
-        # but we need to fill __file__ that is not yet set
-        __import__(__name__).__file__ = main
-
-        # now make a prompt
-        msg  = "Ready to start ! Please click/touch page"
-        platform.window.infobox.innerText = msg
-        print("\n"*4, f"    * Waiting for media user engagement. {msg} *" , "\n"*4)
-
-        while not platform.window.MM.UME:
-            await asyncio.sleep(.1)
+    # Last Bean Standing: no "click to start". The game opens straight into its start screen;
+    # sound is unlocked by the first touch or click (see lbsUnlockAudio below).
 
     # start async top level machinery if not started and add a console in any case if requested.
     await TopLevel_async_handler.start_toplevel(platform.shell, console=window.python.config.debug)
@@ -149,7 +137,7 @@ config = {
     user_canvas : 0,
     user_canvas_managed : 1,  // Last Bean Standing: the game picks the canvas size (phone, tablet, desktop)
     gui_divider : 1,  // Last Bean Standing: canvas uses the whole window (default 2 = half for a console)
-    ume_block : {{cookiecutter.ume_block}},
+    ume_block : 0,  // Last Bean Standing: do not wait for a click before starting
     can_close : {{cookiecutter.can_close}},
     archive : "{{cookiecutter.archive}}",
     gui_debug : 2,
@@ -206,7 +194,19 @@ function show_infobox() {
             width: 300px;
         }
 
-        #infobox {
+        #infobox { display: none !important; }  /* Last Bean Standing: replaced by #lbs-splash */
+        #lbs-splash {
+            position: fixed; inset: 0; z-index: 1000000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: #2c2035; color: #ffffff; font-family: "Trebuchet MS", Verdana, sans-serif; text-align: center;
+        }
+        #lbs-splash img { width: 128px; height: 144px; image-rendering: pixelated; animation: lbs-hop 0.6s infinite alternate; }
+        #lbs-splash h1 { font-size: 30px; margin: 18px 0 6px; text-shadow: 2px 2px 0 #4a3358; letter-spacing: 1px; }
+        #lbs-splash p { font-size: 15px; margin: 4px; opacity: 0.85; }
+        #lbs-splash .dots::after { content: ""; animation: lbs-dots 1.2s infinite steps(4); }
+        @keyframes lbs-hop { from { transform: translateY(0); } to { transform: translateY(-10px); } }
+        @keyframes lbs-dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+        #infobox-unused {
             position: fixed; /* center relative to viewport */
             background: green;
             color: blue;
@@ -321,6 +321,17 @@ function show_infobox() {
             }
         }
         document.addEventListener("touchend", goFullscreen, { passive: true });
+        // Browsers only allow sound after a touch or click: resume the audio of the game then.
+        function lbsUnlockAudio() {
+            try {
+                if (window.MM) window.MM.UME = true;
+                const ctx = window.SDL2 && window.SDL2.audioContext;
+                if (ctx && ctx.state === "suspended") ctx.resume();
+            } catch (e) {}
+        }
+        ["touchend", "mousedown", "keydown"].forEach(function (t) {
+            document.addEventListener(t, lbsUnlockAudio, { passive: true });
+        });
         document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
     })();
     </script>
@@ -328,6 +339,12 @@ function show_infobox() {
 </head>
 
 <body>
+    <div id="lbs-splash">
+        <img alt="" src="LBS_BEAN_DATA_URI">
+        <h1>Last Bean Standing</h1>
+        <p>Die Bohne macht sich bereit<span class="dots"></span></p>
+        <p style="font-size:12px;opacity:0.6">Beim ersten Mal dauert es ein paar Sekunden.</p>
+    </div>
 
     <div id="transfer" align=center>
 <!--        <div class="spinner" id='spinner'></div> -->

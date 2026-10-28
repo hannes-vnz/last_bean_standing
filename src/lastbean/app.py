@@ -25,7 +25,7 @@ from .render.effects import Effects
 from .render.renderer import CANVAS_H, CANVAS_W, Renderer, effect_palette
 from .sim import DT, PlayerInput, World, WorldConfig
 from .ui import screens
-from .ui.layout import is_compact, logical_size
+from .ui.layout import is_compact, logical_size, zoom_step
 from .ui.touch import TouchState
 
 MAX_STEPS_PER_FRAME = 5  # avoid the spiral of death after a stall
@@ -77,6 +77,9 @@ def use_whole_page() -> None:
 
         platform.window.config.gui_divider = 1
         platform.window.window_resize()
+        splash = platform.document.getElementById("lbs-splash")
+        if splash:
+            splash.style.display = "none"  # the game's own start screen takes over
     except Exception as exc:  # noqa: BLE001 - layout tweak only, never stop the game
         print("Vollbreite nicht gesetzt:", exc)
 
@@ -254,11 +257,22 @@ def web_prompt(question: str, default: str) -> str | None:
 class Screen:
     """The browser page or desktop window, and the logical canvas size that fits it."""
 
-    def __init__(self, renderer: Renderer) -> None:
+    def __init__(self, renderer: Renderer, zoom: int | None = None) -> None:
         self.renderer = renderer
         self.window: pygame.Surface | None = None
         self._css = (0, 0)
+        self.zoom = zoom  # short side of the canvas chosen by the player; None = device default
         self.fit()
+
+    def change_zoom(self, steps: int) -> bool:
+        """Zoom in (negative steps) or out. Returns True when the view changed."""
+        current = self.zoom or min(self.renderer.w, self.renderer.h)
+        new = zoom_step(current, steps)
+        if new == current:
+            return False
+        self.zoom = new
+        self.fit(force=True)
+        return True
 
     def css_size(self) -> tuple[int, int]:
         import platform
@@ -272,13 +286,13 @@ class Screen:
             if css == self._css and not force:
                 return
             self._css = css
-            w, h = logical_size(*css, compact=is_compact(*css))
+            w, h = logical_size(*css, compact=is_compact(*css), short=self.zoom)
             self.window = pygame.display.set_mode((w * 2, h * 2))
             use_whole_page()
         else:
             if self.window is None:
                 self.window = pygame.display.set_mode((CANVAS_W * 2, CANVAS_H * 2), pygame.RESIZABLE)
-            w, h = logical_size(*self.window.get_size())
+            w, h = logical_size(*self.window.get_size(), short=self.zoom)
         self.renderer.resize(w, h)
 
     def to_canvas(self, event) -> tuple[int, int]:
@@ -300,11 +314,17 @@ async def run(
     pygame.init()
     pygame.display.set_caption("Last Bean Standing")
     renderer = Renderer(content)
-    screen = Screen(renderer)
+    game = Game(content, renderer, store or default_store(), seed, autostart)
+    screen = Screen(renderer, game.profile["settings"]["zoom"])
     effects = Effects(*effect_palette(renderer))
     audio = Audio()
     touch = TouchState()
-    game = Game(content, renderer, store or default_store(), seed, autostart)
+
+    def zoom(steps: int) -> None:
+        if screen.change_zoom(steps):
+            game.profile["settings"]["zoom"] = screen.zoom
+            game.save()
+
     if game.state == "name":
         game.start_name_entry()
     game.start_sync()  # runs queued while offline
@@ -314,6 +334,7 @@ async def run(
     acc, frames, running, choice = 0.0, 0, True, None
     buttons: list[screens.Button] = []
     touch_ability = False
+    was_paused = False
     last = time.perf_counter()
     next_fit = 0.0
 
@@ -390,6 +411,12 @@ async def run(
                         tap(pos)  # buttons react on touch down, so a running thumb is never blocked
                 elif event.type == pygame.FINGERMOTION:
                     touch.move(event.finger_id, *screen.to_canvas(event))
+                    ratio = touch.pinch_ratio()  # two fingers: pinch to zoom
+                    if ratio is not None and (ratio > 1.15 or ratio < 0.87):
+                        zoom(-1 if ratio > 1 else 1)
+                        touch.rebase_pinch()
+                elif event.type == pygame.MOUSEWHEEL:
+                    zoom(-1 if event.y > 0 else 1)
                 elif event.type == pygame.FINGERUP:
                     pos = screen.to_canvas(event)
                     in_game = game.state == "play" and not game.world.paused
@@ -403,6 +430,10 @@ async def run(
                     continue
                 elif event.key == pygame.K_m:
                     audio.muted = not audio.muted
+                elif event.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
+                    zoom(-1)
+                elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
+                    zoom(1)
                 elif event.key == pygame.K_F11 and not WEB:
                     pygame.display.toggle_fullscreen()
                 elif event.key == pygame.K_F3:
@@ -453,7 +484,8 @@ async def run(
             if game.state == "play":
                 if world.paused:
                     acc = 0.0
-                    touch.reset()
+                    if not was_paused:  # cards just opened: forget fingers that were steering, keep new taps
+                        touch.reset()
                     if choice is not None:
                         frame_events += world.step([PlayerInput(0, choice=choice)])
                         renderer.selected = 0
@@ -480,6 +512,7 @@ async def run(
             else:
                 acc = 0.0
             choice = None
+            was_paused = game.state == "play" and game.world.paused
             t1 = time.perf_counter()
             buttons = []
             if game.state in ("play", "results", "pause"):
