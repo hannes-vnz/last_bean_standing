@@ -64,3 +64,17 @@ def test_boss_entrance_and_phase_announcements(content):
     assert fx.intro is None
     fx.handle([BossPhase(2, None, 7, "snail_queen", 1)])
     assert fx.banner[0] == "Phase 2!" and fx.subtitle[0] == fx.boss_phases["snail_queen"][1]
+
+
+def test_run_packs_last_one_run(content):
+    p = new_profile()
+    p["sparkles"] = 200
+    assert workshop.buy_pack(p, content.shop, "pack_headstart") and workshop.buy_pack(p, content.shop, "pack_clover")
+    assert not workshop.buy_pack(p, content.shop, "pack_map")  # at most two
+    assert p["sparkles"] == 100 and p["packs"] == ["pack_headstart", "pack_clover"]
+    workshop.return_pack(p, content.shop, "pack_clover")
+    assert p["sparkles"] == 140 and p["packs"] == ["pack_headstart"]
+    meta = workshop.meta_mods(p, content.shop, ("pack_headstart", "pack_clover"))
+    w = World(1, WorldConfig.from_content(content, meta_mods=meta))
+    pl = w.players[0]
+    assert pl.level == 3 and pl.offer and pl.stats.luck == 10

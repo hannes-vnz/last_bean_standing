@@ -151,6 +151,8 @@ class Game:
         self.first_name = not self.profile.get("nickname")
         self.settings_return = "menu"
         self.challenge_page = 0
+        self.recording = True  # stress-test runs are not recorded
+        self.workshop_tab = "workshop"
         self.leaderboard = Leaderboard()
         self.online: tuple[str, int | None, int | None] = ("", None, None)
         self.board: dict = {"period": "all", "entries": None, "loading": False, "fetched_at": 0.0}
@@ -225,7 +227,15 @@ class Game:
 
     def new_run(self) -> None:
         self.seed = self.seed + 1 if self.fixed_seed is not None else secrets.randbelow(2**31)
-        self.world = World(self.seed, self.config)
+        config = self.config
+        packs = tuple(self.profile.get("packs", []))
+        if packs and self.config is self.normal:  # run packs count for this run only, then they are used up
+            meta = workshop.meta_mods(self.profile, self.content.shop, packs)
+            config = WorldConfig.from_content(self.content, self.character, meta_mods=meta)
+            self.profile["packs"] = []
+            self.save()
+        self.recording = self.config is self.normal
+        self.world = World(self.seed, config)
         self.state = "play"
 
     def finish_run(self) -> None:
@@ -233,7 +243,7 @@ class Game:
         self.result = self.world.result().to_dict()
         self.flags = {}
         self.online = ("", None, None)
-        if self.config is self.normal:
+        if self.recording:
             self.flags = record_run(self.profile, self.result)
             challenges.record_lifetime(self.profile, self.result)
             new = challenges.evaluate(self.profile, self.result, self.content.challenges, len(self.characters))
@@ -571,6 +581,15 @@ async def run(
         elif action == "workshop_back":
             game.apply_workshop()
             game.state = "menu"
+        elif action == "ws_tab":
+            game.workshop_tab = "packs" if game.workshop_tab == "workshop" else "workshop"
+        elif action.startswith(("pack_buy:", "pack_back:")):
+            kind, pid = action.split(":", 1)
+            if kind == "pack_buy":
+                workshop.buy_pack(game.profile, content.shop, pid)
+            else:
+                workshop.return_pack(game.profile, content.shop, pid)
+            game.save()
         elif action.startswith(("ws_buy:", "ws_sell:")):
             game.workshop_action(*action.split(":", 1))
         elif action == "settings":
@@ -830,7 +849,10 @@ async def run(
             elif game.state == "settings":
                 buttons = screens.draw_settings(renderer, game.profile["settings"])
             elif game.state == "workshop":
-                buttons = screens.draw_workshop(renderer, content.shop, game.profile)
+                if game.workshop_tab == "packs":
+                    buttons = screens.draw_packs(renderer, content.shop, game.profile)
+                else:
+                    buttons = screens.draw_workshop(renderer, content.shop, game.profile)
             elif game.state == "challenges":
                 buttons = screens.draw_challenges(renderer, content, game.profile, game.challenge_page,
                                                   len(game.characters))  # fmt: skip

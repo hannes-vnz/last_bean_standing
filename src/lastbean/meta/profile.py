@@ -67,6 +67,8 @@ def normalize(data: Any) -> dict[str, Any]:
     out["sparkles"] = _num(data.get("sparkles"))  # Funkelsteine
     ws = data.get("workshop") if isinstance(data.get("workshop"), dict) else {}
     out["workshop"] = {k: v for k, v in ws.items() if isinstance(k, str) and _num(v) > 0}
+    packs = data.get("packs")
+    out["packs"] = [x for x in packs if isinstance(x, str)][:2] if isinstance(packs, list) else []  # next run's packs
     # Challenges (meta/challenges.py): lifetime sums, completed ids, rewards, chosen skin per bean
     life = data.get("lifetime")
     out["lifetime"] = life if isinstance(life, dict) else {}

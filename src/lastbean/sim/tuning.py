@@ -21,6 +21,7 @@ START_SHIELD_S = 20.0  # (text) workshop "Startschild": "verfällt nach 20 s"
 CURSE_MAX_COPIES = 3  # (text) Fluchstein: "höchstens +3 Kopien insgesamt"
 CURSE_CARD_RARITY = "legendary"  # Fluchstein reward "eine Karte mehr, eine Stufe höher": boss chests are epic
 ELITE_SHRINE_COUNT = 3  # (text) Elite-Schrein: "Ruft sofort 3 Elite-Gegner"
+COURAGE_SPAWN_MULT = 1.5  # (text) Mut-Schrein: "währenddessen 1,5x Spawnrate in der Nähe" (here: the whole bed)
 COURAGE_MIN_RARITY = "rare"  # (text) Mut-Schrein: "Gratis-Upgradewahl mit mindestens Seltenheit selten"
 
 # Performance (28.10.2026, measured: cost grows with the enemy count)
