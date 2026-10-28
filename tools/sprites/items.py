@@ -121,6 +121,104 @@ def w_pumpkin_bomb():
     return done(p)
 
 
+def w_firefly():
+    p = icon()
+    p.ell(8, 8, 6.5, 6.5, "#fff7c0")
+    p.ell(8, 8, 4.5, 4.5, "#fff1a8")
+    p.ell(9, 9, 3, 2.2, "#ffd45e")
+    p.ell(6, 7, 2, 1.6, "#4a3358")
+    p.ell(9, 5, 2.4, 1.6, "#e6f4ff")
+    p.pts([(3, 2), (13, 13), (14, 3)], "#ffffff")
+    return done(p)
+
+
+def w_leaf_boomerang():
+    p = icon()
+    p.poly([(2, 4), (7, 2), (8, 8), (13, 4), (14, 9), (8, 14), (2, 9)], "#ff9a3c")
+    p.line(8, 14, 8, 6, "#c0602a")
+    p.line(8, 9, 4, 5, "#c0602a")
+    p.line(8, 9, 12, 6, "#c0602a")
+    shine(p, 4, 6)
+    return done(p)
+
+
+def w_nettle_trail():
+    p = icon()
+    for x0, h in ((3, 9), (8, 12), (12, 8)):
+        p.line(x0, 15, x0, 15 - h, "#4f9a5a")
+        p.poly([(x0, 15 - h + 3), (x0 + 3, 15 - h + 1), (x0 + 1, 15 - h + 5)], "#5fb85a")
+    p.pts([(1, 15), (5, 14), (10, 15), (14, 14)], "#a0784f")
+    p.pts([(6, 4), (11, 7)], "#ffffff")
+    return done(p)
+
+
+def w_cactus():
+    p = icon()
+    p.rect(6, 3, 9, 14, "#6fbf5a")
+    p.rect(2, 6, 4, 9, "#6fbf5a")
+    p.rect(4, 8, 6, 9, "#6fbf5a")
+    p.rect(11, 5, 13, 8, "#6fbf5a")
+    p.rect(9, 7, 11, 8, "#6fbf5a")
+    p.rect(4, 13, 11, 15, "#d9805a")
+    for x, y in ((7, 5), (8, 9), (7, 12), (3, 7), (12, 6)):
+        p.set(x, y, "#fff1d6")
+    p.pts([(7, 2), (8, 2)], "#ff9fc0")
+    return done(p)
+
+
+def w_sunbeam():
+    p = icon()
+    p.ell(4, 12, 3.2, 3.2, METAL)
+    p.ell(4, 12, 2, 2, "#cfeaff")
+    p.line(6, 10, 15, 1, GOLD_L, 2)
+    p.line(7, 10, 15, 2, GOLD)
+    p.pts([(12, 2), (14, 5), (10, 3)], "#ffffff")
+    return done(p)
+
+
+def w_garlic_mine():
+    p = icon()
+    p.ell(8, 10, 5.5, 5, "#fff6ea")
+    p.ell(5.5, 10, 2.2, 4, "#efe4d4")
+    p.ell(10.5, 10, 2.2, 4, "#efe4d4")
+    p.line(8, 5, 8, 2, "#a7e08a")
+    p.pts([(7, 1), (9, 1)], "#a7e08a")
+    p.pts([(8, 14), (6, 14), (10, 14)], "#d8c8a8")
+    shine(p, 6, 8)
+    return done(p)
+
+
+def w_seed_shotgun():
+    p = icon()
+    p.line(2, 12, 10, 6, WOOD, 2)
+    p.line(9, 6, 14, 3, METAL, 2)
+    for x, y in ((14, 6), (15, 1), (13, 8), (12, 1)):
+        p.set(x, y, GOLD)
+    p.rect(2, 12, 4, 14, WOOD_L)
+    return done(p)
+
+
+def w_dragonfly():
+    p = icon()
+    p.line(3, 13, 11, 5, "#5ab4ff", 2)
+    p.ell(12, 4, 2, 2, "#5ab4ff")
+    p.ell(6, 6, 3.6, 1.6, "#e6f4ff")
+    p.ell(10, 10, 3.6, 1.6, "#e6f4ff")
+    p.set(13, 3, "#4a3358")
+    return done(p)
+
+
+def w_sickle():
+    p = icon()
+    for i in range(10):
+        a = math.radians(200 + i * 16)
+        p.set(9 + 5.5 * math.cos(a), 7 + 5.5 * math.sin(a), METAL_L)
+        p.set(9 + 4.5 * math.cos(a), 7 + 4.5 * math.sin(a), METAL)
+    p.line(4, 9, 2, 15, WOOD, 2)
+    shine(p, 9, 2)
+    return done(p)
+
+
 # ---------------------------------------------------------------------------- items
 def watering_can():
     p = icon()
@@ -586,7 +684,10 @@ def compost_heart():
 
 
 WEAPONS = {"start": w_start, "thorn_twig": w_thorn_twig, "dandelion": w_dandelion, "pollen_cloud": w_pollen_cloud,
-           "bees": w_bees, "sun_pulse": w_sun_pulse, "pumpkin_bomb": w_pumpkin_bomb}  # fmt: skip
+           "bees": w_bees, "sun_pulse": w_sun_pulse, "pumpkin_bomb": w_pumpkin_bomb, "firefly": w_firefly,
+           "leaf_boomerang": w_leaf_boomerang, "nettle_trail": w_nettle_trail, "cactus": w_cactus, "sunbeam": w_sunbeam,
+           "garlic_mine": w_garlic_mine, "seed_shotgun": w_seed_shotgun, "dragonfly": w_dragonfly,
+           "sickle": w_sickle}  # fmt: skip
 
 def item_ids() -> list[str]:
     """Every item in data/items.json needs a drawing function of the same name above."""

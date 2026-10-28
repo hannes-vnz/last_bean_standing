@@ -252,6 +252,7 @@ class Stage:
     damage_mult: float
     budget_mult: float
     tagline: str
+    head_start_s: int = 0  # the bed starts as if this much time had already passed (enemy count and kinds)
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,13 +261,14 @@ class ExtraWeapon:
 
     id: str
     name: str
-    kind: str  # "fan", "nova", "aura", "orbit" or "lobbed"
+    kind: str  # one of loader.WEAPON_KINDS ("fan", "nova", "chain", "trail", ...)
     rarity: str
     text: str
     level_text: str
     base: dict[str, float]
     per_level: dict[str, float]
     impl_phase: int
+    style: str = ""  # playstyle shown on the card (Fernkampf, Bewegung, Stellung, ...)
 
 
 @dataclass(frozen=True, slots=True)

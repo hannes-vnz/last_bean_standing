@@ -124,3 +124,46 @@ def rotate(st: WeaponState, turns: float) -> None:
     x, y = st.ux * c - st.uy * s, st.ux * s + st.uy * c
     d = math.sqrt(x * x + y * y)
     st.ux, st.uy = x / d, y / d
+
+
+@dataclass(slots=True)
+class Zone:
+    """A damaging patch on the ground (nettle trail): hurts enemies in it every half second."""
+
+    owner: int
+    weapon: str
+    x: float
+    y: float
+    radius: float
+    damage: float  # per pulse
+    life: float
+
+
+@dataclass(slots=True)
+class Turret:
+    """A planted helper (cactus) that shoots at enemies in reach until it withers."""
+
+    owner: int
+    weapon: str
+    x: float
+    y: float
+    life: float
+    fire_s: float
+    reload: float
+    damage: float
+    reach: float
+    speed: float
+
+
+@dataclass(slots=True)
+class Mine:
+    """Dropped while walking; bursts when an enemy steps close."""
+
+    owner: int
+    weapon: str
+    x: float
+    y: float
+    life: float
+    damage: float
+    radius: float
+    trigger: float

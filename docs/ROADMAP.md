@@ -79,6 +79,13 @@ Sprites, Effekte, Sound, Profil und Highscore, Browser-Version, Bestenlisten-Cli
 - [x] Scharfe Pixel und Schrift im Browser: jeder Spielpixel ist genau 2, 3 oder 4 Bildschirmpixel.
 - [x] Bildschirmtastatur für den Namen auf Handy und iPad (PC tippt normal).
 
+## Paket G: Waffen für Spielweisen, schnellerer Start, Flut als Zocken (28.10.2026)
+- [x] 15 Waffen (9 neu), jede mit Spielweise auf der Karte: Glühwürmchen (Kette), Ahornbumerang (hin und zurück),
+  Brennnesselspur und Knoblauchminen (wirken nur im Laufen), Kaktuswächter (pflanzen, Stellung halten),
+  Brennglasstrahl (Linie durch alles), Saatflinte (kurz und breit), Libellenschwarm (sucht Ziele), Sichel (Hieb vorn).
+- [x] Beet 2 und 3 starten heiß: 150 bzw. 180 s Wellen-Vorsprung (Gegnermenge und -arten) und volles Budget beim Betreten.
+- [x] Plagenflut als Zocken: XP und Samenkörner +25 % je 10 s Flut, Flutzeit zählt Punkte; das Tor bleibt offen.
+
 ## Als Nächstes (Vorschlag)
 1. Auf echten Geräten prüfen: Bildrate (F3), Schärfe, Tippen, Tastatur.
 2. Animationen für Bohne und Gegner (Laufen, Treffer, Tod) und Geschoss-Sprites (Paket D).

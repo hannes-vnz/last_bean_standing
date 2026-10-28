@@ -474,7 +474,9 @@ def _items_and_economy(raw, e) -> tuple[tuple[Item, ...], dict[str, Any]]:
     return tuple(out), dict(eco.obj)
 
 
-WEAPON_KINDS = ("fan", "nova", "aura", "orbit", "lobbed")
+WEAPON_KINDS = ("fan", "nova", "aura", "orbit", "lobbed", "chain", "boomerang", "trail", "turret", "beam", "mine",
+                "homing",
+                "sweep")  # fmt: skip
 
 
 def _weapons(raw, e) -> tuple[tuple[ExtraWeapon, ...], int, int]:
@@ -496,6 +498,7 @@ def _weapons(raw, e) -> tuple[tuple[ExtraWeapon, ...], int, int]:
             ExtraWeapon(
                 w.str("id"), w.str("name"), w.str("kind", choices=WEAPON_KINDS), w.str("rarity", choices=RARITIES),
                 w.str("text"), w.str("level_text"), tables["base"], tables["per_level"], w.phase(),
+                w.str("style", optional=True) or "",
             )
         )  # fmt: skip
     return tuple(out), slots or 1, max_level or 1
@@ -509,11 +512,17 @@ def _stages(raw, e) -> tuple[tuple[Stage, ...], dict, dict, dict[str, str]]:
             Stage(
                 st.str("id"), st.int("index", 1), st.str("name"), st.str("biome"), st.int("duration_s", 1),
                 st.str("boss"), st.num("hp_mult", 0.01), st.num("damage_mult", 0.01), st.num("budget_mult", 0.01),
-                st.str("tagline"),
+                st.str("tagline"), st.int("head_start_s", 0, optional=True) or 0,
             )
         )  # fmt: skip
     flood = r.sub("flood")
-    for key in ("warning_s", "budget_growth_per_10s", "hp_growth_per_10s", "damage_growth_per_10s"):
+    for key in (
+        "warning_s",
+        "budget_growth_per_10s",
+        "hp_growth_per_10s",
+        "damage_growth_per_10s",
+        "reward_growth_per_10s",
+    ):
         flood.num(key, 0)
     gate = r.sub("gate")
     gate.num("radius_px", 1)

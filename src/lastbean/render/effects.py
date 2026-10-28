@@ -99,6 +99,8 @@ class Effects:
         self.item_rarity: dict[str, str] = {}  # item id -> rarity, set by the app (for the chest reel)
         self.taglines: dict[int, str] = {}  # garden bed number -> tagline, set by the app
         self.bolts: list[Bolt] = []
+        self.beams: list[list] = []  # [x, y, x2, y2, width, frames left]
+        self.sweeps: list[list] = []  # [x, y, dx, dy, radius, arc_deg, frames left]
         self.reel: Reel | None = None
         self.subtitle: tuple[str, int] | None = None  # second banner line (tagline of a garden bed)
 
@@ -109,6 +111,8 @@ class Effects:
         self.flash.clear()
         self.trauma, self.hitstop, self.banner, self.toast = 0.0, 0, None, None
         self.bolts.clear()
+        self.beams.clear()
+        self.sweeps.clear()
         self.reel, self.subtitle = None, None
 
     # ------------------------------------------------------------------ events
@@ -165,6 +169,10 @@ class Effects:
                 self.start_reel(e.item_id)
                 if players and e.player_id in players:
                     self.level_up(*players[e.player_id])
+            elif isinstance(e, ev.BeamFired):
+                self.beams.append([e.x, e.y, e.x2, e.y2, e.width, 10])
+            elif isinstance(e, ev.SweepSwung):
+                self.sweeps.append([e.x, e.y, e.dx, e.dy, e.radius, e.arc_deg, 8])
             elif isinstance(e, ev.Zap):
                 self.bolts.append(Bolt(e.points, 8))
                 for x, y in e.points[1:]:
@@ -264,6 +272,11 @@ class Effects:
                 rings.append(g)
         self.rings = rings
         self.flash = {k: v - 1 for k, v in self.flash.items() if v > 1}
+        for lst in (self.beams, self.sweeps):
+            for item in lst:
+                item[-1] -= 1
+        self.beams = [b for b in self.beams if b[-1] > 0]
+        self.sweeps = [w for w in self.sweeps if w[-1] > 0]
         for b in self.bolts:
             b.life -= 1
         self.bolts = [b for b in self.bolts if b.life > 0]

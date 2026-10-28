@@ -10,6 +10,7 @@
    "hp_mult": 1.0,
    "damage_mult": 1.0,
    "budget_mult": 1.0,
+   "head_start_s": 0,
    "tagline": "Die Keimlinge brauchen dich!"
   },
   {
@@ -22,6 +23,7 @@
    "hp_mult": 2.6,
    "damage_mult": 1.7,
    "budget_mult": 1.35,
+   "head_start_s": 150,
    "tagline": "Das Gemüse ist vergiftet. Halte durch!"
   },
   {
@@ -34,6 +36,7 @@
    "hp_mult": 6.0,
    "damage_mult": 2.6,
    "budget_mult": 1.7,
+   "head_start_s": 180,
    "tagline": "Der Schnitter wartet im Kompost."
   }
  ],
@@ -43,7 +46,8 @@
   "budget_growth_per_10s": 0.4,
   "hp_growth_per_10s": 0.15,
   "damage_growth_per_10s": 0.08,
-  "text": "Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Das Gartentor bleibt offen, sobald der Boss besiegt ist."
+  "reward_growth_per_10s": 0.25,
+  "text": "Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Das Gartentor bleibt offen, sobald der Boss besiegt ist."
  },
  "gate": {
   "radius_px": 40,

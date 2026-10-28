@@ -40,6 +40,7 @@ from .entities import (
 )
 from .events import (
     AbilityUsed,
+    BeamFired,
     BossKilled,
     BossSpawned,
     ChestDropped,
@@ -68,6 +69,7 @@ from .events import (
     SeedsCollected,
     ShotFired,
     StageStarted,
+    SweepSwung,
     UpgradeChosen,
     UpgradeOffered,
     WaveStarted,
@@ -96,6 +98,7 @@ from .tuning import (
     EXTRA_ATTACK_DAMAGE,
     GATE_DELAY_S,
     GATE_OFFSET,
+    HOMING_RANGE,
     KILL_EXPLOSION_DAMAGE,
     KILL_EXPLOSION_RADIUS,
     KILL_HASTE_PCT,
@@ -132,7 +135,19 @@ from .tuning import (
 )
 from .upgrades import INSTANT_STATS, RARITIES, UpgradeDef, derive_stats, modifier_sums, roll_offer, roll_tier
 from .waves import Scaling
-from .weapons import WEAPON_PREFIX, Bomb, WeaponDef, WeaponState, fan_directions, orbit_positions, rotate
+from .weapons import (
+    WEAPON_PREFIX,
+    Bomb,
+    Mine,
+    Turret,
+    WeaponDef,
+    WeaponState,
+    Zone,
+    cos_sin,
+    fan_directions,
+    orbit_positions,
+    rotate,
+)
 
 TICK_HZ = 60
 DT = 1.0 / TICK_HZ
@@ -176,6 +191,7 @@ class StageConfig:
     damage_mult: float = 1.0
     budget_mult: float = 1.0
     tagline: str = ""
+    head_start_s: float = 0.0  # waves and enemy kinds start as if this much time had passed
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,6 +202,7 @@ class FloodRules:
     budget_growth: float = 0.4
     hp_growth: float = 0.15
     damage_growth: float = 0.08
+    reward_growth: float = 0.25  # XP and seeds per 10 s of flood (linear): the gamble pays
 
 
 @dataclass(frozen=True, slots=True)
@@ -262,6 +279,7 @@ class WorldConfig:
                     st.damage_mult,
                     st.budget_mult,
                     st.tagline,
+                    float(st.head_start_s),
                 )
                 for st in sorted(content.stages, key=lambda st: st.index)
             ),  # fmt: skip
@@ -270,6 +288,7 @@ class WorldConfig:
                 float(content.flood["budget_growth_per_10s"]),
                 float(content.flood["hp_growth_per_10s"]),
                 float(content.flood["damage_growth_per_10s"]),
+                float(content.flood.get("reward_growth_per_10s", 0.0)),
             ),
             gate_radius=float(content.gate["radius_px"]),
             bosses=bosses,
@@ -417,6 +436,9 @@ class Snapshot:
     orbiters: tuple[tuple[str, float, float], ...] = ()  # (weapon, x, y), e.g. bees
     auras: tuple[tuple[str, float, float, float], ...] = ()  # (weapon, x, y, radius)
     bombs: tuple[BombView, ...] = ()
+    zones: tuple[tuple[str, float, float, float, float], ...] = ()  # (weapon, x, y, radius, life left)
+    turrets: tuple[tuple[str, float, float, float], ...] = ()  # (weapon, x, y, life left)
+    mines: tuple[tuple[str, float, float], ...] = ()
 
 
 @dataclass
@@ -437,6 +459,9 @@ class World:
     pots: list[Pot] = field(default_factory=list)
     pickups: list[Pickup] = field(default_factory=list)
     bombs: list[Bomb] = field(default_factory=list)
+    zones: list[Zone] = field(default_factory=list)
+    turrets: list[Turret] = field(default_factory=list)
+    mines: list[Mine] = field(default_factory=list)
     stage: int = 0  # index into config.stages
     stage_tick: int = 0
     gate: tuple[float, float] | None = None
@@ -544,7 +569,9 @@ class World:
 
     @property
     def reward_mult(self) -> float:
-        return 1.0 + 0.8 * (self.difficulty - 1.0)
+        """XP (and seeds) per kill: shrine difficulty, and the Plagenflut pays more the longer you stay."""
+        flood = 1.0 + self.config.flood.reward_growth * self.flood_s / 10.0
+        return (1.0 + 0.8 * (self.difficulty - 1.0)) * flood
 
     # ------------------------------------------------------------------ step
 
@@ -627,6 +654,7 @@ class World:
         self._budget, self._pending_mob = 0.0, None
         self.enemies, self.projectiles, self.enemy_shots, self.hazards = [], [], [], []
         self.orbs, self.pickups, self.bombs = [], [], []
+        self.zones, self.turrets, self.mines = [], [], []
         cx, cy = self.config.arena_w / 2, self.config.arena_h / 2
         for p in self.players:
             p.x, p.y = cx + (p.player_id - (self.config.player_count - 1) / 2) * 32.0, cy
@@ -635,6 +663,9 @@ class World:
         self._setup_stage()
         self._rebuild_grid()
         st = self.stage_cfg
+        # A hot start: the first wave's budget is there at once, so the new bed fills up quickly.
+        head = int(st.head_start_s // self.config.wave_interval_s)
+        self._budget = self.config.scaling.wave_budget(head, self.difficulty, self.config.player_count) * st.budget_mult
         events.append(StageStarted(self.tick, None, st.index, st.name))
         return True
 
@@ -895,7 +926,9 @@ class World:
             return
 
         wave_ticks = cfg.wave_interval_s * TICK_HZ
-        per_wave = cfg.scaling.wave_budget(self.wave, self.difficulty, cfg.player_count) * self.stage_cfg.budget_mult
+        head = int(self.stage_cfg.head_start_s // cfg.wave_interval_s)  # later beds start hot
+        per_wave = cfg.scaling.wave_budget(self.wave + head, self.difficulty, cfg.player_count)
+        per_wave *= self.stage_cfg.budget_mult
         if self.flood_s > 0:
             per_wave *= self._flood_factor(cfg.flood.budget_growth)
         # Unspent budget is capped at one wave, so a full arena does not cause a burst later.
@@ -923,7 +956,7 @@ class World:
                     self._spawn_enemy(mob, x + ox, y + oy, events)
 
     def _pick_mob(self, biome: str | None) -> MobStats | None:
-        t = self.stage_time_s
+        t = self.stage_time_s + self.stage_cfg.head_start_s
         options = [(m, dict(m.biome_weights).get(biome, 0.0)) for m in self.config.mobs if m.min_time_s <= t]
         options = [(m, w) for m, w in options if w > 0]
         if not options:
@@ -1121,7 +1154,7 @@ class World:
             if not value and self.rng.random() * 100.0 < eco.drop_pct:
                 value = eco.normal_value
             if value:
-                self.orbs.append(XpOrb(e.x + 6.0, e.y, float(value), kind="seeds"))
+                self.orbs.append(XpOrb(e.x + 6.0, e.y, float(value) * self.reward_mult, kind="seeds"))
         if e.elite or (not e.boss and self.rng.random() * 100.0 < MAGNET_DROP_PCT):
             self.pickups.append(Pickup("magnet", e.x, e.y))
         for p in self.players:
@@ -1227,15 +1260,18 @@ class World:
 
     def _fire(self, p: Player, dx: float, dy: float, damage: float, life: int, events: list[Event],
               speed: float | None = None, pierce: int | None = None, weapon: str = "",
-              big: bool = False) -> None:  # fmt: skip
+              big: bool = False, origin: tuple[float, float] | None = None, **extra) -> Projectile:  # fmt: skip
         s = p.stats
         speed = (self.config.character.projectile_speed if speed is None else speed) * s.projectile_speed_mult
         dmg, crit = self._roll_crit(p, damage)
         hits = (s.pierce if pierce is None else pierce) + 1
         radius = PROJECTILE_RADIUS * s.projectile_size_mult * (2.0 if big else 1.0)
-        self.projectiles.append(Projectile(p.player_id, p.x, p.y, dx * speed, dy * speed, dmg, crit or big, life, hits,
-                                           weapon=weapon, radius=radius, bounces_left=s.bounces))  # fmt: skip
-        events.append(ShotFired(self.tick, p.player_id, p.x, p.y, dx, dy, weapon))
+        x, y = origin or (p.x, p.y)
+        pr = Projectile(p.player_id, x, y, dx * speed, dy * speed, dmg, crit or big, life, hits, weapon=weapon,
+                        radius=radius, bounces_left=s.bounces, **extra)  # fmt: skip
+        self.projectiles.append(pr)
+        events.append(ShotFired(self.tick, p.player_id, x, y, dx, dy, weapon))
+        return pr
 
     def _roll_crit(self, p: Player, damage: float) -> tuple[float, bool]:
         s = p.stats
@@ -1248,10 +1284,12 @@ class World:
         killed: set[int] = set()
         owners = {p.player_id: p for p in self.players}
         for pr in self.projectiles:
+            if (pr.turn or pr.return_at) and not self._steer(pr, owners.get(pr.owner)):
+                continue  # a boomerang back in its owner's hand
             pr.x += pr.vx * DT
             pr.y += pr.vy * DT
             pr.ticks_left -= 1
-            if self.obstacles.blocks_point(pr.x, pr.y, PROJECTILE_RADIUS):
+            if not pr.flies and self.obstacles.blocks_point(pr.x, pr.y, PROJECTILE_RADIUS):
                 events.append(ProjectileBlocked(self.tick, pr.owner, pr.x, pr.y))
                 continue
             for e in g.query(pr.x, pr.y, pr.radius + self._max_radius):
@@ -1273,6 +1311,41 @@ class World:
         if killed:
             self.enemies = [e for e in self.enemies if e.eid not in killed]
             self._rebuild_grid()
+
+    def _steer(self, pr: Projectile, owner: Player | None) -> bool:
+        """Homing shots turn towards the nearest enemy; boomerangs fly back to their owner.
+        Returns False when a boomerang has arrived (it is removed)."""
+        speed = math.sqrt(pr.vx * pr.vx + pr.vy * pr.vy) or 1.0
+        if pr.return_at:
+            if not pr.returning and pr.ticks_left <= pr.return_at:
+                pr.returning, pr.hit_ids = True, set()  # hits again on the way back
+                pr.ticks_left += 4 * TICK_HZ
+            if pr.returning:
+                if owner is None:
+                    return False
+                dx, dy = owner.x - pr.x, owner.y - pr.y
+                d = math.sqrt(dx * dx + dy * dy)
+                if d < PLAYER_RADIUS + speed * DT:
+                    return False
+                pr.vx, pr.vy = dx / d * speed, dy / d * speed
+            return True
+        if (self.tick + pr.owner) % 3:
+            return True  # re-aim every third tick
+        target, best = None, HOMING_RANGE * HOMING_RANGE
+        for e in self._grid.query(pr.x, pr.y, HOMING_RANGE):
+            if e.eid in pr.hit_ids:
+                continue
+            d2 = (e.x - pr.x) ** 2 + (e.y - pr.y) ** 2
+            if d2 < best:
+                target, best = e, d2
+        if target is not None:
+            d = math.sqrt(best) or 1.0
+            k = min(1.0, pr.turn * DT * 3)
+            vx = pr.vx / speed * (1 - k) + (target.x - pr.x) / d * k
+            vy = pr.vy / speed * (1 - k) + (target.y - pr.y) / d * k
+            n = math.sqrt(vx * vx + vy * vy) or 1.0
+            pr.vx, pr.vy = vx / n * speed, vy / n * speed
+        return True
 
     def _bounce(self, pr: Projectile, last: Enemy, killed: set[int]) -> bool:
         """ "Rückprall": turn towards the nearest enemy not hit yet. Returns False when there is none."""
@@ -1446,6 +1519,7 @@ class World:
                 else:
                     st.cooldown = 0.0  # nothing to hit: ready again as soon as something is
         self._land_bombs(killed, events)
+        self._update_placed(killed, events)
         if killed:
             self.enemies = [e for e in self.enemies if e.eid not in killed]
             self._rebuild_grid()
@@ -1508,6 +1582,185 @@ class World:
             dmg, crit = self._roll_crit(p, v["damage"])
             self.bombs.append(Bomb(p.player_id, st.weapon, p.x, p.y, e.x, e.y, flight, flight, v["radius"], dmg, crit))
         return True
+
+    def _weapon_chain(self, p: Player, st: WeaponState, v: dict, killed: set[int], events: list[Event]) -> bool:
+        """Glühwürmchen: a bolt hits the nearest enemy and jumps on to the next ones, weaker each time."""
+        target, _ = self._pick_target(p, v["range"] * p.stats.range / self._base_stats.range)
+        if target is None:
+            return False
+        points, hit, e, dmg = [(p.x, p.y), (target.x, target.y)], {target.eid}, target, v["damage"]
+        roll, crit = self._roll_crit(p, dmg)
+        self._weapon_hit(p, p.player_id, e, roll, crit, killed, events)
+        for _ in range(int(v["jumps"])):
+            dmg *= v["falloff"]
+            best, best_d2 = None, v["jump_range"] ** 2
+            for o in self._grid.query(e.x, e.y, v["jump_range"]):
+                if o.eid in hit or o.eid in killed or o.hp <= 0:
+                    continue
+                d2 = (o.x - e.x) ** 2 + (o.y - e.y) ** 2
+                if d2 < best_d2:
+                    best, best_d2 = o, d2
+            if best is None:
+                break
+            hit.add(best.eid)
+            points.append((best.x, best.y))
+            e = best
+            roll, crit = self._roll_crit(p, dmg)
+            self._weapon_hit(p, p.player_id, e, roll, crit, killed, events, procs=False)
+        events.append(Zap(self.tick, p.player_id, tuple(points)))
+        return True
+
+    def _weapon_boomerang(self, p: Player, st: WeaponState, v: dict, killed: set[int], events: list[Event]) -> bool:
+        """Ahornbumerang: flies out through everything, then comes back to you and hits again."""
+        reach = v["range"] * p.stats.range / self._base_stats.range
+        target, d2 = self._pick_target(p, reach)
+        if target is None:
+            return False
+        d = math.sqrt(d2) or 1.0
+        out = max(2, int(reach / v["speed"] * TICK_HZ))
+        for fx, fy in fan_directions((target.x - p.x) / d, (target.y - p.y) / d, int(v["count"]), 40.0):
+            self._fire(p, fx, fy, v["damage"], 2 * out, events, v["speed"], 999, st.weapon, return_at=out, flies=True)
+        return True
+
+    def _weapon_trail(self, p: Player, st: WeaponState, v: dict, killed: set[int], events: list[Event]) -> bool:
+        """Brennnesselspur: only while walking, a patch of nettles grows where you were."""
+        if p.standing:
+            return False
+        dmg, _ = self._roll_crit(p, v["damage"])
+        self.zones.append(Zone(p.player_id, st.weapon, p.x, p.y, v["radius"], dmg, v["duration_s"]))
+        return True
+
+    def _weapon_turret(self, p: Player, st: WeaponState, v: dict, killed: set[int], events: list[Event]) -> bool:
+        """Kaktuswächter: plant a cactus where you stand; the oldest withers when there are too many."""
+        own = [t for t in self.turrets if t.owner == p.player_id and t.weapon == st.weapon]
+        if len(own) >= int(v["count"]):
+            self.turrets.remove(own[0])
+        reach = v["range"] * p.stats.range / self._base_stats.range
+        self.turrets.append(Turret(p.player_id, st.weapon, p.x, p.y, v["life_s"], max(0.15, v["fire_s"]), 0.0,
+                                   v["damage"], reach, v["speed"]))  # fmt: skip
+        return True
+
+    def _weapon_beam(self, p: Player, st: WeaponState, v: dict, killed: set[int], events: list[Event]) -> bool:
+        """Brennglasstrahl: a straight beam through every enemy on the line, plants do not stop it."""
+        length = v["length"] * p.stats.range / self._base_stats.range
+        target, d2 = self._pick_target(p, length)
+        if target is None:
+            return False
+        d = math.sqrt(d2) or 1.0
+        dx, dy = (target.x - p.x) / d, (target.y - p.y) / d
+        x2, y2 = p.x + dx * length, p.y + dy * length
+        width = v["width"] * p.stats.area_mult
+        dmg, crit = self._roll_crit(p, v["damage"])
+        for e in self._grid.query((p.x + x2) / 2, (p.y + y2) / 2, length / 2 + self._max_radius):
+            if e.eid in killed or e.hp <= 0:
+                continue
+            t = (e.x - p.x) * dx + (e.y - p.y) * dy
+            if 0 <= t <= length and abs((e.x - p.x) * dy - (e.y - p.y) * dx) <= width + e.radius:
+                self._weapon_hit(p, p.player_id, e, dmg, crit, killed, events)
+        events.append(BeamFired(self.tick, p.player_id, st.weapon, p.x, p.y, x2, y2, width))
+        return True
+
+    def _weapon_mine(self, p: Player, st: WeaponState, v: dict, killed: set[int], events: list[Event]) -> bool:
+        """Knoblauchminen: only while walking, drop a clove (up to `count` lie around)."""
+        if p.standing:
+            return False
+        if sum(1 for m in self.mines if m.owner == p.player_id and m.weapon == st.weapon) >= int(v["count"]):
+            return False
+        self.mines.append(Mine(p.player_id, st.weapon, p.x, p.y, v["life_s"], v["damage"], v["radius"], v["trigger"]))
+        return True
+
+    def _weapon_homing(self, p: Player, st: WeaponState, v: dict, killed: set[int], events: list[Event]) -> bool:
+        """Libellenschwarm: shots that look for their own target and fly over plants."""
+        reach = v["range"] * p.stats.range / self._base_stats.range
+        target, d2 = self._pick_target(p, reach)
+        if target is None:
+            return False
+        d = math.sqrt(d2) or 1.0
+        life = max(2, int(reach * 1.6 / v["speed"] * TICK_HZ))
+        for fx, fy in fan_directions((target.x - p.x) / d, (target.y - p.y) / d, int(v["count"]), 120.0):
+            self._fire(p, fx, fy, v["damage"], life, events, v["speed"], 0, st.weapon, turn=v["turn"], flies=True)
+        return True
+
+    def _weapon_sweep(self, p: Player, st: WeaponState, v: dict, killed: set[int], events: list[Event]) -> bool:
+        """Sichel: a sweep in a half circle towards the nearest enemy."""
+        radius = v["radius"]
+        target, d2 = self._pick_target(p, radius + self._max_radius)
+        if target is None:
+            return False
+        d = math.sqrt(d2) or 1.0
+        dx, dy = (target.x - p.x) / d, (target.y - p.y) / d
+        min_dot, _ = cos_sin(v["arc_deg"] / 360.0 * math.pi)
+        dmg, crit = self._roll_crit(p, v["damage"])
+        for e in self._grid.query(p.x, p.y, radius + self._max_radius):
+            if e.eid in killed or e.hp <= 0:
+                continue
+            ex, ey = e.x - p.x, e.y - p.y
+            de = math.sqrt(ex * ex + ey * ey)
+            if de > radius + e.radius:
+                continue
+            if de < e.radius + PLAYER_RADIUS or (ex * dx + ey * dy) / de >= min_dot:
+                self._weapon_hit(p, p.player_id, e, dmg, crit, killed, events)
+        events.append(SweepSwung(self.tick, p.player_id, st.weapon, p.x, p.y, dx, dy, radius, v["arc_deg"]))
+        return True
+
+    def _update_placed(self, killed: set[int], events: list[Event]) -> None:
+        """Nettle patches pulse, cacti shoot, garlic cloves wait for a foot."""
+        owners = {p.player_id: p for p in self.players}
+        if self.zones:
+            pulse = self.tick % DOT_PULSE_TICKS == 0
+            keep = []
+            for z in self.zones:
+                z.life -= DT
+                owner = owners.get(z.owner)
+                if pulse and owner is not None:
+                    for e in self._grid.query(z.x, z.y, z.radius + self._max_radius):
+                        r = z.radius + e.radius
+                        if e.eid not in killed and e.hp > 0 and (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= r * r:
+                            self._weapon_hit(owner, z.owner, e, z.damage, False, killed, events, procs=False)
+                if z.life > 0:
+                    keep.append(z)
+            self.zones = keep
+        if self.turrets:
+            keep_t = []
+            for t in self.turrets:
+                t.life -= DT
+                t.reload -= DT
+                owner = owners.get(t.owner)
+                if t.reload <= 0 and owner is not None and owner.alive:
+                    best, best_d2 = None, t.reach * t.reach
+                    for e in self._grid.query(t.x, t.y, t.reach):
+                        d2 = (e.x - t.x) ** 2 + (e.y - t.y) ** 2
+                        if e.eid not in killed and e.hp > 0 and d2 < best_d2:
+                            best, best_d2 = e, d2
+                    if best is not None:
+                        t.reload = t.fire_s
+                        d = math.sqrt(best_d2) or 1.0
+                        life = max(2, int(t.reach / t.speed * TICK_HZ) + 2)
+                        self._fire(owner, (best.x - t.x) / d, (best.y - t.y) / d, t.damage, life, events, t.speed, 0,
+                                   t.weapon, origin=(t.x, t.y), flies=True)  # fmt: skip
+                if t.life > 0:
+                    keep_t.append(t)
+            self.turrets = keep_t
+        if self.mines:
+            keep_m = []
+            for m in self.mines:
+                m.life -= DT
+                owner = owners.get(m.owner)
+                tripped = any(
+                    e.eid not in killed and (e.x - m.x) ** 2 + (e.y - m.y) ** 2 <= (m.trigger + e.radius) ** 2
+                    for e in self._grid.query(m.x, m.y, m.trigger + self._max_radius)
+                )
+                if tripped and owner is not None:
+                    radius = m.radius * owner.stats.area_mult
+                    events.append(WeaponPulse(self.tick, m.owner, m.weapon, m.x, m.y, radius))
+                    dmg, crit = self._roll_crit(owner, m.damage)
+                    for e in self._grid.query(m.x, m.y, radius + self._max_radius):
+                        r = radius + e.radius
+                        if e.eid not in killed and e.hp > 0 and (e.x - m.x) ** 2 + (e.y - m.y) ** 2 <= r * r:
+                            self._weapon_hit(owner, m.owner, e, dmg, crit, killed, events)
+                elif m.life > 0:
+                    keep_m.append(m)
+            self.mines = keep_m
 
     def _land_bombs(self, killed: set[int], events: list[Event]) -> None:
         if not self.bombs:
@@ -1872,7 +2125,14 @@ class World:
         for b in self.bombs:
             t = 1.0 - b.delay / b.flight if b.flight > 0 else 1.0
             bombs.append(BombView(b.x + (b.tx - b.x) * t, b.y + (b.ty - b.y) * t, b.tx, b.ty, t, b.radius))
-        return dict(orbiters=tuple(orbiters), auras=tuple(auras), bombs=tuple(bombs))
+        return dict(
+            orbiters=tuple(orbiters),
+            auras=tuple(auras),
+            bombs=tuple(bombs),
+            zones=tuple((z.weapon, z.x, z.y, z.radius, z.life) for z in self.zones),
+            turrets=tuple((t.weapon, t.x, t.y, t.life) for t in self.turrets),
+            mines=tuple((m.weapon, m.x, m.y) for m in self.mines),
+        )
 
     def positions(self) -> tuple[dict[int, tuple[float, float]], dict[int, tuple[float, float]]]:
         """Player and enemy positions now; taken before a step, they let the renderer draw between ticks."""
@@ -1927,6 +2187,10 @@ class World:
             for st in p.weapons:
                 h.update(st.weapon.encode() + struct.pack("<i4d", st.level, st.cooldown, st.ux, st.uy, st.power))
                 h.update(repr(list(st.hit_ready.items())).encode())
+        h.update(repr([(z.x, z.y, z.life, z.damage) for z in self.zones]).encode())
+        h.update(repr([(t.x, t.y, t.life, t.reload) for t in self.turrets]).encode())
+        h.update(repr([(m.x, m.y, m.life) for m in self.mines]).encode())
+        h.update(repr([(pr.returning, pr.return_at, pr.turn) for pr in self.projectiles]).encode())
         for b in self.bombs:
             h.update(b.weapon.encode() + struct.pack("<i7d?", b.owner, b.x, b.y, b.tx, b.ty, b.delay, b.radius,
                                                      b.damage, b.crit))  # fmt: skip
@@ -1939,6 +2203,14 @@ WEAPON_KINDS = {
     "nova": World._weapon_nova,
     "aura": World._weapon_aura,
     "lobbed": World._weapon_lobbed,
+    "chain": World._weapon_chain,
+    "boomerang": World._weapon_boomerang,
+    "trail": World._weapon_trail,
+    "turret": World._weapon_turret,
+    "beam": World._weapon_beam,
+    "mine": World._weapon_mine,
+    "homing": World._weapon_homing,
+    "sweep": World._weapon_sweep,
 }  # "orbit" runs every tick (World._weapon_orbit), not on a cooldown
 
 

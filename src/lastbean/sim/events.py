@@ -243,3 +243,28 @@ class PlayerDodged(Event):
 class PlayerRevived(Event):
     x: float
     y: float
+
+
+@dataclass(frozen=True, slots=True)
+class BeamFired(Event):
+    """A light beam (weapon "Brennglasstrahl") from (x, y) to (x2, y2)."""
+
+    weapon: str
+    x: float
+    y: float
+    x2: float
+    y2: float
+    width: float
+
+
+@dataclass(frozen=True, slots=True)
+class SweepSwung(Event):
+    """A melee sweep (weapon "Sichel"): arc around (dx, dy)."""
+
+    weapon: str
+    x: float
+    y: float
+    dx: float
+    dy: float
+    radius: float
+    arc_deg: float
