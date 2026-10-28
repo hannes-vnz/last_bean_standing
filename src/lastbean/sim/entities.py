@@ -256,6 +256,8 @@ class Player:
     vx: float = 0.0
     vy: float = 0.0
     standing: bool = True
+    shrine_mods: dict[str, float] = field(default_factory=dict)  # stacked shrine rewards
+    shrines_activated: int = 0
     alive: bool = True
     shot_cooldown: float = 0.0
     i_frames: float = 0.0

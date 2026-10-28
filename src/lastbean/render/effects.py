@@ -11,12 +11,14 @@ import random
 from dataclasses import dataclass
 
 from ..sim import events as ev
+from ..sim.tuning import GREED_XP_PCT
 
 MAX_PARTICLES = 2000
 FLASH_FRAMES = 2
 HURT_FRAMES = 6  # enemy squashes and is pushed back a pixel
 CORPSE_FRAMES = 14  # dying enemy pops, flattens and fades
 MAX_CORPSES = 80
+HINT_FRAMES = 330  # a first-run tip stays 5.5 s
 
 
 @dataclass(slots=True)
@@ -109,6 +111,10 @@ class Effects:
         self.sweeps: list[list] = []  # [x, y, dx, dy, radius, arc_deg, frames left]
         self.reel: Reel | None = None
         self.subtitle: tuple[str, int] | None = None  # second banner line (tagline of a garden bed)
+        self.show_numbers = True  # settings: damage numbers
+        self.shake_on = True  # settings: screen shake
+        self.hints: list[str] = []  # first run: tips shown one after another
+        self.hint: tuple[str, int] | None = None
 
     def reset(self) -> None:
         self.particles.clear()
@@ -122,6 +128,7 @@ class Effects:
         self.beams.clear()
         self.sweeps.clear()
         self.reel, self.subtitle = None, None
+        self.hints, self.hint = [], None
 
     # ------------------------------------------------------------------ events
 
@@ -138,7 +145,8 @@ class Effects:
                 self.flash[e.enemy_id] = FLASH_FRAMES
                 self.hurt[e.enemy_id] = HURT_FRAMES
                 color = c["crit"] if e.crit else c["white"]
-                self.texts.append(FloatingText(e.x, e.y - 14, f"{e.damage:.0f}", color, e.crit, 36))
+                if self.show_numbers:
+                    self.texts.append(FloatingText(e.x, e.y - 14, f"{e.damage:.0f}", color, e.crit, 36))
                 self.burst(e.x, e.y, 3, c["shot_halo"], speed=60, life=10)
                 if e.crit:
                     self.hitstop = max(self.hitstop, 2)
@@ -227,6 +235,14 @@ class Effects:
                 if bomb:
                     self.burst(e.x, e.y, 14, color, speed=150, life=18, size=2)
                     self.trauma = min(1.0, self.trauma + 0.15)
+            elif isinstance(e, ev.ShrineActivated):
+                self.trauma = min(1.0, self.trauma + 0.3)
+                gold = c["crit"] if e.kind == "greed" else c.get("gate", c["crit"])
+                self.rings.append(Ring(e.x, e.y, 10, 7, 30, 30, gold))
+                self.burst(e.x, e.y, 30, gold, speed=160, life=34, size=2)
+                self.banner = (f"{e.name}!", 110)
+                reward = f"+{GREED_XP_PCT:.0f} % XP" if e.kind == "greed" else "Gratis-Karte (mind. selten)"
+                self.subtitle = (f"{reward} · Schwierigkeit {round(e.difficulty * 100)} %", 110)
             elif isinstance(e, ev.PotBroken):
                 self.burst(e.x, e.y, 10, (226, 150, 120), speed=90, life=18, size=2)
 
@@ -336,13 +352,18 @@ class Effects:
         if self.banner:
             text, frames = self.banner
             self.banner = (text, frames - 1) if frames > 1 else None
+        if self.hint:
+            text, frames = self.hint
+            self.hint = (text, frames - 1) if frames > 1 else None
+        elif self.hints:
+            self.hint = (self.hints.pop(0), HINT_FRAMES)
         if self.toast:
             text, frames = self.toast
             self.toast = (text, frames - 1) if frames > 1 else None
 
     def shake(self, max_px: int = 6) -> tuple[int, int]:
         """Screen offset from trauma: strength grows with trauma squared."""
-        s = self.trauma * self.trauma * max_px
+        s = self.trauma * self.trauma * max_px if self.shake_on else 0.0
         if s < 0.5:
             return 0, 0
         return round(self.rng.uniform(-s, s)), round(self.rng.uniform(-s, s))

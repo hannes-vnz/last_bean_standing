@@ -69,6 +69,7 @@ from .events import (
     RunStarted,
     SeedsCollected,
     ShotFired,
+    ShrineActivated,
     StageStarted,
     SweepSwung,
     UpgradeChosen,
@@ -79,6 +80,7 @@ from .events import (
 )
 from .rng import Rng
 from .score import RunResult, ScoreRules, compute_score
+from .shrines import SHRINE_KINDS, Shrine, ShrineRules
 from .spatial import SpatialHash
 from .tuning import (
     ARROW_STORM_DAMAGE,
@@ -93,6 +95,7 @@ from .tuning import (
     BURN_SHARE,
     CHEST_PICKUP_RADIUS,
     CHILL_S,
+    COURAGE_MIN_RARITY,
     DASH_DISTANCE,
     DASH_I_FRAMES_S,
     DODGE_I_FRAMES_S,
@@ -103,6 +106,7 @@ from .tuning import (
     EXTRA_ATTACK_DAMAGE,
     GATE_DELAY_S,
     GATE_OFFSET,
+    GREED_XP_PCT,
     HOMING_RANGE,
     ICE_AGE_REACH,
     ICE_AGE_S,
@@ -139,6 +143,7 @@ from .tuning import (
     SHRAPNEL_PIECES,
     SHRAPNEL_RANGE,
     SHRAPNEL_SPEED,
+    SHRINE_START_CLEARANCE,
     SKY_STRIKE_HEIGHT,
     SPREAD_COS,
     SPREAD_SIN,
@@ -255,6 +260,7 @@ class WorldConfig:
     enemy_target: int | None = None  # tests/benchmarks: keep exactly this many alive instead of the budget
     player_count: int = 1
     score: ScoreRules | None = None  # from balance.json; needed for `result()`
+    shrines: tuple[ShrineRules, ...] = ()
 
     @classmethod
     def from_content(
@@ -332,6 +338,9 @@ class WorldConfig:
             max_alive_enemies=bal.max_alive_enemies,
             player_count=player_count,
             score=ScoreRules.from_content(content),
+            shrines=tuple(
+                ShrineRules.from_content(s, len(content.stages)) for s in content.shrines if s.id in SHRINE_KINDS
+            ),
         )
         values.update(overrides)
         return cls(**values)
@@ -450,6 +459,7 @@ class Snapshot:
     boss_bar: BossBar | None = None
     pickups: tuple[tuple[str, float, float], ...] = ()
     pots: tuple[tuple[float, float], ...] = ()
+    shrines: tuple[tuple[str, float, float, float, float], ...] = ()  # (kind, x, y, radius, charge 0..1)
     chest_price: int = 0
     stage: int = 1  # 1-based number of the garden bed
     stage_name: str = ""
@@ -486,6 +496,7 @@ class World:
     orbs: list[XpOrb] = field(default_factory=list)
     chests: list[MapChest] = field(default_factory=list)
     pots: list[Pot] = field(default_factory=list)
+    shrines: list[Shrine] = field(default_factory=list)
     pickups: list[Pickup] = field(default_factory=list)
     bombs: list[Bomb] = field(default_factory=list)
     zones: list[Zone] = field(default_factory=list)
@@ -546,7 +557,7 @@ class World:
         (differs per run and bed, never shifts the main stream)."""
         cfg, eco = self.config, self.config.economy
         self.obstacles = ObstacleMap(self.stage_cfg.obstacles)
-        self.chests, self.pots = [], []
+        self.chests, self.pots, self.shrines = [], [], []
         if eco is not None and cfg.enemy_target is None:  # tests and benchmarks keep an empty map
             layout = Rng(self.seed ^ 0x5EED5 ^ (self.stage * 0x9E3779B1))
             start = (cfg.arena_w / 2, cfg.arena_h / 2)
@@ -554,6 +565,10 @@ class World:
                             start, 220.0)  # fmt: skip
             self.chests = [MapChest(x, y, "map") for x, y in spots[: eco.chest_count]]
             self.pots = [Pot(x, y) for x, y in spots[eco.chest_count :]]
+            kinds = [s for s in cfg.shrines for _ in range(s.per_stage)]
+            spots = scatter(Rng(self.seed ^ 0x5A17E ^ (self.stage * 0x9E3779B1)), len(kinds), cfg.arena_w,
+                            cfg.arena_h, self.obstacles, start, SHRINE_START_CLEARANCE)  # fmt: skip
+            self.shrines = [Shrine(s, x, y) for s, (x, y) in zip(kinds, spots, strict=False)]
 
     @property
     def stage_cfg(self) -> StageConfig:
@@ -777,6 +792,8 @@ class World:
         power = {uid: p.upgrade_power.get(uid, float(level)) for uid, level in p.upgrades.items()}
         mods = modifier_sums(power, self._upgrade_defs, p.items, self._item_defs)
         mods = {k: v for k, v in mods.items() if k not in INSTANT_STATS}
+        for k, v in p.shrine_mods.items():
+            mods[k] = mods.get(k, 0.0) + v
         p.stats = derive_stats(self.config.character, mods)
         p.hp = min(p.stats.max_hp, p.hp + max(0.0, p.stats.max_hp - old_max))
 
@@ -2121,6 +2138,8 @@ class World:
             self._open_chests(alive, events)
         if self.pots:
             self._break_pots(alive, events)
+        if self.shrines:
+            self._charge_shrines(alive, events)
         if self.pickups:
             remaining_pickups = []
             for k in self.pickups:
@@ -2194,6 +2213,34 @@ class World:
             events.append(ChestOpened(self.tick, owner.player_id, c.kind))
             self._give_item(owner, c.kind, events)
         self.chests = remaining
+
+    def _charge_shrines(self, alive: list[Player], events: list[Event]) -> None:
+        """Standing in a shrine's circle charges it (the Gier-Schrein only while standing still);
+        outside, the charge drains twice as fast. A full shrine raises D, rewards and disappears."""
+        remaining = []
+        for sh in self.shrines:
+            r = sh.rules
+            r2 = r.radius * r.radius
+            owner = next((p for p in alive if (p.x - sh.x) ** 2 + (p.y - sh.y) ** 2 <= r2
+                          and (p.standing or not r.still)), None)  # fmt: skip
+            if owner is None:
+                sh.charge = max(0, sh.charge - 2)
+                remaining.append(sh)
+                continue
+            sh.charge += 1
+            if sh.charge < round(r.channel_s * TICK_HZ):
+                remaining.append(sh)
+                continue
+            self.difficulty += r.difficulty_add
+            owner.shrines_activated += 1
+            if r.id == "greed":
+                owner.shrine_mods["xp_gain_pct"] = owner.shrine_mods.get("xp_gain_pct", 0.0) + GREED_XP_PCT
+                self._recompute(owner)
+            elif r.id == "courage":
+                owner.pending_chests.append(COURAGE_MIN_RARITY)
+                self._offer(owner, events)
+            events.append(ShrineActivated(self.tick, owner.player_id, r.id, r.name, sh.x, sh.y, self.difficulty))
+        self.shrines = remaining
 
     def _break_pots(self, alive: list[Player], events: list[Event]) -> None:
         eco = self.config.economy
@@ -2335,6 +2382,10 @@ class World:
             hazards=tuple(HazardView(h.spec.kind, h.x, h.y, h.spec.radius, h.delay <= 0) for h in self.hazards),
             chests=tuple((c.x, c.y, c.kind) for c in self.chests),
             pots=tuple((pot.x, pot.y) for pot in self.pots),
+            shrines=tuple(
+                (sh.rules.id, sh.x, sh.y, sh.rules.radius, sh.charge / (sh.rules.channel_s * TICK_HZ))
+                for sh in self.shrines
+            ),  # fmt: skip
             chest_price=self.config.economy.chest_price(self.chests_opened) if self.config.economy else 0,
             pickups=tuple((k.kind, k.x, k.y) for k in self.pickups),
             boss_bar=BossBar(boss.boss, boss.hp / boss.max_hp, boss.phase) if boss else None,
@@ -2417,6 +2468,9 @@ class World:
             h.update(struct.pack("<2d", c.x, c.y) + c.kind.encode())
         for pot in self.pots:
             h.update(struct.pack("<2d", pot.x, pot.y))
+        for sh in self.shrines:
+            h.update(sh.rules.id.encode() + struct.pack("<2di", sh.x, sh.y, sh.charge))
+        h.update(struct.pack("<d", self.difficulty))
         h.update(repr([(p.seeds, sorted(p.items.items()), p.rerolls, p.banishes, sorted(p.banished))
                        for p in self.players]).encode() + struct.pack("<q", self.chests_opened))  # fmt: skip
         h.update(repr([o.kind for o in self.orbs]).encode())

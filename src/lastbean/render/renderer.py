@@ -48,6 +48,7 @@ def integer_scale(window_w: int, window_h: int) -> int:
     return max(1, min(window_w // CANVAS_W, window_h // CANVAS_H))
 
 
+SHRINE_COLORS = {"greed": (255, 212, 94), "courage": (126, 217, 87)}
 WALK_SQUASH = (1, 0, -1, 0)  # per walk phase: stretch, rest, squash, rest
 SHADOW = (60, 42, 40)
 # The bean's own shot per character (sprite id -> style in Renderer._draw_shot); others shoot seeds.
@@ -176,6 +177,11 @@ class Renderer:
                     c.fill(self.xp_color, (sx, sy - 1, 1, 3))
 
         self._draw_hazards(snap, cam_x, cam_y)
+        for kind, hx, hy, radius, charge in snap.shrines:
+            sx, sy = round(hx / UNITS_PER_PX) - cam_x, round(hy / UNITS_PER_PX) - cam_y
+            r = round(radius / UNITS_PER_PX)
+            if -r <= sx < self.w + r and -r <= sy < self.h + r + 10:
+                self._draw_shrine(kind, sx, sy, r, charge, snap.tick)
         self._draw_weapon_ground(snap, cam_x, cam_y)
         if snap.gate is not None:
             self._draw_gate(snap, cam_x, cam_y)
@@ -315,6 +321,14 @@ class Renderer:
             self.text(effects.banner[0], (self.w // 2, y), self.big_font, center=True)
             if effects.subtitle and effects.subtitle[0]:
                 self.text(effects.subtitle[0], (self.w // 2, y + 22), center=True)
+        if effects and effects.hint:  # first-run tip: a light box near the bottom
+            lines = _wrap(effects.hint[0], self.font, min(self.w - 40, 360))
+            box = pygame.Rect(0, 0, max(self.font.size(t)[0] for t in lines) + 16, len(lines) * 12 + 10)
+            box.midbottom = (self.w // 2, self.h - (70 if self.touch else 30))
+            self.canvas.fill(self.ink, box.inflate(4, 4))
+            self.canvas.fill((255, 248, 231), box)
+            for i, line in enumerate(lines):
+                self.dark_text(line, (self.w // 2, box.y + 5 + i * 12 + 4), center=True)
         if effects and effects.toast:  # item found: name and effect under the HUD
             for i, line in enumerate(_wrap(effects.toast[0], self.font, self.w - 30)):
                 self.text(line, (self.w // 2, self.hud_bottom + 70 + i * 14), center=True)
@@ -526,6 +540,10 @@ class Renderer:
         for chx, chy, kind in snap.chests:
             dot = self.crit_color if kind != "map" else (150, 90, 50)
             c.set_at((box.x + int(chx * sx), box.y + int(chy * sy)), dot)
+        for kind, hx, hy, _, _ in snap.shrines:
+            hx_, hy_ = box.x + int(hx * sx), box.y + int(hy * sy)
+            c.fill(self.ink, (hx_ - 1, hy_ - 1, 3, 3))
+            c.set_at((hx_, hy_), SHRINE_COLORS.get(kind, WHITE))
         if snap.gate is not None:
             gx, gy = box.x + int(snap.gate[0] * sx), box.y + int(snap.gate[1] * sy)
             c.fill(self.ink, (gx - 2, gy - 2, 5, 5))
@@ -617,6 +635,31 @@ class Renderer:
         c.fill(ink, (sx - 3, sy + 1, 7, 7))
         c.fill(WHITE, (sx - 6, sy + 2, 3, 3))
         c.fill(WHITE, (sx + 4, sy + 2, 3, 3))
+
+    def _draw_shrine(self, kind: str, sx: int, sy: int, r: int, charge: float, tick: int) -> None:
+        """Stone shrine with a floating seed; the dashed circle fills up clockwise while charging."""
+        c, ink = self.canvas, self.ink
+        color = SHRINE_COLORS.get(kind, WHITE)
+        for k in range(24):  # dashed circle on the ground
+            if k % 2 == 0:
+                a0, a1 = k * math.tau / 24, (k + 1) * math.tau / 24
+                pygame.draw.arc(c, color, (sx - r, sy - r, 2 * r, 2 * r), a0, a1, 1)
+        if charge > 0:
+            pygame.draw.arc(c, WHITE, (sx - r + 2, sy - r + 2, 2 * r - 4, 2 * r - 4),
+                            math.pi / 2 - charge * math.tau, math.pi / 2, 3)  # fmt: skip
+        c.fill(ink, (sx - 7, sy - 4, 15, 12))  # pedestal
+        c.fill((168, 160, 180), (sx - 6, sy - 3, 13, 10))
+        c.fill((128, 120, 144), (sx - 6, sy + 4, 13, 3))
+        c.fill(ink, (sx - 4, sy - 7, 9, 4))
+        c.fill((190, 182, 204), (sx - 3, sy - 6, 7, 2))
+        bob = (0, 1, 2, 1)[(tick // 10) % 4]
+        gy = sy - 15 - bob  # floating seed-light
+        c.fill(ink, (sx - 3, gy - 4, 7, 9))
+        c.fill(color, (sx - 2, gy - 3, 5, 7))
+        c.fill(WHITE, (sx - 1, gy - 2, 1, 2))
+        if charge > 0 and (tick // 4) % 2:
+            c.set_at((sx + 4, gy - 5), WHITE)
+            c.set_at((sx - 5, gy + 1), WHITE)
 
     def _draw_corpses(self, fx: Effects, cam_x: int, cam_y: int) -> None:
         """Dying pests: a white pop, then they flatten, widen and fade into the soil."""

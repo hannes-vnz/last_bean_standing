@@ -14,6 +14,11 @@ KILL_EXPLOSION_RADIUS = 60.0  # (text) item "Samenbombe": radius 60
 KILL_EXPLOSION_DAMAGE = 0.5  # (text) 50 % of the killing hit
 EXTRA_ATTACK_DAMAGE = 0.6  # balance.json stat_model
 
+# Shrines (shrines.json; counts there are per run, spread evenly over the beds)
+GREED_XP_PCT = 10.0  # (text) Gier-Schrein: "+10 % XP-Gewinn ... je Aktivierung (stapelt)"
+SHRINE_START_CLEARANCE = 300.0  # no shrine right at the start of a bed
+COURAGE_MIN_RARITY = "rare"  # (text) Mut-Schrein: "Gratis-Upgradewahl mit mindestens Seltenheit selten"
+
 # Performance (28.10.2026, measured: cost grows with the enemy count)
 RECYCLE_DISTANCE = 1100.0  # enemies farther than this from every player jump back to the spawn ring
 RECYCLE_EVERY_TICKS = 30
