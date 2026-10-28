@@ -47,6 +47,8 @@ class Renderer:
         self.w, self.h = size
         self.canvas = pygame.Surface(size)
         self.card_rects: list[pygame.Rect] = []
+        self.offer_buttons: list[tuple[pygame.Rect, str]] = []
+        self.banish_mode = False
         self.ability_rect = pygame.Rect(0, 0, 0, 0)
         self.pause_rect = pygame.Rect(0, 0, 0, 0)
         self.touch = False  # touch device: bigger buttons, no keyboard hints
@@ -117,13 +119,26 @@ class Renderer:
         self._draw_ground(c, cam_x, cam_y)
         ink = self.ink
 
+        for px, py in snap.pots:
+            sx, sy = round(px / UNITS_PER_PX) - cam_x, round(py / UNITS_PER_PX) - cam_y
+            if -8 <= sx < self.w + 8 and -10 <= sy < self.h + 10:
+                self._draw_pot(sx, sy)
         for o in snap.orbs:
             sx, sy = round(o.x / UNITS_PER_PX) - cam_x, round(o.y / UNITS_PER_PX) - cam_y
             if 0 <= sx < self.w and 0 <= sy < self.h:
-                c.fill(ink, (sx - 2, sy - 1, 5, 3))
-                c.fill(ink, (sx - 1, sy - 2, 3, 5))
-                c.fill(self.xp_color, (sx - 1, sy, 3, 1))
-                c.fill(self.xp_color, (sx, sy - 1, 1, 3))
+                if o.kind == "seeds":  # golden seed
+                    c.fill(ink, (sx - 2, sy - 3, 5, 7))
+                    c.fill(self.crit_color, (sx - 1, sy - 2, 3, 5))
+                    c.set_at((sx, sy - 2), WHITE)
+                elif o.kind == "heal":  # pink heart-ish blob
+                    c.fill(ink, (sx - 3, sy - 2, 7, 6))
+                    c.fill(self.hp_color, (sx - 2, sy - 1, 5, 4))
+                    c.fill(WHITE, (sx - 1, sy - 1, 1, 1))
+                else:
+                    c.fill(ink, (sx - 2, sy - 1, 5, 3))
+                    c.fill(ink, (sx - 1, sy - 2, 3, 5))
+                    c.fill(self.xp_color, (sx - 1, sy, 3, 1))
+                    c.fill(self.xp_color, (sx, sy - 1, 1, 3))
 
         self._draw_hazards(snap, cam_x, cam_y)
         for kind, kx, ky in snap.pickups:
@@ -131,12 +146,10 @@ class Renderer:
             if kind == "magnet" and -8 <= sx < self.w + 8 and -8 <= sy < self.h + 8:
                 bob = 1 if (snap.tick // 15) % 2 else 0  # little float so it catches the eye
                 self._draw_magnet(sx, sy - bob)
-        for cx, cy in snap.chests:
+        for cx, cy, kind in snap.chests:
             sx, sy = round(cx / UNITS_PER_PX) - cam_x, round(cy / UNITS_PER_PX) - cam_y
-            c.fill(ink, (sx - 6, sy - 5, 13, 11))
-            c.fill(self.crit_color, (sx - 5, sy - 4, 11, 9))
-            c.fill(ink, (sx - 5, sy - 1, 11, 1))
-            c.fill(WHITE, (sx - 1, sy - 2, 3, 3))
+            if -20 <= sx < self.w + 20 and -20 <= sy < self.h + 20:
+                self._draw_chest(sx, sy, kind, snap.chest_price, focus.seeds)
 
         for e in snap.enemies:
             sx, sy = round(e.x / UNITS_PER_PX) - cam_x, round(e.y / UNITS_PER_PX) - cam_y
@@ -197,6 +210,9 @@ class Renderer:
         self._draw_minimap(snap, focus)
         if effects and effects.banner:
             self.text(effects.banner[0], (self.w // 2, 70), self.big_font, center=True)
+        if effects and effects.toast:  # item found: name and effect under the HUD
+            for i, line in enumerate(_wrap(effects.toast[0], self.font, self.w - 30)):
+                self.text(line, (self.w // 2, self.hud_bottom + 70 + i * 14), center=True)
         if snap.boss_bar:
             self._draw_boss_bar(snap.boss_bar)
         if debug:
@@ -211,7 +227,7 @@ class Renderer:
         c.fill(self.xp_color, (0, 1, round(self.w * min(1.0, focus.xp / focus.xp_needed)), 3))
         m, s = divmod(int(snap.time_s), 60)
         parts = [f"{m}:{s:02d}", f"Welle {snap.wave}", f"Level {focus.level}", f"Kills {focus.kills}",
-                 f"HP {int(focus.hp)}/{int(focus.max_hp)}"]  # fmt: skip
+                 f"HP {int(focus.hp)}/{int(focus.max_hp)}", f"Samen {focus.seeds}"]  # fmt: skip
         if snap.difficulty != 1.0:
             parts.append(f"Schwierigkeit {round(snap.difficulty * 100)} %")
         line, y = "", 9
@@ -262,6 +278,9 @@ class Renderer:
         c.fill(self.ink, box.inflate(4, 4))
         c.blit(img, box)
         sx, sy = size / snap.arena_w, size / snap.arena_h
+        for chx, chy, kind in snap.chests:
+            dot = self.crit_color if kind != "map" else (150, 90, 50)
+            c.set_at((box.x + int(chx * sx), box.y + int(chy * sy)), dot)
         for e in snap.enemies:
             if e.boss or e.elite:
                 color = self.telegraph if e.boss else self.crit_color
@@ -310,6 +329,33 @@ class Renderer:
         pygame.draw.circle(overlay, (*WHITE, 150), (kx, ky), 13)
         pygame.draw.circle(overlay, (*self.ink, 200), (kx, ky), 13, 2)
         self.canvas.blit(overlay, (0, 0))
+
+    def _draw_chest(self, sx: int, sy: int, kind: str, price: int, seeds: int) -> None:
+        """Seed chest: wooden box; elite/boss chests golden. Map chests carry their price (green if affordable)."""
+        c, ink = self.canvas, self.ink
+        body = self.crit_color if kind != "map" else (196, 140, 90)
+        c.fill(ink, (sx - 7, sy - 6, 15, 12))
+        c.fill(body, (sx - 6, sy - 5, 13, 10))
+        c.fill(tuple(max(0, v - 50) for v in body), (sx - 6, sy - 1, 13, 1))
+        c.fill(WHITE if kind != "map" else self.crit_color, (sx - 1, sy - 2, 3, 3))
+        if kind == "map":
+            label = f"{price}"
+            color = self.xp_color if seeds >= price else WHITE
+            img = self._number_cache.get(("price", label, color))
+            if img is None:
+                img = self._outlined(label, self.font, color)
+                self._number_cache[("price", label, color)] = img
+            c.blit(img, (sx - img.get_width() // 2, sy - 20))
+
+    def _draw_pot(self, sx: int, sy: int) -> None:
+        """Clay pot: walk into it to break it."""
+        c, ink = self.canvas, self.ink
+        clay = (226, 150, 120)
+        c.fill(ink, (sx - 5, sy - 6, 11, 12))
+        c.fill(clay, (sx - 4, sy - 4, 9, 9))
+        c.fill(ink, (sx - 3, sy - 7, 7, 3))
+        c.fill(tuple(min(255, v + 30) for v in clay), (sx - 2, sy - 6, 5, 1))
+        c.fill(WHITE, (sx - 3, sy - 3, 1, 2))
 
     def _draw_magnet(self, sx: int, sy: int) -> None:
         """Horseshoe magnet: coral bow with white tips and dark outline (no sprite yet)."""
@@ -450,8 +496,28 @@ class Renderer:
                 c.blit(img, (card.right - 10 - img.get_width(), card.y + 26))
                 for j, line in enumerate(_wrap(u.text, self.font, card.w - 20)[:3]):
                     self.dark_text(line, (card.x + 10, card.y + 44 + j * 13))
-        hint = "Karte antippen" if self.touch else "1/2/3 oder Pfeile + Enter"
-        self.text(hint, (self.w // 2, rects[-1].bottom + 18), center=True)
+        if self.banish_mode:
+            for rect in rects:
+                pygame.draw.rect(c, self.telegraph, rect.inflate(6, 6), 3)
+        # Reroll and banish (limited per run): buttons below the cards.
+        y = rects[-1].bottom + 12
+        bw = min(140, (self.w - 30) // 2)
+        self.offer_buttons = []
+        for i, (label, action, left) in enumerate([("Neu würfeln", "reroll", focus.rerolls),
+                                                    ("Verbannen", "banish", focus.banishes)]):  # fmt: skip
+            rect = pygame.Rect(self.w // 2 - bw - 5 + i * (bw + 10), y, bw, 26)
+            active = left > 0
+            c.fill(ink, rect.inflate(4, 4))
+            c.fill(self.telegraph if action == "banish" and self.banish_mode else
+                   (255, 250, 240) if active else (150, 140, 160), rect)  # fmt: skip
+            self.dark_text(f"{label} ({left})", (rect.centerx, rect.y + 7), center=True)
+            if active:
+                self.offer_buttons.append((rect, action))
+        if self.banish_mode:
+            hint = "Welche Karte soll verschwinden?"
+        else:
+            hint = "Karte antippen" if self.touch else "1/2/3 oder Pfeile + Enter · R neu · B verbannen"
+        self.text(hint, (self.w // 2, y + 42), center=True)
 
     def dark_text(self, text: str, pos: tuple[int, int], center: bool = False) -> None:
         img = self.font.render(text, True, self.ink)

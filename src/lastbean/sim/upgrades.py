@@ -28,6 +28,17 @@ SUPPORTED_STATS = frozenset(
         "extra_attacks",
         "pierce_add",
         "regen_per_s",
+        # Paket C (items)
+        "xp_gain_pct",
+        "gold_gain_pct",
+        "luck",
+        "cooldown_pct",
+        "elite_damage_pct",
+        "standing_damage_pct",
+        "thorns_flat",
+        "heal_per_kill",
+        "i_frames_pct",
+        "explode_on_kill_pct",
     }
 )
 
@@ -52,11 +63,16 @@ class UpgradeDef:
         return bool(self.effects) and all(stat in SUPPORTED_STATS for stat, _ in self.effects)
 
 
-def modifier_sums(levels: dict[str, int], defs: dict[str, UpgradeDef]) -> dict[str, float]:
+def modifier_sums(levels: dict[str, int], defs: dict[str, UpgradeDef], items: dict[str, int] | None = None,
+                  item_defs: dict | None = None) -> dict[str, float]:  # fmt: skip
+    """Stat sums from upgrade levels plus item stacks (an item counts once per copy)."""
     sums: dict[str, float] = {}
     for uid, level in levels.items():
         for stat, per_level in defs[uid].effects:
             sums[stat] = sums.get(stat, 0.0) + per_level * level
+    for iid, count in (items or {}).items():
+        for stat, value in item_defs[iid].effects:
+            sums[stat] = sums.get(stat, 0.0) + value * count
     return sums
 
 
@@ -88,6 +104,16 @@ def derive_stats(base: CharacterStats, mods: dict[str, float]) -> Stats:
         damage_taken_mult=max(0.1, pct("damage_taken_pct")),
         far_damage_pct=far_pct,
         far_threshold=far_threshold,
+        xp_mult=pct("xp_gain_pct"),
+        gold_mult=pct("gold_gain_pct"),
+        luck=mods.get("luck", 0.0),
+        cooldown_mult=max(0.2, pct("cooldown_pct")),
+        elite_damage_mult=pct("elite_damage_pct"),
+        standing_damage_mult=pct("standing_damage_pct"),
+        thorns=mods.get("thorns_flat", 0.0),
+        heal_per_kill=mods.get("heal_per_kill", 0.0),
+        i_frames_mult=pct("i_frames_pct"),
+        explode_on_kill_pct=min(100.0, mods.get("explode_on_kill_pct", 0.0)),
     )
 
 

@@ -161,3 +161,29 @@ class PickupCollected(Event):
     kind: str
     x: float
     y: float
+
+
+@dataclass(frozen=True, slots=True)
+class ItemGained(Event):
+    item_id: str
+    count: int
+    source: str  # chest kind
+
+
+@dataclass(frozen=True, slots=True)
+class ChestLocked(Event):
+    """Touched a chest without enough seeds (the HUD shows the price)."""
+
+    price: int
+
+
+@dataclass(frozen=True, slots=True)
+class PotBroken(Event):
+    x: float
+    y: float
+    content: str
+
+
+@dataclass(frozen=True, slots=True)
+class SeedsCollected(Event):
+    amount: int

@@ -1,0 +1,435 @@
+{
+ "items": [
+  {
+   "id": "watering_can",
+   "name": "Gießkanne",
+   "rarity": "common",
+   "text": "+8 % Angriffstempo.",
+   "effects": [
+    {
+     "stat": "attack_speed_pct",
+     "value": 8
+    }
+   ]
+  },
+  {
+   "id": "compost",
+   "name": "Kompost",
+   "rarity": "common",
+   "text": "+12 Max-HP.",
+   "effects": [
+    {
+     "stat": "max_hp_flat",
+     "value": 12
+    }
+   ]
+  },
+  {
+   "id": "garden_gloves",
+   "name": "Gartenhandschuhe",
+   "rarity": "common",
+   "text": "+8 % Schaden.",
+   "effects": [
+    {
+     "stat": "damage_pct",
+     "value": 8
+    }
+   ]
+  },
+  {
+   "id": "straw_hat",
+   "name": "Strohhut",
+   "rarity": "common",
+   "text": "-5 % erlittener Schaden.",
+   "effects": [
+    {
+     "stat": "damage_taken_pct",
+     "value": -5
+    }
+   ]
+  },
+  {
+   "id": "seed_pouch",
+   "name": "Samenbeutel",
+   "rarity": "common",
+   "text": "+15 % Samenkörner.",
+   "effects": [
+    {
+     "stat": "gold_gain_pct",
+     "value": 15
+    }
+   ]
+  },
+  {
+   "id": "rake",
+   "name": "Rechen",
+   "rarity": "common",
+   "text": "+20 % Aufsammelradius.",
+   "effects": [
+    {
+     "stat": "pickup_radius_pct",
+     "value": 20
+    }
+   ]
+  },
+  {
+   "id": "snail_shell",
+   "name": "Schneckenhaus",
+   "rarity": "common",
+   "text": "+0,4 HP pro Sekunde.",
+   "effects": [
+    {
+     "stat": "regen_per_s",
+     "value": 0.4
+    }
+   ]
+  },
+  {
+   "id": "sprout_boots",
+   "name": "Keimstiefel",
+   "rarity": "common",
+   "text": "+6 % Lauftempo.",
+   "effects": [
+    {
+     "stat": "move_speed_pct",
+     "value": 6
+    }
+   ]
+  },
+  {
+   "id": "magnifier",
+   "name": "Lupe",
+   "rarity": "common",
+   "text": "+5 % Krit-Chance.",
+   "effects": [
+    {
+     "stat": "crit_chance_pct",
+     "value": 5
+    }
+   ]
+  },
+  {
+   "id": "sundial",
+   "name": "Sonnenuhr",
+   "rarity": "common",
+   "text": "-10 % Abklingzeit der Fähigkeit.",
+   "effects": [
+    {
+     "stat": "cooldown_pct",
+     "value": -10
+    }
+   ]
+  },
+  {
+   "id": "earthworm",
+   "name": "Regenwurm",
+   "rarity": "common",
+   "text": "+10 % XP.",
+   "effects": [
+    {
+     "stat": "xp_gain_pct",
+     "value": 10
+    }
+   ]
+  },
+  {
+   "id": "garden_twine",
+   "name": "Gartenschnur",
+   "rarity": "common",
+   "text": "+8 % Reichweite.",
+   "effects": [
+    {
+     "stat": "range_pct",
+     "value": 8
+    }
+   ]
+  },
+  {
+   "id": "clover",
+   "name": "Kleeblatt",
+   "rarity": "uncommon",
+   "text": "+1 Glück: seltenere Karten und Items.",
+   "effects": [
+    {
+     "stat": "luck",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "id": "trellis",
+   "name": "Rankhilfe",
+   "rarity": "uncommon",
+   "text": "Geschosse durchbohren +1 Gegner.",
+   "effects": [
+    {
+     "stat": "pierce_add",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "id": "pruning_shears",
+   "name": "Gartenschere",
+   "rarity": "uncommon",
+   "text": "+25 % Krit-Schaden.",
+   "effects": [
+    {
+     "stat": "crit_mult_add_pct",
+     "value": 25
+    }
+   ]
+  },
+  {
+   "id": "scarecrow",
+   "name": "Vogelscheuche",
+   "rarity": "uncommon",
+   "text": "+20 % Schaden gegen Elites und Bosse.",
+   "effects": [
+    {
+     "stat": "elite_damage_pct",
+     "value": 20
+    }
+   ]
+  },
+  {
+   "id": "deep_roots",
+   "name": "Tiefe Wurzeln",
+   "rarity": "uncommon",
+   "text": "+20 % Schaden, solange du stehst.",
+   "effects": [
+    {
+     "stat": "standing_damage_pct",
+     "value": 20
+    }
+   ]
+  },
+  {
+   "id": "nettle",
+   "name": "Brennnessel",
+   "rarity": "uncommon",
+   "text": "Gegner, die dich berühren, nehmen 8 Schaden.",
+   "effects": [
+    {
+     "stat": "thorns_flat",
+     "value": 8
+    }
+   ]
+  },
+  {
+   "id": "honey_pot",
+   "name": "Honigtopf",
+   "rarity": "uncommon",
+   "text": "Heilt 0,3 HP pro Kill.",
+   "effects": [
+    {
+     "stat": "heal_per_kill",
+     "value": 0.3
+    }
+   ]
+  },
+  {
+   "id": "cold_frame",
+   "name": "Frühbeetfenster",
+   "rarity": "uncommon",
+   "text": "+30 % Schutzzeit nach Treffern.",
+   "effects": [
+    {
+     "stat": "i_frames_pct",
+     "value": 30
+    }
+   ]
+  },
+  {
+   "id": "seed_bomb",
+   "name": "Samenbombe",
+   "rarity": "uncommon",
+   "text": "8 % Chance: Kills explodieren (Radius 60, 50 % Schaden).",
+   "effects": [
+    {
+     "stat": "explode_on_kill_pct",
+     "value": 8
+    }
+   ]
+  },
+  {
+   "id": "twin_pod",
+   "name": "Zwillingsschote",
+   "rarity": "rare",
+   "text": "+1 zusätzlicher Schuss.",
+   "effects": [
+    {
+     "stat": "extra_attacks",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "id": "sunflower",
+   "name": "Sonnenblume",
+   "rarity": "rare",
+   "text": "+15 % Schaden, +10 % Reichweite.",
+   "effects": [
+    {
+     "stat": "damage_pct",
+     "value": 15
+    },
+    {
+     "stat": "range_pct",
+     "value": 10
+    }
+   ]
+  },
+  {
+   "id": "beehive",
+   "name": "Bienenstock",
+   "rarity": "rare",
+   "text": "+15 % Angriffstempo, +5 % Lauftempo.",
+   "effects": [
+    {
+     "stat": "attack_speed_pct",
+     "value": 15
+    },
+    {
+     "stat": "move_speed_pct",
+     "value": 5
+    }
+   ]
+  },
+  {
+   "id": "rain_barrel",
+   "name": "Regentonne",
+   "rarity": "rare",
+   "text": "+30 Max-HP, +0,5 HP pro Sekunde.",
+   "effects": [
+    {
+     "stat": "max_hp_flat",
+     "value": 30
+    },
+    {
+     "stat": "regen_per_s",
+     "value": 0.5
+    }
+   ]
+  },
+  {
+   "id": "golden_leaf",
+   "name": "Goldblatt",
+   "rarity": "rare",
+   "text": "+30 % Samenkörner, +1 Glück.",
+   "effects": [
+    {
+     "stat": "gold_gain_pct",
+     "value": 30
+    },
+    {
+     "stat": "luck",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "id": "oak_acorn",
+   "name": "Eichel der alten Eiche",
+   "rarity": "epic",
+   "text": "+25 % Schaden, +25 Max-HP.",
+   "effects": [
+    {
+     "stat": "damage_pct",
+     "value": 25
+    },
+    {
+     "stat": "max_hp_flat",
+     "value": 25
+    }
+   ]
+  },
+  {
+   "id": "greenhouse",
+   "name": "Gewächshaus",
+   "rarity": "epic",
+   "text": "+30 % XP, +40 % Aufsammelradius.",
+   "effects": [
+    {
+     "stat": "xp_gain_pct",
+     "value": 30
+    },
+    {
+     "stat": "pickup_radius_pct",
+     "value": 40
+    }
+   ]
+  },
+  {
+   "id": "gardeners_spade",
+   "name": "Spaten der Gärtnerin",
+   "rarity": "epic",
+   "text": "+1 zusätzlicher Schuss, Geschosse durchbohren +1 Gegner.",
+   "effects": [
+    {
+     "stat": "extra_attacks",
+     "value": 1
+    },
+    {
+     "stat": "pierce_add",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "id": "first_seed",
+   "name": "Die erste Saat",
+   "rarity": "legendary",
+   "text": "+30 % Schaden, +20 % Angriffstempo, +10 % Krit-Chance.",
+   "effects": [
+    {
+     "stat": "damage_pct",
+     "value": 30
+    },
+    {
+     "stat": "attack_speed_pct",
+     "value": 20
+    },
+    {
+     "stat": "crit_chance_pct",
+     "value": 10
+    }
+   ]
+  }
+ ],
+ "economy": {
+  "currency": {
+   "id": "seeds",
+   "name": "Samenkörner",
+   "normal_drop_pct": 35,
+   "normal_value": 1,
+   "elite_value": 10,
+   "boss_value": 40
+  },
+  "chests": {
+   "count": 90,
+   "price_start": 15,
+   "price_growth_pct": 40,
+   "item_min_rarity": {
+    "map": "common",
+    "elite": "rare",
+    "boss": "epic"
+   }
+  },
+  "pots": {
+   "count": 160,
+   "contents": {
+    "seeds": 70,
+    "heal": 20,
+    "magnet": 5,
+    "nothing": 5
+   },
+   "seeds_min": 3,
+   "seeds_max": 6
+  },
+  "heal_orb_hp": 15,
+  "rerolls_per_run": 2,
+  "banishes_per_run": 2,
+  "text": "Samenkörner fallen von Gegnern (35 % je normaler Gegner, Elite 10, Boss 40) und aus Vasen. Saatkisten liegen auf der Karte und kosten Samenkörner; jede geöffnete Kiste macht die nächste 40 % teurer. Elite- und Bosskisten sind gratis und enthalten mindestens seltene bzw. epische Items."
+ }
+}

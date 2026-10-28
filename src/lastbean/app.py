@@ -333,6 +333,7 @@ async def run(
     game = Game(content, renderer, store or default_store(), seed, autostart)
     screen = Screen(renderer, game.profile["settings"]["zoom"])
     effects = Effects(*effect_palette(renderer))
+    effects.item_info = {i.id: (i.name, i.text) for i in content.items}
     audio = Audio()
     touch = TouchState()
 
@@ -350,6 +351,7 @@ async def run(
     acc, frames, running, choice = 0.0, 0, True, None
     buttons: list[screens.Button] = []
     touch_ability = False
+    offer_action: PlayerInput | None = None
     was_paused = False
     touch_debug = "" if screen.debug_requested() else None
     last = time.perf_counter()
@@ -398,13 +400,32 @@ async def run(
             game.board["period"], game.board["entries"] = action.split(":", 1)[1], None
             game.refresh_board()
 
+    def card_action(action: str) -> None:
+        nonlocal offer_action
+        if action == "reroll":
+            offer_action, renderer.banish_mode = PlayerInput(0, reroll=True), False
+        elif action == "banish":
+            renderer.banish_mode = not renderer.banish_mode
+
+    def pick_card(i: int) -> None:
+        """A card tap or 1/2/3: take it, or banish it while banish mode is on."""
+        nonlocal choice, offer_action
+        if renderer.banish_mode:
+            offer_action, renderer.banish_mode = PlayerInput(0, banish=i), False
+        else:
+            choice = i
+
     def tap(pos: tuple[int, int]) -> None:
         nonlocal choice, touch_ability
         if game.state == "play":
             if game.world.paused:
+                for rect, action in renderer.offer_buttons:
+                    if rect.collidepoint(pos):
+                        card_action(action)
+                        return
                 for i, rect in enumerate(renderer.card_rects):
                     if rect.collidepoint(pos):
-                        choice = i
+                        pick_card(i)
             elif renderer.pause_rect.collidepoint(pos):
                 game.state = "pause"
             elif renderer.ability_rect.collidepoint(pos):
@@ -508,7 +529,14 @@ async def run(
                     game.config = game.normal if game.config is not game.normal else stress_config(game.normal)
                     new_run()
                 elif game.world.paused:
-                    choice = card_choice(event.key, renderer)
+                    if event.key == pygame.K_r:
+                        card_action("reroll")
+                    elif event.key == pygame.K_b:
+                        card_action("banish")
+                    else:
+                        picked = card_choice(event.key, renderer)
+                        if picked is not None:
+                            pick_card(picked)
             acc += min(clock.tick(60 if WEB else 120) / 1000.0, DT * MAX_STEPS_PER_FRAME)
             t0 = time.perf_counter()
             world = game.world
@@ -518,7 +546,9 @@ async def run(
                     acc = 0.0
                     if not was_paused:  # cards just opened: forget fingers that were steering, keep new taps
                         touch.reset()
-                    if choice is not None:
+                    if offer_action is not None:
+                        frame_events += world.step([offer_action])
+                    elif choice is not None:
                         frame_events += world.step([PlayerInput(0, choice=choice)])
                         renderer.selected = 0
                     elif game.config is not game.normal:
@@ -543,7 +573,7 @@ async def run(
                     touch.reset()
             else:
                 acc = 0.0
-            choice = None
+            choice, offer_action = None, None
             was_paused = game.state == "play" and game.world.paused
             t1 = time.perf_counter()
             buttons = []

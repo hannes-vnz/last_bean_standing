@@ -23,6 +23,7 @@ from .schema import (
     Character,
     Condition,
     Content,
+    Item,
     Mob,
     Mode,
     Reward,
@@ -48,7 +49,7 @@ def _find_data_dir() -> Path:
 DATA_DIR = _find_data_dir()
 DATA_FILES = (
     "balance", "biomes", "bosses", "challenges", "characters", "elite", "mobs",
-    "modes", "shop", "shrines", "skins", "style", "swarm", "upgrades",
+    "modes", "shop", "shrines", "skins", "style", "swarm", "upgrades", "items",
 )  # fmt: skip
 REWARD_TYPES = ("unlock_character", "unlock_upgrade", "unlock_skin", "unlock_mode", "title")
 CONDITION_TYPES = ("run_stat", "profile_stat", "run_flag")
@@ -438,6 +439,39 @@ def _style(raw, e) -> Style:
     return style
 
 
+def _items_and_economy(raw, e) -> tuple[tuple[Item, ...], dict[str, Any]]:
+    r = _Reader(raw, "items", e)
+    out = []
+    for it in _items(r.list("items"), "items.items", e):
+        effects = []
+        for k, eff in enumerate(it.list("effects")):
+            if not isinstance(eff, dict) or not isinstance(eff.get("stat"), str) or not _is_num(eff.get("value")):
+                e.append(f"{it.ctx}.effects[{k}]: object with 'stat' and numeric 'value' expected")
+                continue
+            effects.append((eff["stat"], float(eff["value"])))
+        if not effects:
+            e.append(f"{it.ctx}.effects: at least one effect expected")
+        out.append(
+            Item(it.str("id"), it.str("name"), it.str("rarity", choices=RARITIES), it.str("text"), tuple(effects))
+        )
+    eco = r.sub("economy")
+    cur = eco.sub("currency")
+    cur.num("normal_drop_pct", 0, 100), cur.num("normal_value", 0), cur.num("elite_value", 0), cur.num("boss_value", 0)
+    chests = eco.sub("chests")
+    chests.int("count", 0), chests.num("price_start", 0), chests.num("price_growth_pct", 0)
+    mins = chests.dict("item_min_rarity")
+    for k, v in mins.items():
+        if v not in RARITIES:
+            e.append(f"items.economy.chests.item_min_rarity.{k}: '{v}' not in {list(RARITIES)}")
+    pots = eco.sub("pots")
+    pots.int("count", 0), pots.int("seeds_min", 0), pots.int("seeds_max", 0)
+    contents = pots.dict("contents")
+    if not contents or not all(_is_num(w) and w >= 0 for w in contents.values()):
+        e.append("items.economy.pots.contents: non-negative weights expected")
+    eco.num("heal_orb_hp", 0), eco.int("rerolls_per_run", 0), eco.int("banishes_per_run", 0)
+    return tuple(out), dict(eco.obj)
+
+
 def _shop(raw, e) -> Shop:
     r = _Reader(raw, "shop", e)
     cur = r.sub("currency")
@@ -490,6 +524,7 @@ def _cross_check(c: Content, e: list[str]) -> None:
     modes = _unique("modes", c.modes, e)
     _unique("shrines", c.shrines, e)
     _unique("shop.workshop", c.shop.workshop, e)
+    _unique("items", c.items, e)
     chal = {x.id: x for x in c.challenges}
 
     def unlocked_by(owner: str, cid: str | None, rtype: str, target: str) -> None:
@@ -600,6 +635,7 @@ def parse_content(raw: dict[str, Any]) -> Content:
     """Build and validate typed content from already-loaded JSON."""
     e: list[str] = []
     shrines_raw = raw.get("shrines", {})
+    items, economy = _items_and_economy(raw.get("items"), e)
     content = Content(
         balance=_balance(raw.get("balance"), e),
         characters=tuple(_character(r) for r in _items(raw.get("characters"), "characters", e)),
@@ -618,6 +654,8 @@ def parse_content(raw: dict[str, Any]) -> Content:
         shop=_shop(raw.get("shop"), e),
         elite=raw.get("elite") if isinstance(raw.get("elite"), dict) else {},
         swarm=raw.get("swarm") if isinstance(raw.get("swarm"), dict) else {},
+        items=items,
+        economy=economy,
     )
     if not e:
         _cross_check(content, e)

@@ -1,6 +1,7 @@
 """Headless, deterministic simulation (no pygame)."""
 
 from .arena import Obstacle, ObstacleMap
+from .economy import Economy, ItemDef, MapChest, Pot
 from .entities import (
     BossStats,
     CharacterStats,
@@ -23,6 +24,7 @@ from .events import (
     BossPhase,
     BossSpawned,
     ChestDropped,
+    ChestLocked,
     ChestOpened,
     EliteSpawned,
     EnemyHit,
@@ -31,13 +33,16 @@ from .events import (
     EnemySpawned,
     Event,
     HazardActivated,
+    ItemGained,
     LevelUp,
     PickupCollected,
     PlayerDied,
     PlayerHit,
+    PotBroken,
     ProjectileBlocked,
     RunEnded,
     RunStarted,
+    SeedsCollected,
     ShotFired,
     UpgradeChosen,
     UpgradeOffered,
@@ -50,6 +55,14 @@ from .waves import Scaling
 from .world import DT, TICK_HZ, PlayerInput, Snapshot, World, WorldConfig
 
 __all__ = [
+    "ChestLocked",
+    "Economy",
+    "ItemDef",
+    "ItemGained",
+    "MapChest",
+    "Pot",
+    "PotBroken",
+    "SeedsCollected",
     "AbilityUsed",
     "Pickup",
     "PickupCollected",

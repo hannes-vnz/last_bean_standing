@@ -14,9 +14,9 @@ from lastbean.sim import (
     EnemySpawned,
     HazardActivated,
     HazardSpec,
+    ItemGained,
     PlayerHit,
     PlayerInput,
-    UpgradeOffered,
     World,
     WorldConfig,
 )
@@ -156,17 +156,16 @@ def test_vampiric_heals_on_contact(make_config):
     assert e.hp == pytest.approx(11.0)
 
 
-def test_elite_chest_offers_rarest_available(make_config):
+def test_elite_chest_gives_a_rare_item(make_config):
+    """Since Paket C chests hold items (level-ups still give upgrade cards)."""
     w = quiet_world(make_config)
     p = w.players[0]
-    w._drop_chest(p.x, p.y, "rare", [])
+    w._drop_chest(p.x, p.y, "elite", [])
     events = run(w, 0.1)
-    offer = next(e for e in events if isinstance(e, UpgradeOffered)).upgrade_ids
-    rarity = {u.id: u.rarity for u in w.config.upgrades}
-    # Phase 1 has no rare upgrades yet, so the chest falls back to the rarest tier left (uncommon).
-    assert {rarity[u] for u in offer} == {"uncommon"} and p.offer_source == "chest" and w.paused
-    w.step([PlayerInput(0, choice=0)])
-    assert sum(p.upgrades.values()) == 1 and p.level == 1 and not p.pending_chests
+    gained = [e for e in events if isinstance(e, ItemGained)]
+    rarity = {i.id: i.rarity for i in w.config.items}
+    assert len(gained) == 1 and rarity[gained[0].item_id] in ("rare", "epic", "legendary")
+    assert sum(p.items.values()) == 1 and not w.chests and not w.paused
 
 
 # ---------------------------------------------------------------------------- boss
@@ -230,7 +229,7 @@ def test_boss_kill_drops_chest(make_config):
     boss.hp = 0
     w._kill(boss, 0, events)
     assert any(isinstance(e, BossKilled) for e in events)
-    assert [e.min_rarity for e in events if isinstance(e, ChestDropped)] == ["epic"]
+    assert [e.min_rarity for e in events if isinstance(e, ChestDropped)] == ["boss"]  # free, at least epic
 
 
 def test_thorns_are_blocked_by_trees(make_config):

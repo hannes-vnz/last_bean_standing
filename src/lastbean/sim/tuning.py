@@ -9,6 +9,9 @@ PLAYER_RADIUS = 12.0  # sprite 16 px = 32 units
 PROJECTILE_RADIUS = 4.0
 ORB_SPEED = 420.0  # XP orbs inside the pickup radius fly to the player
 CHEST_PICKUP_RADIUS = 22.0
+POT_RADIUS = 10.0
+KILL_EXPLOSION_RADIUS = 60.0  # (text) item "Samenbombe": radius 60
+KILL_EXPLOSION_DAMAGE = 0.5  # (text) 50 % of the killing hit
 EXTRA_ATTACK_DAMAGE = 0.6  # balance.json stat_model
 
 # Pickups (Paket A: magnet; gold and healing follow with Paket C)

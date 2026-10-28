@@ -19,11 +19,11 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from .arena import Obstacle, ObstacleMap, obstacles_from_content
+from .economy import Economy, ItemDef, MapChest, Pot, pick_weighted, roll_item, scatter
 from .enemies import BEHAVIORS, BOSS_BEHAVIORS, COMPASS_16, apply_affixes, damage_enemy, tick_affixes
 from .entities import (
     BossStats,
     CharacterStats,
-    Chest,
     EliteRules,
     Enemy,
     EnemyShot,
@@ -40,6 +40,7 @@ from .events import (
     BossKilled,
     BossSpawned,
     ChestDropped,
+    ChestLocked,
     ChestOpened,
     EliteSpawned,
     EnemyHit,
@@ -47,13 +48,16 @@ from .events import (
     EnemySpawned,
     Event,
     HazardActivated,
+    ItemGained,
     LevelUp,
     PickupCollected,
     PlayerDied,
     PlayerHit,
+    PotBroken,
     ProjectileBlocked,
     RunEnded,
     RunStarted,
+    SeedsCollected,
     ShotFired,
     UpgradeChosen,
     UpgradeOffered,
@@ -69,11 +73,14 @@ from .tuning import (
     CHEST_PICKUP_RADIUS,
     ENEMY_SHOT_RADIUS,
     EXTRA_ATTACK_DAMAGE,
+    KILL_EXPLOSION_DAMAGE,
+    KILL_EXPLOSION_RADIUS,
     MAGNET_DROP_PCT,
     MAGNET_ORB_SPEED,
     ORB_SPEED,
     PICKUP_RADIUS,
     PLAYER_RADIUS,
+    POT_RADIUS,
     PROJECTILE_RADIUS,
     SPREAD_COS,
     SPREAD_SIN,
@@ -107,6 +114,8 @@ class PlayerInput:
     move_y: int = 0
     choice: int | None = None
     ability: bool = False
+    reroll: bool = False  # roll the offered cards again (limited per run)
+    banish: int | None = None  # remove that card's upgrade from this run and roll again (limited)
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +128,8 @@ class WorldConfig:
     obstacles: tuple[Obstacle, ...] = ()
     bosses: tuple[BossStats, ...] = ()
     boss_chests: tuple[tuple[str, str], ...] = ()  # (boss id, min rarity of its chest)
+    items: tuple[ItemDef, ...] = ()
+    economy: Economy | None = None
     elite: EliteRules | None = None
     rarity_weights: dict[str, float] = field(default_factory=dict)
     level_up_choices: int = 3
@@ -164,6 +175,8 @@ class WorldConfig:
             bosses=bosses,
             boss_chests=tuple((b.id, BOSS_CHEST_RARITY.get(content.boss(b.id).reward, "epic")) for b in bosses),
             elite=EliteRules.from_content(content),
+            items=tuple(ItemDef.from_content(i) for i in content.items),
+            economy=Economy.from_content(content) if content.economy else None,
             rarity_weights={k: float(v) for k, v in bal.rarity_weights.items()},
             level_up_choices=bal.level_up_choices,
             luck_shift=float(bal.raw["luck_shift_per_point"]),
@@ -197,6 +210,10 @@ class PlayerView(NamedTuple):
     offer_source: str
     slowed: bool
     ability_ready: float = 1.0  # 0 right after use, 1 when ready again
+    seeds: int = 0
+    items: tuple[tuple[str, int], ...] = ()
+    rerolls: int = 0
+    banishes: int = 0
 
 
 class EnemyView(NamedTuple):
@@ -237,6 +254,7 @@ class OrbView(NamedTuple):
     x: float
     y: float
     value: float
+    kind: str = "xp"
 
 
 class BossBar(NamedTuple):
@@ -263,9 +281,11 @@ class Snapshot:
     orbs: tuple[OrbView, ...]
     enemy_shots: tuple[EnemyShotView, ...] = ()
     hazards: tuple[HazardView, ...] = ()
-    chests: tuple[tuple[float, float], ...] = ()
+    chests: tuple[tuple[float, float, str], ...] = ()  # (x, y, kind): "map" costs seeds, "elite"/"boss" free
     boss_bar: BossBar | None = None
     pickups: tuple[tuple[str, float, float], ...] = ()
+    pots: tuple[tuple[float, float], ...] = ()
+    chest_price: int = 0
 
 
 @dataclass
@@ -282,7 +302,8 @@ class World:
     enemy_shots: list[EnemyShot] = field(default_factory=list)
     hazards: list[Hazard] = field(default_factory=list)
     orbs: list[XpOrb] = field(default_factory=list)
-    chests: list[Chest] = field(default_factory=list)
+    chests: list[MapChest] = field(default_factory=list)
+    pots: list[Pot] = field(default_factory=list)
     pickups: list[Pickup] = field(default_factory=list)
     rng: Rng = field(init=False)
 
@@ -296,6 +317,9 @@ class World:
         self._grid = SpatialHash(GRID_CELL)
         self.obstacles = ObstacleMap(cfg.obstacles)
         self._upgrade_defs = {u.id: u for u in cfg.upgrades}
+        self._item_defs = {i.id: i for i in cfg.items}
+        self.chests_opened = 0
+        self._locked_until: dict[int, int] = {}
         self._mobs = {m.id: m for m in cfg.mobs}
         self.boss_stats = {b.id: b for b in cfg.bosses}
         self._boss_chest = dict(cfg.boss_chests)
@@ -313,6 +337,18 @@ class World:
             ]
         self._pending: list[Event] = [RunStarted(0, None, self.seed)]
         self.bosses_killed = 0
+        eco = cfg.economy
+        if eco is not None:
+            for p in self.players:
+                p.rerolls, p.banishes = eco.rerolls, eco.banishes
+            if cfg.enemy_target is None:  # tests and benchmarks keep an empty map
+                # Own random stream for the layout: differs per run, never shifts the main stream.
+                layout = Rng(self.seed ^ 0x5EED5)
+                start = (cx, cy)
+                spots = scatter(layout, eco.chest_count + eco.pot_count, cfg.arena_w, cfg.arena_h, self.obstacles,
+                                start, 220.0)  # fmt: skip
+                self.chests = [MapChest(x, y, "map") for x, y in spots[: eco.chest_count]]
+                self.pots = [Pot(x, y) for x, y in spots[eco.chest_count :]]
 
     @property
     def time_s(self) -> float:
@@ -378,14 +414,24 @@ class World:
     def _apply_choices(self, inputs: dict[int, PlayerInput], events: list[Event]) -> None:
         for p in self.players:
             inp = inputs.get(p.player_id)
-            if not p.offer or inp is None or inp.choice is None or not 0 <= inp.choice < len(p.offer):
+            if not p.offer or inp is None:
+                continue
+            if inp.reroll and p.rerolls > 0:
+                p.rerolls -= 1
+                p.offer = ()
+                self._offer(p, events)
+                continue
+            if inp.banish is not None and 0 <= inp.banish < len(p.offer) and p.banishes > 0:
+                p.banishes -= 1
+                p.banished.add(p.offer[inp.banish])
+                p.offer = ()
+                self._offer(p, events)
+                continue
+            if inp.choice is None or not 0 <= inp.choice < len(p.offer):
                 continue
             uid = p.offer[inp.choice]
             p.upgrades[uid] = p.upgrades.get(uid, 0) + 1
-            old_max = p.stats.max_hp
-            p.stats = derive_stats(self.config.character, modifier_sums(p.upgrades, self._upgrade_defs))
-            # Max-HP gains also heal by the same amount ("heilt um 15").
-            p.hp = min(p.stats.max_hp, p.hp + max(0.0, p.stats.max_hp - old_max))
+            self._recompute(p)
             if p.offer_source == "chest":
                 p.pending_chests.pop(0)
             else:
@@ -394,11 +440,30 @@ class World:
             events.append(UpgradeChosen(self.tick, p.player_id, uid, p.upgrades[uid]))
             self._offer(p, events)
 
+    def _recompute(self, p: Player) -> None:
+        """Stats from character, upgrades and items. Max-HP gains also heal by the same amount."""
+        old_max = p.stats.max_hp
+        mods = modifier_sums(p.upgrades, self._upgrade_defs, p.items, self._item_defs)
+        p.stats = derive_stats(self.config.character, mods)
+        p.hp = min(p.stats.max_hp, p.hp + max(0.0, p.stats.max_hp - old_max))
+
+    def _give_item(self, p: Player, kind: str, events: list[Event]) -> None:
+        eco, cfg = self.config.economy, self.config
+        if eco is None or not cfg.items:
+            return
+        floor = dict(eco.min_rarity).get(kind, "common")
+        item = roll_item(self.rng, cfg.items, cfg.rarity_weights, floor, p.stats.luck, cfg.luck_shift)
+        if item is None:
+            return
+        p.items[item.id] = p.items.get(item.id, 0) + 1
+        self._recompute(p)
+        events.append(ItemGained(self.tick, p.player_id, item.id, p.items[item.id], kind))
+
     def _offer(self, p: Player, events: list[Event]) -> None:
         """Open the next pending choice: level-ups first, then chests (at least their rarity if available)."""
         cfg = self.config
         while not p.offer and (p.pending_levels > 0 or p.pending_chests):
-            pool = list(cfg.upgrades)
+            pool = [u for u in cfg.upgrades if u.id not in p.banished]
             source = "level"
             if p.pending_levels <= 0:
                 source = "chest"
@@ -412,7 +477,7 @@ class World:
                                default=0)  # fmt: skip
                     pool = [u for u in pool if RARITIES.index(u.rarity) >= best]
             p.offer = roll_offer(
-                self.rng, pool, p.upgrades, cfg.rarity_weights, cfg.level_up_choices, 0.0, cfg.luck_shift
+                self.rng, pool, p.upgrades, cfg.rarity_weights, cfg.level_up_choices, p.stats.luck, cfg.luck_shift
             )
             if p.offer:
                 p.offer_source = source
@@ -453,7 +518,7 @@ class World:
             inp = inputs.get(p.player_id)
             if not inp or not inp.ability or p.ability_cooldown > 0 or ch.active_id not in ABILITIES:
                 continue
-            p.ability_cooldown = ch.active_cooldown_s
+            p.ability_cooldown = ch.active_cooldown_s * p.stats.cooldown_mult
             ABILITIES[ch.active_id](self, p, events)
             events.append(AbilityUsed(self.tick, p.player_id, ch.active_id, p.x, p.y))
 
@@ -474,7 +539,7 @@ class World:
         p.hp = max(0.0, p.hp - dmg)
         p.damage_taken += dmg
         if use_i_frames:
-            p.i_frames = self.config.character.i_frames_s
+            p.i_frames = self.config.character.i_frames_s * p.stats.i_frames_mult
             events.append(PlayerHit(self.tick, p.player_id, dmg, p.hp))
         if p.hp <= 0:
             p.alive = False
@@ -687,24 +752,46 @@ class World:
         events.append(EnemyKilled(self.tick, killer, e.eid, e.kind, e.x, e.y))
         if e.xp > 0:
             self.orbs.append(XpOrb(e.x, e.y, e.xp * self.reward_mult))
+        eco = self.config.economy
+        if eco is not None:
+            value = eco.boss_value if e.boss else eco.elite_value if e.elite else 0
+            if not value and self.rng.random() * 100.0 < eco.drop_pct:
+                value = eco.normal_value
+            if value:
+                self.orbs.append(XpOrb(e.x + 6.0, e.y, float(value), kind="seeds"))
         if e.elite or (not e.boss and self.rng.random() * 100.0 < MAGNET_DROP_PCT):
             self.pickups.append(Pickup("magnet", e.x, e.y))
         for p in self.players:
             if p.player_id == killer:
                 p.kills += 1
+                if p.stats.heal_per_kill and p.alive:
+                    p.hp = min(p.stats.max_hp, p.hp + p.stats.heal_per_kill)
         if e.elite:
-            self._drop_chest(e.x, e.y, self.config.elite.chest_min_rarity, events)
+            self._drop_chest(e.x, e.y, "elite", events)
             if "volatile" in e.affixes:
                 spec = HazardSpec("explosion", VOLATILE_RADIUS, delay=VOLATILE_DELAY_S, burst=e.damage)
                 self.add_hazard(spec, e.x, e.y, e.eid)
         if e.boss:
             self.bosses_killed += 1
             events.append(BossKilled(self.tick, killer, e.eid, e.boss, self.time_s))
-            self._drop_chest(e.x, e.y, self._boss_chest.get(e.boss, "epic"), events)
+            self._drop_chest(e.x, e.y, "boss", events)
 
-    def _drop_chest(self, x: float, y: float, min_rarity: str, events: list[Event]) -> None:
-        self.chests.append(Chest(x, y, min_rarity))
-        events.append(ChestDropped(self.tick, None, x, y, min_rarity))
+    def _drop_chest(self, x: float, y: float, kind: str, events: list[Event]) -> None:
+        """Elite and boss chests are free and hold at least a rare or epic item (items.json economy)."""
+        self.chests.append(MapChest(x, y, kind))
+        events.append(ChestDropped(self.tick, None, x, y, kind))
+
+    def _explode(self, e: Enemy, killer: int | None, damage: float, killed: set[int], events: list[Event]) -> None:
+        """Item "Samenbombe": a kill bursts and hurts enemies around it (no chain reaction)."""
+        r2 = KILL_EXPLOSION_RADIUS**2
+        events.append(HazardActivated(self.tick, killer, "seed_burst", e.x, e.y, KILL_EXPLOSION_RADIUS))
+        for o in self._grid.query(e.x, e.y, KILL_EXPLOSION_RADIUS + self._max_radius):
+            if o.eid == e.eid or o.eid in killed or (o.x - e.x) ** 2 + (o.y - e.y) ** 2 > r2:
+                continue
+            damage_enemy(o, damage)
+            if o.hp <= 0:
+                killed.add(o.eid)
+                self._kill(o, killer, events)
 
     # ------------------------------------------------------------------ combat
 
@@ -729,6 +816,8 @@ class World:
             damage = s.damage
             if s.far_damage_pct and d > s.far_threshold:  # e.g. Fenn's passive "Weitblick"
                 damage *= 1.0 + s.far_damage_pct / 100.0
+            if p.standing:  # items like "Tiefe Wurzeln" reward standing still
+                damage *= s.standing_damage_mult
             self._fire(p, dx, dy, damage, life, events)
             # Extra attacks fan out alternately left and right of the main shot.
             lx, ly, rx, ry = dx, dy, dx, dy
@@ -768,6 +857,7 @@ class World:
         reach = PROJECTILE_RADIUS + self._max_radius
         survivors: list[Projectile] = []
         killed: set[int] = set()
+        owners = {p.player_id: p for p in self.players}
         for pr in self.projectiles:
             pr.x += pr.vx * DT
             pr.y += pr.vy * DT
@@ -782,11 +872,21 @@ class World:
                 if (e.x - pr.x) ** 2 + (e.y - pr.y) ** 2 > r * r:
                     continue
                 pr.hit_ids.add(e.eid)
-                lost = damage_enemy(e, pr.damage)
+                owner = owners.get(pr.owner)
+                dmg = pr.damage
+                if owner is not None and (e.elite or e.boss):
+                    dmg *= owner.stats.elite_damage_mult
+                lost = damage_enemy(e, dmg)
                 events.append(EnemyHit(self.tick, pr.owner, e.eid, e.x, e.y, lost, pr.crit))
                 if e.hp <= 0:
                     killed.add(e.eid)
                     self._kill(e, pr.owner, events)
+                    if (
+                        owner is not None
+                        and owner.stats.explode_on_kill_pct
+                        and (self.rng.random() * 100.0 < owner.stats.explode_on_kill_pct)
+                    ):
+                        self._explode(e, pr.owner, dmg * KILL_EXPLOSION_DAMAGE, killed, events)
                 pr.hits_left -= 1
                 if pr.hits_left <= 0:
                     break
@@ -855,6 +955,7 @@ class World:
     def _contact_damage(self, events: list[Event]) -> None:
         g = self._grid
         reach = PLAYER_RADIUS + self._max_radius
+        thorn_kills: set[int] = set()
         for p in self.players:
             if not p.alive or p.i_frames > 0:
                 continue
@@ -865,23 +966,24 @@ class World:
                     self._hurt(p, e.damage, events)
                     if "vampiric" in e.affixes:
                         e.hp = min(e.max_hp, e.hp + (before - p.hp))
+                    if p.stats.thorns and e.hp > 0:  # item "Brennnessel"
+                        damage_enemy(e, p.stats.thorns)
+                        if e.hp <= 0:
+                            thorn_kills.add(e.eid)
+                            self._kill(e, p.player_id, events)
                     break
+        if thorn_kills:
+            self.enemies = [e for e in self.enemies if e.eid not in thorn_kills]
+            self._rebuild_grid()
 
     def _collect_pickups(self, events: list[Event]) -> None:
         alive = [p for p in self.players if p.alive]
         if not alive:
             return
         if self.chests:
-            remaining_chests = []
-            for c in self.chests:
-                owner = next((p for p in alive if (p.x - c.x) ** 2 + (p.y - c.y) ** 2 <= CHEST_PICKUP_RADIUS**2), None)
-                if owner is None:
-                    remaining_chests.append(c)
-                    continue
-                owner.pending_chests.append(c.min_rarity)
-                events.append(ChestOpened(self.tick, owner.player_id, c.min_rarity))
-                self._offer(owner, events)
-            self.chests = remaining_chests
+            self._open_chests(alive, events)
+        if self.pots:
+            self._break_pots(alive, events)
         if self.pickups:
             remaining_pickups = []
             for k in self.pickups:
@@ -915,12 +1017,63 @@ class World:
             step = (MAGNET_ORB_SPEED if magnet is not None else ORB_SPEED) * DT
             d = math.sqrt(best)
             if d <= PLAYER_RADIUS + step:
-                self._gain_xp(owner, o.value, events)
+                if o.kind == "seeds":
+                    amount = int(round(o.value * owner.stats.gold_mult))
+                    owner.seeds += amount
+                    events.append(SeedsCollected(self.tick, owner.player_id, amount))
+                elif o.kind == "heal":
+                    owner.hp = min(owner.stats.max_hp, owner.hp + o.value)
+                else:
+                    self._gain_xp(owner, o.value * owner.stats.xp_mult, events)
                 continue
             o.x += (owner.x - o.x) / d * step
             o.y += (owner.y - o.y) / d * step
             remaining.append(o)
         self.orbs = remaining
+
+    def _open_chests(self, alive: list[Player], events: list[Event]) -> None:
+        """Touch a chest to open it. Map chests cost seeds (price grows per opened chest); others are free."""
+        eco = self.config.economy
+        remaining = []
+        r2 = (CHEST_PICKUP_RADIUS + PLAYER_RADIUS) ** 2
+        for c in self.chests:
+            owner = next((p for p in alive if (p.x - c.x) ** 2 + (p.y - c.y) ** 2 <= r2), None)
+            if owner is None:
+                remaining.append(c)
+                continue
+            if c.kind == "map" and eco is not None:
+                price = eco.chest_price(self.chests_opened)
+                if owner.seeds < price:
+                    if self.tick >= self._locked_until.get(owner.player_id, 0):
+                        events.append(ChestLocked(self.tick, owner.player_id, price))
+                        self._locked_until[owner.player_id] = self.tick + TICK_HZ
+                    remaining.append(c)
+                    continue
+                owner.seeds -= price
+                self.chests_opened += 1
+            events.append(ChestOpened(self.tick, owner.player_id, c.kind))
+            self._give_item(owner, c.kind, events)
+        self.chests = remaining
+
+    def _break_pots(self, alive: list[Player], events: list[Event]) -> None:
+        eco = self.config.economy
+        remaining = []
+        r2 = (POT_RADIUS + PLAYER_RADIUS) ** 2
+        for pot in self.pots:
+            owner = next((p for p in alive if (p.x - pot.x) ** 2 + (p.y - pot.y) ** 2 <= r2), None)
+            if owner is None or eco is None:
+                remaining.append(pot)
+                continue
+            content = pick_weighted(self.rng, eco.pot_contents)
+            if content == "seeds":
+                amount = self.rng.randint(*eco.pot_seeds)
+                self.orbs.append(XpOrb(pot.x, pot.y, float(amount), kind="seeds"))
+            elif content == "heal":
+                self.orbs.append(XpOrb(pot.x, pot.y, eco.heal_orb_hp, kind="heal"))
+            elif content == "magnet":
+                self.pickups.append(Pickup("magnet", pot.x, pot.y))
+            events.append(PotBroken(self.tick, owner.player_id, pot.x, pot.y, content))
+        self.pots = remaining
 
     def _gain_xp(self, p: Player, value: float, events: list[Event]) -> None:
         p.xp += value
@@ -990,7 +1143,13 @@ class World:
                     tuple(p.upgrades.items()),
                     p.offer_source,
                     p.slow_pct > 0,
-                    1.0 - p.ability_cooldown / ch.active_cooldown_s if ch.active_cooldown_s else 1.0,
+                    1.0 - p.ability_cooldown / (ch.active_cooldown_s * p.stats.cooldown_mult)
+                    if ch.active_cooldown_s
+                    else 1.0,
+                    p.seeds,
+                    tuple(p.items.items()),
+                    p.rerolls,
+                    p.banishes,
                 )
                 for p in self.players
             ),
@@ -1009,10 +1168,12 @@ class World:
                 for e in self.enemies
             ),  # fmt: skip
             projectiles=tuple(ProjectileView(pr.x, pr.y, pr.crit) for pr in self.projectiles),
-            orbs=tuple(OrbView(o.x, o.y, o.value) for o in self.orbs),
+            orbs=tuple(OrbView(o.x, o.y, o.value, o.kind) for o in self.orbs),
             enemy_shots=tuple(EnemyShotView(s.x, s.y, s.lobbed, s.tx, s.ty) for s in self.enemy_shots),
             hazards=tuple(HazardView(h.spec.kind, h.x, h.y, h.spec.radius, h.delay <= 0) for h in self.hazards),
-            chests=tuple((c.x, c.y) for c in self.chests),
+            chests=tuple((c.x, c.y, c.kind) for c in self.chests),
+            pots=tuple((pot.x, pot.y) for pot in self.pots),
+            chest_price=self.config.economy.chest_price(self.chests_opened) if self.config.economy else 0,
             pickups=tuple((k.kind, k.x, k.y) for k in self.pickups),
             boss_bar=BossBar(boss.boss, boss.hp / boss.max_hp, boss.phase) if boss else None,
         )
@@ -1044,7 +1205,12 @@ class World:
         for o in self.orbs:
             h.update(struct.pack("<3d", o.x, o.y, o.value))
         for c in self.chests:
-            h.update(struct.pack("<2d", c.x, c.y))
+            h.update(struct.pack("<2d", c.x, c.y) + c.kind.encode())
+        for pot in self.pots:
+            h.update(struct.pack("<2d", pot.x, pot.y))
+        h.update(repr([(p.seeds, sorted(p.items.items()), p.rerolls, p.banishes, sorted(p.banished))
+                       for p in self.players]).encode() + struct.pack("<q", self.chests_opened))  # fmt: skip
+        h.update(repr([o.kind for o in self.orbs]).encode())
         for k in self.pickups:
             h.update(k.kind.encode() + struct.pack("<2d", k.x, k.y))
         h.update(struct.pack(f"<{len(self.players)}d", *(p.ability_cooldown for p in self.players)))

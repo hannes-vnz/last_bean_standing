@@ -36,15 +36,15 @@ Sprites, Effekte, Sound, Profil und Highscore, Browser-Version, Bestenlisten-Cli
 - [ ] Wüste, Eis, Lava zeigen schon ihre Effekte? (offene Frage 4)
 
 ## Paket C: Items und Kisten
-- [ ] **Gold** als Laufwährung: fällt von Gegnern, aus Vasen und Kisten.
-- [ ] **Kisten auf der Karte:** kosten Gold, der Preis steigt mit jeder geöffneten Kiste; Elite- und Bosskisten sind gratis.
-- [ ] **Items:** passive Gegenstände mit Seltenheit (gewöhnlich bis legendär), stapelbar, wirken über dieselben Stat-Schlüssel wie Upgrades. Für 1.0 etwa 30 Stück (Entwurf von mir, Freigabe durch dich).
-- [ ] Level-up gibt weiterhin Upgrade-Karten; Kisten geben Items (Megabonk-Prinzip: zwei Wege, stärker zu werden).
-- [ ] **Zerbrechliche Vasen und Kisten** auf der Karte: Gold, Heilung, gelegentlich Magnet.
-- [ ] **Heilkugeln** (Farbe steht schon in `style.json`).
+- [x] **Samenkörner** (das Gold der Story) als Laufwährung: 35 % je Gegner, Elite 10, Boss 40, Vasen 3 bis 6.
+- [x] **Saatkisten auf der Karte** (90, neu verteilt in jedem Lauf): Start 15 Samen, +40 % je geöffneter Kiste; Elite- und Bosskisten gratis (mindestens selten bzw. episch).
+- [x] **30 Items** aus Gartenwerkzeug und Gärtnerkram (12/9/5/3/1 je Seltenheit), stapelbar; neue Effekte: XP, Samen, Glück, Abklingzeit, Schaden gegen Elites, Schaden im Stand, Dornen, Heilen pro Kill, Schutzzeit, Explosion beim Kill.
+- [x] Level-up gibt weiterhin Upgrade-Karten; Kisten geben Items.
+- [x] **Vasen** (160) zerbrechen beim Drüberlaufen: Samen, Heilung, selten Magnet.
+- [x] **Heilkugeln** (15 HP) aus Vasen.
 - [ ] **Schreine** auf der Karte (Gier-Schrein aus Phase 2 vorziehen: mehr Schwierigkeit gegen mehr XP und Punkte).
-- [ ] Item-Leiste im HUD und Build-Übersicht im Pausenmenü.
-- [ ] **Neuwurf und Verbannen** bei der Kartenwahl.
+- [x] Samenzähler im HUD, Item-Einblendung beim Fund, Kisten auf der Minikarte. (Build-Übersicht mit Items im Pausenmenü: offen)
+- [x] **Neu würfeln und Verbannen** bei der Kartenwahl (je 2 pro Lauf).
 
 ## Paket C2: Mehrere Waffen (entschieden 28.10.2026: in 1.0)
 - [ ] Waffen-Plätze (Vorschlag 4); neue Waffen erscheinen als Karten beim Level-up neben den Upgrades.

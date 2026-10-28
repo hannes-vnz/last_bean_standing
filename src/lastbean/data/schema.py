@@ -230,6 +230,15 @@ class Shop:
 
 
 @dataclass(frozen=True, slots=True)
+class Item:
+    id: str
+    name: str
+    rarity: str
+    text: str
+    effects: tuple[tuple[str, float], ...]  # (stat, value per stack)
+
+
+@dataclass(frozen=True, slots=True)
 class Content:
     balance: Balance
     characters: tuple[Character, ...]
@@ -245,6 +254,8 @@ class Content:
     shop: Shop
     elite: dict[str, Any] = field(repr=False)
     swarm: dict[str, Any] = field(repr=False)
+    items: tuple[Item, ...] = ()
+    economy: dict[str, Any] = field(default_factory=dict, repr=False)
 
     def character(self, cid: str) -> Character:
         return _by_id(self.characters, cid)
@@ -263,6 +274,9 @@ class Content:
 
     def challenge(self, cid: str) -> Challenge:
         return _by_id(self.challenges, cid)
+
+    def item(self, iid: str) -> Item:
+        return _by_id(self.items, iid)
 
 
 def _by_id(items, item_id):
