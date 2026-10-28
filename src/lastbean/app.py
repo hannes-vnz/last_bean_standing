@@ -128,7 +128,9 @@ class Game:
         except Exception as exc:  # noqa: BLE001 - a broken store must not stop the game
             print("Spielstand konnte nicht geladen werden:", exc)
             self.profile = new_profile()
-        self.characters = [c for c in content.characters if c.impl_phase == 1]
+        # Beans of phase 1 are playable from the start, the four of phase 3 after their challenge.
+        self.all_characters = [c for c in content.characters if c.impl_phase in (1, 3)]
+        self.starters = sum(1 for c in content.characters if c.impl_phase == 1)
         playable = {c.id for c in self.characters}
         self.character = self.profile.get("character") if self.profile.get("character") in playable else "ranger"
         self.normal = self._world_config(self.character)
@@ -158,6 +160,12 @@ class Game:
         self.online: tuple[str, int | None, int | None] = ("", None, None)
         self.board: dict = {"period": "all", "mode": "normal", "entries": None, "loading": False, "fetched_at": 0.0}
         self._tasks: dict[str, asyncio.Future] = {}
+
+    @property
+    def characters(self) -> list:
+        """Playable beans: the starters and every unlocked one."""
+        unlocked = set(self.profile.get("unlocked", {}).get("characters", []))
+        return [c for c in self.all_characters if c.impl_phase == 1 or c.id in unlocked]
 
     def choose_character(self, cid: str) -> None:
         """Pick the bean for the next runs (remembered in the profile)."""
@@ -253,7 +261,7 @@ class Game:
         if self.recording:
             self.flags = record_run(self.profile, self.result)
             challenges.record_lifetime(self.profile, self.result)
-            new = challenges.evaluate(self.profile, self.result, self.content.challenges, len(self.characters))
+            new = challenges.evaluate(self.profile, self.result, self.content.challenges, self.starters)
             names = challenges.reward_names(self.content)
             self.result["challenges"] = [(ch.text, challenges.reward_text(ch, names)) for ch in new]
             earned = workshop.payout(self.result, self.content.shop, self.world.victory)
@@ -859,8 +867,11 @@ async def run(
                 mode_label = ""
                 if "eternal_night" in game.profile["unlocked"]["modes"]:
                     mode_label = "Ewige Nacht" if game.mode == "eternal_night" else "Modus: normal"
-                buttons = screens.draw_characters(renderer, game.characters, game.character, best, skins, label,
-                                                  mode_label)  # fmt: skip
+                open_ids = {c.id for c in game.characters}
+                locked = {c.id: next((h.text for h in content.challenges if h.id == c.unlock_challenge), "")
+                          for c in game.all_characters if c.id not in open_ids}  # fmt: skip
+                buttons = screens.draw_characters(renderer, game.all_characters, game.character, best, skins, label,
+                                                  mode_label, locked)  # fmt: skip
             elif game.state == "prologue":
                 buttons = screens.draw_prologue(renderer)
             elif game.state == "settings":
@@ -872,7 +883,7 @@ async def run(
                     buttons = screens.draw_workshop(renderer, content.shop, game.profile)
             elif game.state == "challenges":
                 buttons = screens.draw_challenges(renderer, content, game.profile, game.challenge_page,
-                                                  len(game.characters))  # fmt: skip
+                                                  game.starters)  # fmt: skip
             elif game.state == "board":
                 if time.monotonic() - game.board["fetched_at"] > REFRESH_S:
                     game.refresh_board()

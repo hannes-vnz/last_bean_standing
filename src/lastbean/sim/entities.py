@@ -33,6 +33,8 @@ class CharacterStats:
     weapon_pattern: str = "single"  # single, single_explosive, fan3, shockwave, chain_lightning
     aoe_radius: float = 0.0
     weapon_extra: tuple[tuple[str, float], ...] = ()  # chain_jumps, slow_pct, ignite_s, ... from characters.json
+    # Every number of the passive by name (its stat carries its value), e.g. max_mines, crit_mult (Paket J).
+    passive_extra: tuple[tuple[str, float], ...] = ()
 
     @classmethod
     def from_content(cls, content, character_id: str) -> CharacterStats:
@@ -67,6 +69,13 @@ class CharacterStats:
             weapon_pattern=c.weapon.pattern,
             aoe_radius=float(c.weapon.aoe_radius),
             weapon_extra=tuple((k, float(v)) for k, v in c.weapon.extra.items() if isinstance(v, (int, float))),
+            passive_extra=tuple(
+                (k, float(v))
+                for e in c.passive.effects
+                for k, v in ({e["stat"]: e.get("value", 0.0)} | e).items()
+                if k not in ("stat", "value") or k == e.get("stat")
+                if isinstance(v, (int, float)) and not isinstance(v, bool)
+            ),
         )
 
 
@@ -292,6 +301,12 @@ class Player:
     last_dx: float = 1.0  # last walking direction (dash ability)
     last_dy: float = 0.0
     inferno_t: float = 0.0  # active abilities that last a while
+    still_t: float = 0.0  # seconds standing still (Aya)
+    focus_t: float = 0.0  # Aya's "Fokus"
+    ghosts_t: float = 0.0  # Thorn's "Totenruf"
+    minion_t: float = 0.0  # Thorn's ghosts: attack timer
+    minion_turn: int = 0  # which ghost attacks next
+    mine_t: float = 0.0  # Orm's "Minenleger"
     storm_t: float = 0.0
     temp_shield: float = 0.0
     temp_shield_t: float = 0.0

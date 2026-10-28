@@ -52,7 +52,8 @@ SHRINE_COLORS = {"greed": (255, 212, 94), "courage": (126, 217, 87), "curse": (2
 WALK_SQUASH = (1, 0, -1, 0)  # per walk phase: stretch, rest, squash, rest
 SHADOW = (60, 42, 40)
 # The bean's own shot per character (sprite id -> style in Renderer._draw_shot); others shoot seeds.
-SHOT_STYLES = {"ranger": "arrow", "pyro": "fireball", "rogue": "knife", "cryo": "ice", "storm": "spark"}
+SHOT_STYLES = {"ranger": "arrow", "pyro": "fireball", "rogue": "knife", "cryo": "ice", "storm": "spark",
+               "sniper": "tracer", "summoner": "wisp"}  # fmt: skip
 
 
 class Renderer:
@@ -682,6 +683,19 @@ class Renderer:
             for i, line in enumerate(_wrap(patterns[0], self.font, self.w - 40)[:2]):
                 self.text(line, (self.w // 2, y + 42 + i * 12), center=True)
 
+    def _draw_poison_zone(self, kind: str, sx: int, sy: int, r: int, life: float, tick: int) -> None:
+        """Lilu's poison: a green puddle (vial) or a big drifting cloud, bubbling, fading at the end."""
+        surf = pygame.Surface((2 * r + 2, 2 * r + 2), pygame.SRCALPHA)
+        alpha = round((70 if kind == "vial" else 55) * min(1.0, life))
+        pygame.draw.circle(surf, (120, 200, 80, alpha), (r + 1, r + 1), r)
+        pygame.draw.circle(surf, (60, 120, 50, min(255, alpha * 2)), (r + 1, r + 1), r, 1)
+        self.canvas.blit(surf, (sx - r - 1, sy - r - 1))
+        for k in range(4 if kind == "vial" else 8):  # bubbles rising and popping
+            a = k * 2.4 + (sx % 5)
+            rr = r * (0.2 + 0.18 * (k % 4))
+            bx, by = sx + round(math.cos(a) * rr), sy + round(math.sin(a) * rr) - (tick // 6 + k) % 4
+            self.canvas.fill((190, 240, 140), (bx, by, 2, 2))
+
     def _draw_shrine(self, kind: str, sx: int, sy: int, r: int, charge: float, tick: int) -> None:
         """Stone shrine with a floating seed; the dashed circle fills up clockwise while charging."""
         c, ink = self.canvas, self.ink
@@ -773,6 +787,14 @@ class Renderer:
             pygame.draw.lines(c, ink, False, pts, 3)
             pygame.draw.lines(c, self.shot_core, False, pts, 1)
             c.set_at(at(3), WHITE)
+        elif style == "tracer":  # Aya: a long, thin streak of light
+            pygame.draw.line(c, ink, at(-12 - 2 * big), at(3), 3)
+            pygame.draw.line(c, self.shot_core, at(-11 - 2 * big), at(2), 1)
+            c.set_at(at(2), WHITE)
+        elif style == "wisp":  # Thorn: a small pale ghost light with a tail
+            pygame.draw.circle(c, (150, 170, 220), at(-4), 1)
+            pygame.draw.circle(c, ink, (sx, sy), 3 + big)
+            pygame.draw.circle(c, (214, 230, 255), (sx, sy), 2 + big)
         else:
             return False
         return True
@@ -857,9 +879,12 @@ class Renderer:
                     overlay.fill((*self.pollen, 220), (px, py, 2, 2))
             c.blit(overlay, (0, 0))
         ink = self.ink
-        for _, zx, zy, radius, life in snap.zones:  # nettle patches: a ring of little nettles
+        for kind, zx, zy, radius, life in snap.zones:  # nettle patches: a ring of little nettles
             sx, sy = round(zx / UNITS_PER_PX) - cam_x, round(zy / UNITS_PER_PX) - cam_y
             r = max(3, round(radius / UNITS_PER_PX))
+            if kind in ("vial", "cloud") and -r <= sx < self.w + r and -r <= sy < self.h + r:
+                self._draw_poison_zone(kind, sx, sy, r, life, snap.tick)
+                continue
             if -r <= sx < self.w + r and -r <= sy < self.h + r:
                 fade = min(1.0, life)
                 for k in range(6):
@@ -867,8 +892,13 @@ class Renderer:
                     px, py = sx + round(math.cos(a) * r * 0.6), sy + round(math.sin(a) * r * 0.6)
                     c.fill(ink, (px - 1, py - 3, 3, 4))
                     c.fill((95, 184, 90) if fade > 0.4 else (150, 190, 120), (px, py - 2, 1, 3))
-        for _, mx, my in snap.mines:  # garlic cloves
+        for kind, mx, my in snap.mines:  # garlic cloves
             sx, sy = round(mx / UNITS_PER_PX) - cam_x, round(my / UNITS_PER_PX) - cam_y
+            if kind == "orm_mine" and 0 <= sx < self.w and 0 <= sy < self.h:  # Orm's mine: a lamp blinks
+                c.fill(ink, (sx - 4, sy - 2, 9, 5))
+                c.fill((96, 84, 110), (sx - 3, sy - 1, 7, 3))
+                c.fill((255, 120, 90) if (snap.tick // 15) % 2 else (120, 60, 60), (sx, sy - 3, 1, 2))
+                continue
             if 0 <= sx < self.w and 0 <= sy < self.h:
                 c.fill(ink, (sx - 3, sy - 3, 7, 7))
                 c.fill((255, 246, 234), (sx - 2, sy - 2, 5, 5))
@@ -908,10 +938,33 @@ class Renderer:
         for b in snap.bombs:
             sx, sy = round(b.x / UNITS_PER_PX) - cam_x, round(b.y / UNITS_PER_PX) - cam_y
             sy -= round(4 * 18 * b.progress * (1.0 - b.progress))  # arc, 18 px high
-            if 0 <= sx < self.w and 0 <= sy < self.h:
+            if not (0 <= sx < self.w and 0 <= sy < self.h):
+                continue
+            if b.weapon in ("bomb", "mega_bomb"):  # Orm's bombs: round, dark, a spark on the fuse
+                big = 3 if b.weapon == "mega_bomb" else 0
+                pygame.draw.circle(c, ink, (sx, sy), 5 + big)
+                pygame.draw.circle(c, (90, 80, 104), (sx, sy), 4 + big)
+                c.set_at((sx - 1 - big // 2, sy - 2 - big // 2), (200, 190, 214))
+                c.fill(self.shot_core if (snap.tick // 3) % 2 else WHITE, (sx + 2 + big, sy - 6 - big, 2, 2))
+            elif b.weapon == "vial":  # Lilu's vial: a little flask of green poison
+                c.fill(ink, (sx - 3, sy - 4, 7, 8))
+                c.fill((223, 231, 242), (sx - 2, sy - 3, 5, 6))
+                c.fill((150, 220, 90), (sx - 2, sy, 5, 3))
+                c.fill(ink, (sx - 1, sy - 6, 3, 2))
+            else:
                 pygame.draw.circle(c, ink, (sx, sy), 4)
                 pygame.draw.circle(c, self.pumpkin, (sx, sy), 3)
                 c.fill((110, 170, 90), (sx, sy - 4, 1, 2))  # stalk
+        for gx, gy in snap.minions:  # Thorn's ghosts: pale, wobbling, two dark eyes
+            sx, sy = round(gx / UNITS_PER_PX) - cam_x, round(gy / UNITS_PER_PX) - cam_y
+            sy += (0, 1, 2, 1)[(snap.tick // 8 + sx) % 4] - 8
+            if 0 <= sx < self.w and 0 <= sy < self.h:
+                c.fill(ink, (sx - 4, sy - 4, 9, 10))
+                c.fill((214, 230, 255), (sx - 3, sy - 3, 7, 8))
+                c.fill((214, 230, 255), (sx - 3, sy + 5, 2, 1))
+                c.fill((214, 230, 255), (sx + 1, sy + 5, 2, 1))
+                c.fill(ink, (sx - 2, sy - 1, 1, 2))
+                c.fill(ink, (sx + 1, sy - 1, 1, 2))
 
     def _card_surface(self, uid: str, level: int, tier: str, size: tuple[int, int], wide: bool, i: int):
         """Face of a level-up card: dark panel, thick rarity frame, big picture, name, level and stat lines."""

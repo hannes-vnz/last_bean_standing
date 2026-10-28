@@ -109,6 +109,8 @@ from .tuning import (
     EXECUTE_SHARE,
     EXPLOSIVE_HIT_RADIUS,
     EXTRA_ATTACK_DAMAGE,
+    FOCUS_RATE,
+    FOCUS_S,
     GATE_DELAY_S,
     GATE_OFFSET,
     GREED_XP_PCT,
@@ -126,14 +128,26 @@ from .tuning import (
     LOW_HP_SHARE,
     MAGNET_DROP_PCT,
     MAGNET_ORB_SPEED,
+    MEGA_BOMB_DAMAGE,
+    MEGA_BOMB_FUSE_S,
+    MEGA_BOMB_RADIUS,
+    MINION_DAMAGE,
+    MINION_ORBIT,
+    MINION_RANGE,
+    MINION_RATE,
     ORB_SPEED,
     OVERCHARGE_INTERVAL_S,
+    OWN_MINE_LIFE_S,
+    OWN_MINE_TRIGGER,
     PICKUP_RADIUS,
+    PLAGUE_POISON_S,
     PLAYER_RADIUS,
     POISON_MAX_STACKS,
     POISON_S,
     POT_RADIUS,
     PROJECTILE_RADIUS,
+    RAISE_DEAD_EXTRA,
+    RAISE_DEAD_S,
     RECYCLE_DISTANCE,
     RECYCLE_EVERY_TICKS,
     REVIVE_HP_SHARE,
@@ -158,12 +172,20 @@ from .tuning import (
     STORM_S,
     STORM_STRIKES_PER_S,
     SWARM_SPREAD,
+    TOXIC_CLOUD_RADIUS,
+    TOXIC_CLOUD_S,
+    TOXIC_CLOUD_SHARE,
+    TOXIC_CLOUD_SLOW,
+    VIAL_DURATION_S,
+    VIAL_POISON_DPS,
+    VIAL_STACKS,
     VOLATILE_DELAY_S,
     VOLATILE_RADIUS,
 )
 from .upgrades import INSTANT_STATS, RARITIES, UpgradeDef, derive_stats, modifier_sums, roll_offer, roll_tier
 from .waves import Scaling
 from .weapons import (
+    TAU,
     WEAPON_PREFIX,
     Bomb,
     Mine,
@@ -427,6 +449,7 @@ class BombView(NamedTuple):
     ty: float
     progress: float  # 0 thrown .. 1 bursting
     radius: float
+    weapon: str = ""  # pumpkin_bomb, bomb (Orm), mega_bomb, vial (Lilu)
 
 
 class EnemyShotView(NamedTuple):
@@ -496,6 +519,7 @@ class Snapshot:
     victory: bool = False
     obstacles: tuple = ()  # the bed's obstacles (static per bed, the renderer rebuilds its map when they change)
     orbiters: tuple[tuple[str, float, float], ...] = ()  # (weapon, x, y), e.g. bees
+    minions: tuple[tuple[float, float], ...] = ()  # Thorn's ghosts
     auras: tuple[tuple[str, float, float, float], ...] = ()  # (weapon, x, y, radius)
     bombs: tuple[BombView, ...] = ()
     zones: tuple[tuple[str, float, float, float, float], ...] = ()  # (weapon, x, y, radius, life left)
@@ -960,6 +984,14 @@ class World:
                 p.temp_shield = 0.0
         if p.inferno_t > 0:
             p.inferno_t -= DT
+        p.still_t = p.still_t + DT if p.standing else 0.0
+        if p.focus_t > 0:
+            p.focus_t -= DT
+        if p.ghosts_t > 0:
+            p.ghosts_t -= DT
+        ch = self.config.character
+        if ch.weapon_pattern != "single" or dict(ch.weapon_extra).get("minions"):
+            self._character_extras(p)
         if p.storm_t > 0:  # Vex's "Gewittersturm": strikes in a steady beat
             p.storm_t -= DT
             if int(p.storm_t * TICK_HZ) % int(TICK_HZ / STORM_STRIKES_PER_S) == 0:
@@ -993,7 +1025,63 @@ class World:
         return m
 
     def attack_rate(self, p: Player) -> float:
-        return p.stats.attack_rate * (1.0 + p.haste_pct / 100.0)
+        focus = FOCUS_RATE if p.focus_t > 0 else 1.0  # Aya's "Fokus"
+        return p.stats.attack_rate * (1.0 + p.haste_pct / 100.0) * focus
+
+    # ------------------------------------------------------------------ phase 3 beans
+
+    def _passive_num(self, key: str, default: float = 0.0) -> float:
+        return dict(self.config.character.passive_extra).get(key, default)
+
+    def minion_count(self, p: Player) -> int:
+        """Thorn's ghosts: the ones he always has, more during "Totenruf"."""
+        base = int(dict(self.config.character.weapon_extra).get("minions", 0))
+        return base + (RAISE_DEAD_EXTRA if p.ghosts_t > 0 and base else 0)
+
+    def minion_positions(self, p: Player) -> list[tuple[float, float]]:
+        n = self.minion_count(p)
+        out = []
+        for k in range(n):
+            dx, dy = cos_sin(self.tick * 0.05 + TAU * k / max(1, n))
+            out.append((p.x + dx * MINION_ORBIT, p.y + dy * MINION_ORBIT))
+        return out
+
+    def _character_extras(self, p: Player) -> None:
+        """Ghosts that attack on their own (Thorn) and mines laid while walking (Orm)."""
+        events = self._pending
+        n = self.minion_count(p)
+        if n:
+            p.minion_t += DT * MINION_RATE * n
+            positions = self.minion_positions(p)
+            share = self._passive_num("minion_inherit_damage_pct") / 100.0  # "Seelenband"
+            bonus = 1.0 + share * (p.stats.damage / self.config.character.damage * self.damage_mult(p) - 1.0)
+            while p.minion_t >= 1.0:
+                p.minion_t -= 1.0
+                gx, gy = positions[p.minion_turn % n]
+                p.minion_turn += 1
+                target, best = None, MINION_RANGE * MINION_RANGE
+                for e in self._grid.query(gx, gy, MINION_RANGE):
+                    d2 = (e.x - gx) ** 2 + (e.y - gy) ** 2
+                    if e.hp > 0 and d2 < best:
+                        target, best = e, d2
+                if target is not None:
+                    killed: set[int] = set()
+                    dmg, crit = self._roll_crit(p, MINION_DAMAGE * bonus)
+                    events.append(Zap(self.tick, p.player_id, ((gx, gy), (target.x, target.y))))
+                    self._weapon_hit(p, p.player_id, target, dmg, crit, killed, events)
+                    if killed:
+                        self.enemies = [e for e in self.enemies if e.eid not in killed]
+                        self._rebuild_grid()
+        interval = self._passive_num("mine_interval_s")
+        if interval and not p.standing:  # Orm's "Minenleger"
+            p.mine_t += DT
+            own = [m for m in self.mines if m.owner == p.player_id and m.weapon == "orm_mine"]
+            if p.mine_t >= interval and len(own) < int(self._passive_num("max_mines", 6)):
+                p.mine_t = 0.0
+                dmg = p.stats.damage * self.damage_mult(p) * self._passive_num("damage_pct", 60.0) / 100.0
+                radius = self._passive_num("radius_px", 70.0)
+                self.mines.append(Mine(p.player_id, "orm_mine", p.x, p.y, OWN_MINE_LIFE_S, dmg, radius,
+                                       OWN_MINE_TRIGGER))  # fmt: skip
 
     def _use_abilities(self, inputs: dict[int, PlayerInput], events: list[Event]) -> None:
         ch = self.config.character
@@ -1047,6 +1135,28 @@ class World:
     def _thunderstorm(self, p: Player, events: list[Event]) -> None:
         """Vex's "Gewittersturm": lightning strikes in a steady beat for a few seconds (see `_tick_player_buffs`)."""
         p.storm_t = STORM_S
+
+    def _raise_dead(self, p: Player, events: list[Event]) -> None:
+        """Thorn's "Totenruf": more ghosts for a while."""
+        p.ghosts_t = RAISE_DEAD_S
+
+    def _mega_bomb(self, p: Player, events: list[Event]) -> None:
+        """Orm's "Megabombe": one huge bomb at the nearest pest (or at his feet)."""
+        target, _ = self._pick_target(p)
+        tx, ty = (target.x, target.y) if target is not None else (p.x, p.y)
+        dmg, crit = self._roll_crit(p, p.stats.damage * self.damage_mult(p) * MEGA_BOMB_DAMAGE)
+        self.bombs.append(Bomb(p.player_id, "mega_bomb", p.x, p.y, tx, ty, MEGA_BOMB_FUSE_S, MEGA_BOMB_FUSE_S,
+                               MEGA_BOMB_RADIUS * p.stats.area_mult, dmg, crit))  # fmt: skip
+
+    def _toxic_cloud(self, p: Player, events: list[Event]) -> None:
+        """Lilu's "Giftnebel": a big cloud around her that hurts and slows for a while."""
+        per_pulse = p.stats.damage * self.damage_mult(p) * TOXIC_CLOUD_SHARE * DOT_PULSE_TICKS * DT
+        self.zones.append(Zone(p.player_id, "cloud", p.x, p.y, TOXIC_CLOUD_RADIUS * p.stats.area_mult, per_pulse,
+                               TOXIC_CLOUD_S))  # fmt: skip
+
+    def _focus(self, p: Player, events: list[Event]) -> None:
+        """Aya's "Fokus": shoots while walking, twice as fast."""
+        p.focus_t = FOCUS_S
 
     def _hurt(self, p: Player, damage: float, events: list[Event], use_i_frames: bool = True) -> None:
         """Damage a player. Hits respect and start i-frames; damage over time does not."""
@@ -1364,6 +1474,12 @@ class World:
                 if p.stats.heal_orb_chance_pct and self.rng.random() * 100.0 < p.stats.heal_orb_chance_pct:
                     heal = self.config.economy.heal_orb_hp if self.config.economy else 15.0
                     self.orbs.append(XpOrb(e.x - 6.0, e.y, heal, kind="heal"))
+        spread = self._passive_num("poison_spread_on_death_radius_px")
+        if spread and e.poison_t > 0 and e.poison_dps > 0:  # Lilu's "Seuche"
+            for o in self._grid.query(e.x, e.y, spread + self._max_radius):
+                if o.eid != e.eid and o.hp > 0 and (o.x - e.x) ** 2 + (o.y - e.y) ** 2 <= (spread + o.radius) ** 2:
+                    o.poison_dps = max(o.poison_dps, e.poison_dps)
+                    o.poison_t, o.dot_owner = max(o.poison_t, PLAGUE_POISON_S), e.dot_owner
         if e.elite:
             self._drop_chest(e.x, e.y, "elite", events)
             if "volatile" in e.affixes:
@@ -1422,6 +1538,9 @@ class World:
             p.shot_cooldown -= DT
             if p.shot_cooldown > 0:
                 continue
+            if ch.weapon_pattern == "charged" and not p.standing and p.focus_t <= 0:
+                p.shot_cooldown = 0.0  # Aya only shoots standing (or in "Fokus")
+                continue
             # Auto-fire at the nearest visible enemy, also while moving (decided 28.10.2026).
             target, best = self._pick_target(p)
             if target is None:
@@ -1441,7 +1560,19 @@ class World:
                 big = True
             pattern = ch.weapon_pattern
             p.shots_fired += 1
-            if pattern == "shockwave":  # Brun: a ring around him, pushing the pests back
+            if pattern in ("bomb", "vial"):  # Orm's bomb, Lilu's poison vial: lobbed at the target
+                self._lob(p, pattern, target, damage)
+            elif pattern == "charged":  # Aya: stillness charges the shot, 2 s calm make it a sure crit
+                extra = dict(ch.weapon_extra)
+                charge = min(p.still_t * extra.get("charge_bonus_per_s_pct", 0.0), extra.get("charge_max_pct", 0.0))
+                damage *= 1.0 + charge / 100.0
+                calm = self._passive_num("guaranteed_crit_after_still_s")
+                if calm and p.still_t >= calm:
+                    self._fire(p, dx, dy, damage * self._passive_num("crit_mult", 2.5), life, events, crit=True)
+                    p.still_t = 0.0
+                else:
+                    self._fire(p, dx, dy, damage, life, events)
+            elif pattern == "shockwave":  # Brun: a ring around him, pushing the pests back
                 self._shockwave(p, damage, events)
             elif pattern == "chain_lightning":  # Vex: a bolt that jumps on
                 self._chain_bolt(p, target, damage, events)
@@ -1464,6 +1595,17 @@ class World:
                     self._fire(p, fx, fy, dmg, life, events, big=big and i == 0, **self._shot_traits(ch))
             if s.strike_every and p.shots_fired % s.strike_every == 0:  # Vex: "Statische Ladung"
                 self._sky_strike(p, s.damage * s.strike_damage_pct / 100.0, events)
+
+    def _lob(self, p: Player, kind: str, target: Enemy, damage: float) -> None:
+        """A bomb (bursts) or a vial (leaves a poison puddle), flying in an arc to the target."""
+        ch = self.config.character
+        d = math.sqrt((target.x - p.x) ** 2 + (target.y - p.y) ** 2)
+        flight = max(0.25, d / max(ch.projectile_speed, 1.0))
+        if kind == "bomb":
+            flight = max(flight, dict(ch.weapon_extra).get("fuse_s", 0.0))
+        dmg, crit = self._roll_crit(p, damage)
+        radius = ch.aoe_radius * p.stats.area_mult
+        self.bombs.append(Bomb(p.player_id, kind, p.x, p.y, target.x, target.y, flight, flight, radius, dmg, crit))
 
     def _shot_traits(self, ch: CharacterStats) -> dict:
         """What the character's own shots do on impact (fireball burst and burn, frost)."""
@@ -1550,10 +1692,14 @@ class World:
 
     def _fire(self, p: Player, dx: float, dy: float, damage: float, life: int, events: list[Event],
               speed: float | None = None, pierce: int | None = None, weapon: str = "",
-              big: bool = False, origin: tuple[float, float] | None = None, **extra) -> Projectile:  # fmt: skip
+              big: bool = False, origin: tuple[float, float] | None = None, crit: bool | None = None,
+              **extra) -> Projectile:  # fmt: skip
         s = p.stats
         speed = (self.config.character.projectile_speed if speed is None else speed) * s.projectile_speed_mult
-        dmg, crit = self._roll_crit(p, damage)
+        if crit is None:
+            dmg, crit = self._roll_crit(p, damage)
+        else:  # decided by the caller (Aya's sure crit)
+            dmg = damage
         hits = (s.pierce if pierce is None else pierce) + 1
         radius = PROJECTILE_RADIUS * s.projectile_size_mult * (2.0 if big else 1.0)
         x, y = origin or (p.x, p.y)
@@ -2042,6 +2188,13 @@ class World:
                     for e in self._grid.query(z.x, z.y, z.radius + self._max_radius):
                         r = z.radius + e.radius
                         if e.eid not in killed and e.hp > 0 and (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= r * r:
+                            if z.weapon == "vial":  # poison that stacks up to VIAL_STACKS times
+                                per = z.damage / max(1.0, self.config.character.damage) * VIAL_POISON_DPS
+                                e.poison_dps = min(e.poison_dps + per, per * VIAL_STACKS) if e.poison_t > 0 else per
+                                e.poison_t, e.dot_owner = max(e.poison_t, 1.0), z.owner
+                                continue
+                            if z.weapon == "cloud":  # Lilu's "Giftnebel" also slows
+                                e.chill_pct, e.chill_t = max(e.chill_pct, TOXIC_CLOUD_SLOW), 0.6
                             self._weapon_hit(owner, z.owner, e, z.damage, False, killed, events, procs=False)
                 if z.life > 0:
                     keep.append(z)
@@ -2097,6 +2250,10 @@ class World:
             b.delay -= DT
             if b.delay > 0:
                 flying.append(b)
+                continue
+            if b.weapon == "vial":  # Lilu: the vial breaks into a poison puddle
+                events.append(WeaponPulse(self.tick, b.owner, b.weapon, b.tx, b.ty, b.radius))
+                self.zones.append(Zone(b.owner, "vial", b.tx, b.ty, b.radius, b.damage, VIAL_DURATION_S))
                 continue
             events.append(WeaponPulse(self.tick, b.owner, b.weapon, b.tx, b.ty, b.radius))
             owner = owners.get(b.owner)
@@ -2528,9 +2685,10 @@ class World:
         bombs = []
         for b in self.bombs:
             t = 1.0 - b.delay / b.flight if b.flight > 0 else 1.0
-            bombs.append(BombView(b.x + (b.tx - b.x) * t, b.y + (b.ty - b.y) * t, b.tx, b.ty, t, b.radius))
+            bombs.append(BombView(b.x + (b.tx - b.x) * t, b.y + (b.ty - b.y) * t, b.tx, b.ty, t, b.radius, b.weapon))
         return dict(
             orbiters=tuple(orbiters),
+            minions=tuple(xy for p in self.players if p.alive for xy in self.minion_positions(p)),
             auras=tuple(auras),
             bombs=tuple(bombs),
             zones=tuple((z.weapon, z.x, z.y, z.radius, z.life) for z in self.zones),
@@ -2617,6 +2775,10 @@ ABILITIES = {
     "bulwark": World._bulwark,
     "ice_age": World._ice_age,
     "thunderstorm": World._thunderstorm,
+    "raise_dead": World._raise_dead,
+    "mega_bomb": World._mega_bomb,
+    "toxic_cloud": World._toxic_cloud,
+    "focus": World._focus,
 }
 WEAPON_KINDS = {
     "fan": World._weapon_fan,
