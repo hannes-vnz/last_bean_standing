@@ -4,18 +4,18 @@
   "name": "Lichtung (Start)",
   "effect": "Keine, enthält den Boss-Altar (ab 10:00 aktivierbar, ruft den Schnitter)",
   "rect_tiles": [
-   22,
-   22,
-   16,
-   16
+   85,
+   85,
+   30,
+   30
   ],
   "text": "Neutrale Startzone in der Mitte.",
   "objects": [
    {
     "type": "boss_altar",
     "pos_tiles": [
-     30,
-     30
+     100,
+     100
     ],
     "unlock_s": 600
    }
@@ -33,12 +33,12 @@
   "rect_tiles": [
    0,
    0,
-   30,
-   30
+   100,
+   100
   ],
   "obstacles": {
    "type": "tree",
-   "count": 70,
+   "count": 780,
    "seed": 11
   },
   "impl_phase": 1,
@@ -55,14 +55,14 @@
   "name": "Wüste",
   "effect": "Du bist 15 % langsamer",
   "rect_tiles": [
-   30,
+   100,
    0,
-   30,
-   30
+   100,
+   100
   ],
   "obstacles": {
    "type": "rock",
-   "count": 25,
+   "count": 280,
    "seed": 12
   },
   "player_speed_pct": -15,
@@ -80,13 +80,13 @@
   "effect": "Rutschen: träge Beschleunigung und Bremsen",
   "rect_tiles": [
    0,
-   30,
-   30,
-   30
+   100,
+   100,
+   100
   ],
   "obstacles": {
    "type": "ice_block",
-   "count": 30,
+   "count": 330,
    "seed": 13
   },
   "friction": 0.15,
@@ -103,14 +103,14 @@
   "name": "Lava",
   "effect": "4 Schaden pro Sekunde in Lavapfützen, dafür +25 % XP in der Zone",
   "rect_tiles": [
-   30,
-   30,
-   30,
-   30
+   100,
+   100,
+   100,
+   100
   ],
   "obstacles": {
    "type": "lava_pool",
-   "count": 18,
+   "count": 200,
    "seed": 14
   },
   "dot_per_s": 4,

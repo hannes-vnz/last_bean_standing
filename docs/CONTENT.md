@@ -189,17 +189,17 @@ Ab 20:00 beginnt die Schwarmflut: fliegende Flutgeister in Schüben, die nie auf
 - **Ignarok, der Glutkoloss** (`ignarok`, 15:00, Phase 3): HP 24000, ab 100 % HP: Meteorregen (6 Einschläge, 1,2 s Vorwarnung); ab 60 % HP: Stampfen: Schockwelle (Radius 300), Lavapfützen; ab 30 % HP: Meteore doppelt, ruft Lavakäfer.
 - **Der Schnitter** (`reaper`, per Altar ab 10:00, Phase 3): HP 30000 x HP-Faktor, Wutphase nach 90 s, ab 100 % HP: Sensenwirbel: rotierender Kegel mit 1 s Warnfläche, alle 5 s; ab 66 % HP: Seelenregen: 8 Einschläge mit Warnkreis (Radius 90) in Wellen, ruft Flutgeister; ab 33 % HP: Zeitriss: du bist 3 s lang 30 % langsamer, er stürmt dreimal; danach 25 % mehr Tempo.
 
-## Arena und Biome (60 x 60 Felder à 32 px)
+## Arena und Biome (200 x 200 Felder à 32 px)
 
 | ID | Name | Bereich (x, y, Breite, Höhe in Feldern) | Effekt | Phase |
 |---|---|---|---|---|
-| `plaza` | Lichtung (Start) | [22, 22, 16, 16] | Keine, enthält den Boss-Altar (ab 10:00 aktivierbar, ruft den Schnitter) | 1 |
-| `forest` | Wald | [0, 0, 30, 30] | Bäume blockieren Geschosse (Deckung für beide Seiten) | 1 |
-| `desert` | Wüste | [30, 0, 30, 30] | Du bist 15 % langsamer | 2 |
-| `ice` | Eis | [0, 30, 30, 30] | Rutschen: träge Beschleunigung und Bremsen | 2 |
-| `lava` | Lava | [30, 30, 30, 30] | 4 Schaden pro Sekunde in Lavapfützen, dafür +25 % XP in der Zone | 3 |
+| `plaza` | Lichtung (Start) | [85, 85, 30, 30] | Keine, enthält den Boss-Altar (ab 10:00 aktivierbar, ruft den Schnitter) | 1 |
+| `forest` | Wald | [0, 0, 100, 100] | Bäume blockieren Geschosse (Deckung für beide Seiten) | 1 |
+| `desert` | Wüste | [100, 0, 100, 100] | Du bist 15 % langsamer | 2 |
+| `ice` | Eis | [0, 100, 100, 100] | Rutschen: träge Beschleunigung und Bremsen | 2 |
+| `lava` | Lava | [100, 100, 100, 100] | 4 Schaden pro Sekunde in Lavapfützen, dafür +25 % XP in der Zone | 3 |
 
-Layout: Lichtung in der Mitte (16 x 16, überlagert die Quadranten), Wald oben links, Wüste oben rechts, Eis unten links, Lava unten rechts. Hindernisse sind pro Biom mit festem Seed verteilt.
+Layout (seit 28.10.2026 große Karte): Lichtung in der Mitte (30 x 30, überlagert die Quadranten), Wald oben links, Wüste oben rechts, Eis unten links, Lava unten rechts. Hindernisse sind pro Biom mit festem Seed verteilt.
 
 Biom-Farben (Pastell): Lichtung (Start): Boden #b9e08f, Details #9fcf72; Wald: Boden #a6dd82, Details #83c564; Wüste: Boden #f6dfa8, Details #e8c47a; Eis: Boden #d6ecff, Details #b4d6f5; Lava: Boden #ffc9b0, Details #ff9f86. Gefahren (Lava, Sand, Eisglanz) heben sich über die Farbe `hazard` ab.
 
