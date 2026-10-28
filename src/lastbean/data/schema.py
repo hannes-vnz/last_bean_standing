@@ -39,6 +39,7 @@ class Weapon:
     pierce: int
     aoe_radius: int
     text: str
+    extra: dict[str, Any] = field(default_factory=dict, repr=False)  # pattern details (chain_jumps, slow_pct, ...)
 
 
 @dataclass(frozen=True, slots=True)

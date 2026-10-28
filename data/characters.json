@@ -76,7 +76,9 @@
    "projectile_speed": 420,
    "pierce": 0,
    "aoe_radius": 64,
-   "text": "Feuerball explodiert (Radius 64) und entzündet (3 s, 20 % Schaden/s)."
+   "text": "Feuerball explodiert (Radius 64) und entzündet (3 s, 20 % Schaden/s).",
+   "ignite_s": 3,
+   "ignite_pct": 20
   },
   "passive": {
    "id": "heat_wave",
@@ -100,8 +102,8 @@
    "area",
    "burn"
   ],
-  "unlock_challenge": "unlock_pyro",
-  "impl_phase": 2,
+  "unlock_challenge": null,
+  "impl_phase": 1,
   "skins": [
    "pyro_a",
    "pyro_b"
@@ -160,8 +162,8 @@
    "movement",
    "close"
   ],
-  "unlock_challenge": "unlock_rogue",
-  "impl_phase": 2,
+  "unlock_challenge": null,
+  "impl_phase": 1,
   "skins": [
    "rogue_a",
    "rogue_b"
@@ -219,8 +221,8 @@
    "area",
    "melee"
   ],
-  "unlock_challenge": "unlock_guardian",
-  "impl_phase": 2,
+  "unlock_challenge": null,
+  "impl_phase": 1,
   "skins": [
    "guardian_a",
    "guardian_b"
@@ -249,7 +251,11 @@
    "projectile_speed": 520,
    "pierce": 0,
    "aoe_radius": 0,
-   "text": "Frostgeschoss verlangsamt um 30 % (2 s). 3 Kältestapel frieren 1,2 s ein."
+   "text": "Frostgeschoss verlangsamt um 30 % (2 s). 3 Kältestapel frieren 1,2 s ein.",
+   "slow_pct": 30,
+   "slow_s": 2,
+   "freeze_stacks": 3,
+   "freeze_s": 1.2
   },
   "passive": {
    "id": "frost_aura",
@@ -274,8 +280,8 @@
    "control",
    "ranged"
   ],
-  "unlock_challenge": "unlock_cryo",
-  "impl_phase": 2,
+  "unlock_challenge": null,
+  "impl_phase": 1,
   "skins": [
    "cryo_a",
    "cryo_b"
@@ -386,8 +392,8 @@
    "lightning",
    "speed"
   ],
-  "unlock_challenge": "unlock_storm",
-  "impl_phase": 3,
+  "unlock_challenge": null,
+  "impl_phase": 1,
   "skins": [
    "storm_a",
    "storm_b"

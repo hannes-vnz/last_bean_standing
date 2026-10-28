@@ -69,6 +69,10 @@ SUPPORTED_STATS = frozenset(
     }
 )
 INSTANT_STATS = frozenset({"rerolls", "banishes"})  # granted once when the card is taken
+# Character passives with extra numbers (radius, stacks, damage): handled by name in derive_stats.
+PASSIVE_SPECIAL = frozenset(
+    {"damage_pct_vs_burning", "damage_pct_per_nearby", "aura_slow_pct", "bonus_strike_every_n_shots"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,9 +117,12 @@ def derive_stats(base: CharacterStats, mods: dict[str, float]) -> Stats:
     """
     mods = dict(mods)
     far_pct, far_threshold = 0.0, 0.0
-    for stat, value, threshold in base.passive:
+    special: dict[str, tuple[float, float, float]] = {}
+    for stat, value, a, b in base.passive:
         if stat == "damage_pct_far":
-            far_pct, far_threshold = far_pct + value, threshold
+            far_pct, far_threshold = far_pct + value, a
+        elif stat in PASSIVE_SPECIAL:
+            special[stat] = (value, a, b)
         else:
             mods[stat] = mods.get(stat, 0.0) + value
     pct = lambda key: 1.0 + mods.get(key, 0.0) / 100.0  # noqa: E731
@@ -167,6 +174,14 @@ def derive_stats(base: CharacterStats, mods: dict[str, float]) -> Stats:
         revives=int(mods.get("revives", 0.0)),
         kill_haste_max_pct=mods.get("kill_haste_max_pct", 0.0),
         shrapnel_chance_pct=min(100.0, mods.get("shrapnel_chance_pct", 0.0)),
+        burning_damage_mult=1.0 + special.get("damage_pct_vs_burning", (0.0, 0, 0))[0] / 100.0,
+        nearby_damage_pct=special.get("damage_pct_per_nearby", (0.0, 0, 0))[0],
+        nearby_radius=special.get("damage_pct_per_nearby", (0, 0.0, 0))[1],
+        nearby_max=int(special.get("damage_pct_per_nearby", (0, 0, 0.0))[2]),
+        aura_slow_pct=special.get("aura_slow_pct", (0.0, 0, 0))[0],
+        aura_slow_radius=special.get("aura_slow_pct", (0, 0.0, 0))[1],
+        strike_every=int(special.get("bonus_strike_every_n_shots", (0.0, 0, 0))[0]),
+        strike_damage_pct=special.get("bonus_strike_every_n_shots", (0, 0, 0.0))[2],
     )
 
 

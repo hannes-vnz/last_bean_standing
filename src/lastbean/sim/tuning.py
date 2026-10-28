@@ -128,3 +128,21 @@ REVIVE_I_FRAMES_S = 2.0  # (text)
 
 # Paket G weapons
 HOMING_RANGE = 260.0  # homing shots look for targets this close
+
+# Paket H characters (characters.json texts; the rest are assumptions)
+KNIFE_FAN_DEG = 20.0  # Kaz: three knives
+SHOCKWAVE_PUSH = 24.0  # Brun: pests are pushed back this far (bosses stay)
+SKY_STRIKE_HEIGHT = 220.0  # lightning from above: start point of the drawn bolt
+INFERNO_S = 4.0  # (text) "4 s"
+INFERNO_RADIUS = 180.0  # (text) "Radius 180"
+INFERNO_DPS_SHARE = 0.4  # (text) "40 % Schaden/s"
+DASH_DISTANCE = 220.0  # (text) "Dash über 220 px"
+DASH_I_FRAMES_S = 0.3  # (text) "0,3 s unverwundbar"
+BULWARK_SHIELD = 150.0  # (text) "absorbiert 150 Schaden"
+BULWARK_S = 3.0  # (text) "Schild für 3 s"
+ICE_AGE_S = 2.0  # (text) "2 s"
+ICE_AGE_REACH = 720.0  # (text) "alle Gegner im Bild": about the visible area around you
+STORM_S = 6.0  # (text) "6 s lang"
+STORM_STRIKES_PER_S = 4  # (text) "4 Blitze pro Sekunde"
+STORM_DAMAGE = 1.0
+STORM_REACH = 500.0

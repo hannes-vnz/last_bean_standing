@@ -100,10 +100,11 @@ def renderer(monkeypatch, content):
 
 
 @pytest.mark.parametrize("size", [(300, 650), (518, 360), (640, 360), (360, 780)])
-def test_screens_fit_and_have_buttons(renderer, size):
+def test_screens_fit_and_have_buttons(renderer, size, content):
     from lastbean.meta.profile import new_profile, record_run, set_nickname
     from lastbean.ui import screens
 
+    chars = [c for c in content.characters if c.impl_phase == 1]
     r = renderer(size)
     r.touch = True
     p = new_profile()
@@ -118,6 +119,7 @@ def test_screens_fit_and_have_buttons(renderer, size):
         (screens.draw_name_entry(r, "Fenn", True, False, keyboard=True), {"ok", "cancel", "key:Q", "key:back"}),
         (screens.draw_results(r, result, flags, p, "Online-Rang #1"), {"again", "menu"}),
         (screens.draw_board(r, board, p, True), {"back", "period:all", "period:week", "period:month"}),
+        (screens.draw_characters(r, chars, "ranger", {}), {"char:ranger", "char:storm", "menu"}),
     ]:
         assert needed <= {b.action for b in buttons}
         assert all(canvas.contains(b.rect) for b in buttons), [b for b in buttons if not canvas.contains(b.rect)]

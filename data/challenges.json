@@ -9,9 +9,9 @@
    "value": 5
   },
   "reward": {
-   "type": "unlock_character",
-   "id": "pyro",
-   "stones": 100
+   "type": "title",
+   "id": "Glutfreund",
+   "stones": 150
   }
  },
  {
@@ -24,9 +24,9 @@
    "value": 5
   },
   "reward": {
-   "type": "unlock_character",
-   "id": "rogue",
-   "stones": 100
+   "type": "title",
+   "id": "Schattenläufer",
+   "stones": 150
   }
  },
  {
@@ -39,9 +39,9 @@
    "value": 5000
   },
   "reward": {
-   "type": "unlock_character",
-   "id": "guardian",
-   "stones": 100
+   "type": "title",
+   "id": "Schildbohne",
+   "stones": 150
   }
  },
  {
@@ -55,9 +55,9 @@
    "biome": "compost"
   },
   "reward": {
-   "type": "unlock_character",
-   "id": "cryo",
-   "stones": 100
+   "type": "title",
+   "id": "Frostherz",
+   "stones": 150
   }
  },
  {
@@ -85,9 +85,9 @@
    "value": 2
   },
   "reward": {
-   "type": "unlock_character",
-   "id": "storm",
-   "stones": 100
+   "type": "title",
+   "id": "Donnerbohne",
+   "stones": 150
   }
  },
  {

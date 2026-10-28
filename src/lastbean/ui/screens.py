@@ -121,6 +121,62 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
     return buttons
 
 
+def draw_characters(r: Renderer, characters: list, current: str, best: dict[str, Any]) -> list[Button]:
+    """Pick a bean: one card per playable character with sprite, role, passive and active ability."""
+    _backdrop(r)
+    cx = r.w // 2
+    wide = r.w > r.h
+    cols = 3 if wide else 2
+    rows = (len(characters) + cols - 1) // cols
+    gap = 8
+    cw = min(200, (r.w - 16 - gap * (cols - 1)) // cols)
+    ch = min(118, (r.h - 120 - gap * (rows - 1)) // rows)
+    top = _top(r, 40 + rows * (ch + gap) + 40)
+    r.text("Wähle deine Bohne", (cx, top + 14), r.big_font, center=True)
+    x0 = (r.w - cols * cw - (cols - 1) * gap) // 2
+    buttons = []
+    for i, c in enumerate(characters):
+        rect = pygame.Rect(x0 + (i % cols) * (cw + gap), top + 36 + (i // cols) * (ch + gap), cw, ch)
+        chosen = c.id == current
+        r.canvas.fill(r.crit_color if chosen else r.ink, rect.inflate(6 if chosen else 4, 6 if chosen else 4))
+        r.canvas.fill((58, 42, 74), rect)
+        img = r.sprites.get(c.id, 2.0)
+        if img is not None:
+            r.canvas.blit(img, (rect.x + 4, rect.y + 6))
+        tx = rect.x + 42
+        r.text(c.name, (tx, rect.y + 4), r.mid_font)
+        r.text(c.title, (tx, rect.y + 22))
+        lines = [c.archetype.split(":")[0], f"HP {c.hp}  Tempo {c.speed}"]
+        lines += [f"Passiv: {c.passive.name}", f"Fähigkeit: {c.active.name}"]
+        record = best.get(c.id)
+        if record and ch >= 110:
+            lines.append(f"Rekord {record['score']}")
+        y = rect.y + 40
+        for line in lines:
+            if y > rect.bottom - 12:
+                break
+            for part in _wrap(r, line, rect.right - 6 - (tx if y < rect.y + 46 else rect.x + 6)):
+                r.text(part, (rect.x + 6 if y >= rect.y + 46 else tx, y))
+                y += 12
+        buttons.append(Button(rect, f"char:{c.id}"))
+    buttons += _button_row(r, top + 36 + rows * (ch + gap) + 6, [("Zurück", "menu")], width=140)
+    if not r.touch and r.w >= 500:
+        r.text("Antippen oder 1 bis 6 · Enter: die markierte Bohne", (cx, r.h - 14), center=True)
+    return buttons
+
+
+def _wrap(r: Renderer, text: str, width: int) -> list[str]:
+    words, lines, line = text.split(), [], ""
+    for w in words:
+        trial = f"{line} {w}".strip()
+        if line and r.font.size(trial)[0] > width:
+            lines.append(line)
+            line = w
+        else:
+            line = trial
+    return [*lines, line] if line else lines
+
+
 PROLOGUE = (
     "Auf der Lichtung keimt die letzte Saat des Gartens.",
     "Der Schnitter will die große Ernte einfahren.",

@@ -101,6 +101,15 @@ CHARACTERS = [
 ]
 
 
+# Paket H (28.10.2026, Hannes: "5 weitere Charaktere mit ganz unterschiedlichen Skillsets"): Mira, Kaz, Brun, Ysa
+# und Vex sind spielbar und von Anfang an frei (die Freischalt-Challenges geben dafür Titel).
+PLAYABLE_H = {"pyro": "Glutfreund", "rogue": "Schattenläufer", "guardian": "Schildbohne", "cryo": "Frostherz", "storm": "Donnerbohne"}
+for _c in CHARACTERS:
+    if _c["id"] in PLAYABLE_H:
+        _c["impl_phase"], _c["unlock_challenge"] = 1, None
+next(c for c in CHARACTERS if c["id"] == "pyro")["weapon"].update(ignite_s=3, ignite_pct=20)
+next(c for c in CHARACTERS if c["id"] == "cryo")["weapon"].update(slow_pct=30, slow_s=2, freeze_stacks=3, freeze_s=1.2)
+
 # ---------------------------------------------------------------------------- Optik: Effekte je Charakter (Pixel-Art)
 VFX = {
  "ranger": dict(projectile="Pfeil (3 px lang, helle Spitze) mit Schweif aus 3 verblassenden Pixeln", impact="4 Funken und 2 Frames weißes Aufblitzen am Gegner", ability="Pfeilhagel: Mündungsring, 16 Pfeile in alle Richtungen"),
@@ -295,7 +304,8 @@ STAGES = [
 ]
 # head_start_s (Paket G): spätere Beete beginnen mit so viel Wellen-Vorsprung (Gegnermenge und -arten), sonst laufen sie zu langsam an.
 FLOOD = dict(name="Plagenflut", warning_s=10, budget_growth_per_10s=0.4, hp_growth_per_10s=0.15, damage_growth_per_10s=0.08, reward_growth_per_10s=0.25,
-             text="Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Das Gartentor bleibt offen, sobald der Boss besiegt ist.")
+             wave_s=30, burst_base=12, burst_per_wave=8, speed_per_wave_pct=8,
+             text="Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Alle 30 s rollt eine neue Flutwelle heran: ein Ring aus 12 + 8 je Welle Gegnern direkt um dich, und alle neuen Gegner sind je Welle 8 % schneller. Das Gartentor bleibt offen, sobald der Boss besiegt ist.")
 GATE = dict(radius_px=40, text="Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Hineinlaufen bringt dich ins nächste Beet (volle Heilung).")
 
 STYLE = dict(
@@ -316,7 +326,7 @@ def chal(id, text, cond, reward):
     CHALLENGES.append(dict(id=id, text=text, condition=cond, reward=dict(reward, stones=STONES_BY_REWARD[reward["type"]])))
 RS = lambda stat, v, **kw: dict(type="run_stat", stat=stat, op=">=", value=v, **kw)
 PS = lambda stat, v, **kw: dict(type="profile_stat", stat=stat, op=">=", value=v, **kw)
-UC = lambda i: dict(type="unlock_character", id=i)
+UC = lambda i: dict(type="title", id=PLAYABLE_H[i]) if i in PLAYABLE_H else dict(type="unlock_character", id=i)
 UU = lambda i: dict(type="unlock_upgrade", id=i)
 chal("unlock_pyro", "Erreiche Minute 5 mit beliebigem Charakter.", RS("minutes_survived", 5), UC("pyro"))
 chal("unlock_rogue", "Räume eine Welle ab Welle 5, ohne Schaden zu nehmen.", RS("flawless_wave", 5), UC("rogue"))

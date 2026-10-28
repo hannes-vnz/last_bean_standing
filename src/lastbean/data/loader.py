@@ -214,6 +214,9 @@ def _ability(r: _Reader, active: bool) -> Ability:
     )
 
 
+_WEAPON_KEYS = {"type", "pattern", "projectile_speed", "pierce", "aoe_radius", "text"}
+
+
 def _character(r: _Reader) -> Character:
     w = r.sub("weapon")
     vfx = r.dict("vfx")
@@ -236,6 +239,7 @@ def _character(r: _Reader) -> Character:
             pierce=w.int("pierce", 0),
             aoe_radius=w.int("aoe_radius", 0),
             text=w.str("text"),
+            extra={k: v for k, v in w.obj.items() if k not in _WEAPON_KEYS},
         ),
         passive=_ability(r.sub("passive"), active=False),
         active=_ability(r.sub("active"), active=True),
@@ -522,6 +526,10 @@ def _stages(raw, e) -> tuple[tuple[Stage, ...], dict, dict, dict[str, str]]:
         "hp_growth_per_10s",
         "damage_growth_per_10s",
         "reward_growth_per_10s",
+        "wave_s",
+        "burst_base",
+        "burst_per_wave",
+        "speed_per_wave_pct",
     ):
         flood.num(key, 0)
     gate = r.sub("gate")

@@ -29,12 +29,12 @@ Die Spalte „nötige HP/s“ ist die Leistung, die du brauchst, um alles Ersche
 | Name | Spielstil | HP | Tempo | Schaden | Schuss/s | Reichweite | Krit | Waffe | Passiv | Fertigkeit | Freischaltung | Phase |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Fenn der Falkenauge** (`ranger`) | Jäger: ausgewogen, durchschlagende Pfeile | 100 | 225 | 12 | 2.0 | 380 | 5 % | Ein Pfeil, durchschlägt 1 Gegner. | **Weitblick**: +12 % Reichweite. +8 % Schaden auf Ziele über 250 px. | **Pfeilhagel** (18 s): 16 Pfeile in alle Richtungen (je 60 % Schaden). | von Anfang an | 1 |
-| **Mira Aschenglut** (`pyro`) | Pyromantin: Flächenschaden und Brand | 80 | 175 | 14 | 1.1 | 320 | 5 % | Feuerball explodiert (Radius 64) und entzündet (3 s, 20 % Schaden/s). | **Hitzewelle**: Brennende Gegner erleiden +20 % Schaden. | **Inferno** (22 s): Feuerring (Radius 180) um dich, 4 s, 40 % Schaden/s. | Erreiche Minute 5 mit beliebigem Charakter. | 2 |
-| **Kaz Nachtmesser** (`rogue`) | Schurke: schnell, kritisch, kurze Reichweite | 85 | 238 | 7 | 2.2 | 210 | 20 % | Fächer aus 3 Wurfmessern. | **Nervenkitzel**: +15 % Lauftempo. +6 % Schaden je Gegner im Umkreis 150 px (max. 5). | **Schattenschritt** (5 s): Dash über 220 px, 0,3 s unverwundbar. | Räume eine Welle ab Welle 5, ohne Schaden zu nehmen. | 2 |
-| **Brun Eisenschulter** (`guardian`) | Wächter: Nahkampf-Tank mit Dornen | 160 | 150 | 20 | 0.9 | 110 | 0 % | Schockwelle um dich (Radius 110) mit Rückstoß. | **Eisenhaut**: -15 % erlittener Schaden. Reflektiert 25 % des Nahkampfschadens. | **Bollwerk** (25 s): Schild für 3 s, absorbiert 150 Schaden. | Erleide insgesamt 5000 Schaden. | 2 |
-| **Ysa Winterhauch** (`cryo`) | Frostmagierin: Kontrolle und Verlangsamung | 90 | 181 | 10 | 1.3 | 340 | 5 % | Frostgeschoss verlangsamt um 30 % (2 s). 3 Kältestapel frieren 1,2 s ein. | **Frostaura**: Gegner im Umkreis von 140 px sind 15 % langsamer. | **Eiszeit** (24 s): Friert alle Gegner im Bild 2 s ein. | Besiege 300 Gegner im Komposthaufen. | 2 |
+| **Mira Aschenglut** (`pyro`) | Pyromantin: Flächenschaden und Brand | 80 | 175 | 14 | 1.1 | 320 | 5 % | Feuerball explodiert (Radius 64) und entzündet (3 s, 20 % Schaden/s). | **Hitzewelle**: Brennende Gegner erleiden +20 % Schaden. | **Inferno** (22 s): Feuerring (Radius 180) um dich, 4 s, 40 % Schaden/s. | von Anfang an | 1 |
+| **Kaz Nachtmesser** (`rogue`) | Schurke: schnell, kritisch, kurze Reichweite | 85 | 238 | 7 | 2.2 | 210 | 20 % | Fächer aus 3 Wurfmessern. | **Nervenkitzel**: +15 % Lauftempo. +6 % Schaden je Gegner im Umkreis 150 px (max. 5). | **Schattenschritt** (5 s): Dash über 220 px, 0,3 s unverwundbar. | von Anfang an | 1 |
+| **Brun Eisenschulter** (`guardian`) | Wächter: Nahkampf-Tank mit Dornen | 160 | 150 | 20 | 0.9 | 110 | 0 % | Schockwelle um dich (Radius 110) mit Rückstoß. | **Eisenhaut**: -15 % erlittener Schaden. Reflektiert 25 % des Nahkampfschadens. | **Bollwerk** (25 s): Schild für 3 s, absorbiert 150 Schaden. | von Anfang an | 1 |
+| **Ysa Winterhauch** (`cryo`) | Frostmagierin: Kontrolle und Verlangsamung | 90 | 181 | 10 | 1.3 | 340 | 5 % | Frostgeschoss verlangsamt um 30 % (2 s). 3 Kältestapel frieren 1,2 s ein. | **Frostaura**: Gegner im Umkreis von 140 px sind 15 % langsamer. | **Eiszeit** (24 s): Friert alle Gegner im Bild 2 s ein. | von Anfang an | 1 |
 | **Thorn Geisterruf** (`summoner`) | Beschwörer: Begleiter kämpfen für ihn | 90 | 175 | 6 | 1.0 | 300 | 5 % | Schwacher Geisterbolzen. 2 Geister-Begleiter greifen selbstständig an (8 Schaden, 1,5/s). | **Seelenband**: Geister erhalten 50 % deiner Schadensboni. | **Totenruf** (30 s): 4 zusätzliche Geister für 10 s. | Erreiche Level 15 in einem Run. | 3 |
-| **Vex Donnerhall** (`storm`) | Sturmrufer: Kettenblitze, hohe Schussrate | 80 | 200 | 8 | 2.4 | 300 | 5 % | Kettenblitz springt 2-mal (160 px, je 80 % Schaden). | **Statische Ladung**: Jeder 10. Schuss ruft einen Blitzschlag (200 % Schaden) auf einen zufälligen Gegner. | **Gewittersturm** (28 s): 6 s lang 4 Blitze pro Sekunde auf zufällige Gegner. | Erreiche das zweite Beet. | 3 |
+| **Vex Donnerhall** (`storm`) | Sturmrufer: Kettenblitze, hohe Schussrate | 80 | 200 | 8 | 2.4 | 300 | 5 % | Kettenblitz springt 2-mal (160 px, je 80 % Schaden). | **Statische Ladung**: Jeder 10. Schuss ruft einen Blitzschlag (200 % Schaden) auf einen zufälligen Gegner. | **Gewittersturm** (28 s): 6 s lang 4 Blitze pro Sekunde auf zufällige Gegner. | von Anfang an | 1 |
 | **Orm Zündfunke** (`bomber`) | Sprengmeister: Bomben im Stand, Minen im Lauf | 110 | 188 | 26 | 0.7 | 300 | 5 % | Bombe im Bogen, explodiert nach 0,6 s (Radius 90). | **Minenleger**: Legt beim Laufen alle 1,5 s eine Mine (60 % Schaden, Radius 70, max. 6). | **Megabombe** (20 s): Große Bombe (Radius 200, 500 % Schaden). | Besiege insgesamt 2000 Gegner. | 3 |
 | **Lilu Schierling** (`venom`) | Giftmischerin: Giftpfützen und Seuche | 85 | 188 | 5 | 1.4 | 330 | 5 % | Giftphiole: Pfütze (Radius 55, 3 s, 12 Gift/s, stapelt bis 4x). | **Seuche**: Vergiftete Gegner verbreiten beim Tod Gift (Radius 80). | **Giftnebel** (26 s): Wolke (Radius 160) für 8 s, 35 % Schaden/s, verlangsamt 20 %. | Verursache insgesamt 10000 Giftschaden. | 3 |
 | **Aya Stillstand** (`sniper`) | Scharfschützin: je länger sie steht, desto härter | 75 | 162 | 40 | 0.45 | 600 | 10 % | Durchschlag-Schuss (3). +10 % Schaden je Sekunde Stillstand (max. +100 %). | **Ruhe vor dem Schuss**: Nach 2 s Stillstand ist der nächste Schuss ein garantierter Krit (x2,5). | **Fokus** (20 s): 4 s lang: schießt auch im Lauf, doppelte Schussrate. | Besiege alle drei Beet-Bosse (Schleimrun, Knollgrimm, den Schnitter). | 3 |
@@ -183,7 +183,7 @@ Pro Lauf liegen die Schreine mit festem Seed in den Zonen (jede Zone mindestens 
 | 2. Gemüsebeet | 5:00 | Knollgrimm, der Käferkönig | 2.6 | 1.7 | 1.35 |
 | 3. Komposthaufen | 5:00 | Der Schnitter | 6 | 2.6 | 1.7 |
 
-Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Das Gartentor bleibt offen, sobald der Boss besiegt ist. Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Hineinlaufen bringt dich ins nächste Beet (volle Heilung).
+Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Alle 30 s rollt eine neue Flutwelle heran: ein Ring aus 12 + 8 je Welle Gegnern direkt um dich, und alle neuen Gegner sind je Welle 8 % schneller. Das Gartentor bleibt offen, sobald der Boss besiegt ist. Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Hineinlaufen bringt dich ins nächste Beet (volle Heilung).
 
 ### Bosse
 
@@ -319,12 +319,12 @@ Rein kosmetische Zusatzfarben für jeden Charakter (Paletten-Tausch der Ramp-Far
 
 | ID | Aufgabe | Belohnung |
 |---|---|---|
-| `unlock_pyro` | Erreiche Minute 5 mit beliebigem Charakter. | unlock_character: pyro |
-| `unlock_rogue` | Räume eine Welle ab Welle 5, ohne Schaden zu nehmen. | unlock_character: rogue |
-| `unlock_guardian` | Erleide insgesamt 5000 Schaden. | unlock_character: guardian |
-| `unlock_cryo` | Besiege 300 Gegner im Komposthaufen. | unlock_character: cryo |
+| `unlock_pyro` | Erreiche Minute 5 mit beliebigem Charakter. | title: Glutfreund |
+| `unlock_rogue` | Räume eine Welle ab Welle 5, ohne Schaden zu nehmen. | title: Schattenläufer |
+| `unlock_guardian` | Erleide insgesamt 5000 Schaden. | title: Schildbohne |
+| `unlock_cryo` | Besiege 300 Gegner im Komposthaufen. | title: Frostherz |
 | `unlock_summoner` | Erreiche Level 15 in einem Run. | unlock_character: summoner |
-| `unlock_storm` | Erreiche das zweite Beet. | unlock_character: storm |
+| `unlock_storm` | Erreiche das zweite Beet. | title: Donnerbohne |
 | `unlock_bomber` | Besiege insgesamt 2000 Gegner. | unlock_character: bomber |
 | `unlock_venom` | Verursache insgesamt 10000 Giftschaden. | unlock_character: venom |
 | `unlock_sniper` | Besiege alle drei Beet-Bosse (Schleimrun, Knollgrimm, den Schnitter). | unlock_character: sniper |

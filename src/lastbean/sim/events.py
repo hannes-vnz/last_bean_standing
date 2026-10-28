@@ -221,6 +221,15 @@ class FloodStarted(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class FloodWave(Event):
+    """Every flood_wave_s of Plagenflut a new wave rolls in (wave 1 starts with the flood)."""
+
+    stage: int
+    wave: int
+    reward_mult: float
+
+
+@dataclass(frozen=True, slots=True)
 class GateOpened(Event):
     x: float
     y: float
