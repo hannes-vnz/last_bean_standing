@@ -34,3 +34,10 @@ class SpatialHash:
                 if bucket:
                     out.extend(bucket)
         return out
+
+    def buckets(self):
+        """(cell key, items) in insertion order, for passes that walk cell by cell."""
+        return self._cells.items()
+
+    def bucket(self, key: tuple[int, int]) -> list | None:
+        return self._cells.get(key)

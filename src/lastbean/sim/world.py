@@ -84,6 +84,9 @@ from .tuning import (
     PLAYER_RADIUS,
     POT_RADIUS,
     PROJECTILE_RADIUS,
+    RECYCLE_DISTANCE,
+    RECYCLE_EVERY_TICKS,
+    SEPARATE_EVERY_TICKS,
     SPREAD_COS,
     SPREAD_SIN,
     SWARM_SPREAD,
@@ -244,6 +247,8 @@ class ProjectileView(NamedTuple):
     y: float
     crit: bool
     weapon: str = ""  # "" for the character's own weapon
+    vx: float = 0.0  # units per second (lets the renderer draw between ticks)
+    vy: float = 0.0
 
 
 class BombView(NamedTuple):
@@ -413,6 +418,8 @@ class World:
 
         self._move_players(inputs)
         self._use_abilities(inputs, events)
+        if self.tick % RECYCLE_EVERY_TICKS == 0:
+            self._recycle_far_enemies()
         self._spawn(events)
         self._spawn_bosses(events)
         self._rebuild_grid()
@@ -789,25 +796,56 @@ class World:
                 BEHAVIORS.get(e.behavior, BEHAVIORS["chaser"])(self, e, p.x, p.y, d, events)
             if e.elite:
                 tick_affixes(e)
-        # Separation so enemies form a crowd instead of a single dot.
-        g = self._grid
-        for e in self.enemies:
-            for o in g.query(e.x, e.y, e.radius + self._max_radius):
-                if o.eid <= e.eid:
-                    continue
-                dx, dy = o.x - e.x, o.y - e.y
-                d2 = dx * dx + dy * dy
-                min_d = e.radius + o.radius
-                if 1e-9 < d2 < min_d * min_d:
-                    d = math.sqrt(d2)
-                    push = (min_d - d) * 0.5 / d
-                    e.x -= dx * push
-                    e.y -= dy * push
-                    o.x += dx * push
-                    o.y += dy * push
+        self._separate()
         obstacles = self.obstacles
         for e in self.enemies:
             e.x, e.y = self._clamp(*obstacles.push_out(e.x, e.y, e.radius), e.radius)
+
+    def _separate(self) -> None:
+        """Push overlapping enemies apart so they form a crowd instead of a single dot.
+
+        Walks the grid cell by cell and compares each cell with itself and 4 of its neighbours
+        (every neighbouring pair of cells once), which is far cheaper than one radius query per enemy.
+        Pairs farther apart than one cell are skipped; with cells of 64 that only loosens boss/elite pairs.
+        Runs every SEPARATE_EVERY_TICKS ticks: one pass already resolves each overlap completely."""
+        if self.tick % SEPARATE_EVERY_TICKS:
+            return
+        g = self._grid
+        sqrt = math.sqrt
+        for (cx, cy), bucket in g.buckets():
+            groups = [(bucket, True)]
+            for key in ((cx + 1, cy), (cx - 1, cy + 1), (cx, cy + 1), (cx + 1, cy + 1)):
+                other = g.bucket(key)
+                if other:
+                    groups.append((other, False))
+            for i, e in enumerate(bucket):
+                er = e.radius
+                for others, same in groups:
+                    for o in others[i + 1 :] if same else others:
+                        dx, dy = o.x - e.x, o.y - e.y
+                        d2 = dx * dx + dy * dy
+                        min_d = er + o.radius
+                        if 1e-9 < d2 < min_d * min_d:
+                            d = sqrt(d2)
+                            push = (min_d - d) * 0.5 / d
+                            e.x -= dx * push
+                            e.y -= dy * push
+                            o.x += dx * push
+                            o.y += dy * push
+
+    def _recycle_far_enemies(self) -> None:
+        """Enemies left far behind are moved back to the spawn ring around a player (no new spawn,
+        same HP), so the fight stays on screen and the enemy count does not pile up."""
+        alive = [p for p in self.players if p.alive]
+        if not alive:
+            return
+        far2 = RECYCLE_DISTANCE * RECYCLE_DISTANCE
+        for e in self.enemies:
+            if e.boss or e.elite:
+                continue
+            if all((e.x - p.x) ** 2 + (e.y - p.y) ** 2 > far2 for p in alive):
+                x, y = self._spawn_point(alive)
+                e.x, e.y = self._clamp(*self.obstacles.push_out(x, y, e.radius), e.radius)
 
     def _kill(self, e: Enemy, killer: int | None, events: list[Event]) -> None:
         events.append(EnemyKilled(self.tick, killer, e.eid, e.kind, e.x, e.y))
@@ -1367,7 +1405,7 @@ class World:
                 )
                 for e in self.enemies
             ),  # fmt: skip
-            projectiles=tuple(ProjectileView(pr.x, pr.y, pr.crit, pr.weapon) for pr in self.projectiles),
+            projectiles=tuple(ProjectileView(pr.x, pr.y, pr.crit, pr.weapon, pr.vx, pr.vy) for pr in self.projectiles),
             orbs=tuple(OrbView(o.x, o.y, o.value, o.kind) for o in self.orbs),
             enemy_shots=tuple(EnemyShotView(s.x, s.y, s.lobbed, s.tx, s.ty) for s in self.enemy_shots),
             hazards=tuple(HazardView(h.spec.kind, h.x, h.y, h.spec.radius, h.delay <= 0) for h in self.hazards),
@@ -1397,6 +1435,10 @@ class World:
             t = 1.0 - b.delay / b.flight if b.flight > 0 else 1.0
             bombs.append(BombView(b.x + (b.tx - b.x) * t, b.y + (b.ty - b.y) * t, b.tx, b.ty, t, b.radius))
         return dict(orbiters=tuple(orbiters), auras=tuple(auras), bombs=tuple(bombs))
+
+    def positions(self) -> tuple[dict[int, tuple[float, float]], dict[int, tuple[float, float]]]:
+        """Player and enemy positions now; taken before a step, they let the renderer draw between ticks."""
+        return {p.player_id: (p.x, p.y) for p in self.players}, {e.eid: (e.x, e.y) for e in self.enemies}
 
     def state_hash(self) -> str:
         """Hash over the full simulation state, for determinism tests and later desync detection."""
