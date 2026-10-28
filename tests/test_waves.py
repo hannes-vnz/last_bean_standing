@@ -148,3 +148,12 @@ def test_flood_rolls_in_waves_every_thirty_seconds(make_config):
     fast = w._spawn_enemy(w.config.mobs[0], 10.0, 10.0, [])
     base = w.config.mobs[0].speed * w.config.scaling.speed_mult(w.stage_time_s / 60)
     assert fast.speed == pytest.approx(base * (1 + cfg.speed_per_wave_pct / 100 * 2))
+
+
+def test_reported_wave_matches_the_leaderboard_clock(make_config):
+    """server/app.py and the worker reject a score whose wave is far from seconds // 30 + 1,
+    so the result keeps that clock even though beds run 18 s waves."""
+    w = World(1, make_config())
+    w.tick = 400 * TICK_HZ
+    r = w.result()
+    assert r.seconds == 400 and r.wave + 1 == 400 // 30 + 1

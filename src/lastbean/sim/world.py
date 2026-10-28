@@ -172,6 +172,7 @@ from .weapons import (
 )
 
 TICK_HZ = 60
+LEADERBOARD_WAVE_S = 30  # server/app.py and worker check wave = seconds // 30 + 1, whatever the bed pace
 DT = 1.0 / TICK_HZ
 MAX_SPAWNS_PER_TICK = 8
 GRID_CELL = 64.0
@@ -2287,7 +2288,7 @@ class World:
             character=self.config.character.id,
             seed=self.seed,
             seconds=seconds,
-            wave=seconds // self.config.wave_interval_s,  # over the whole run (the server checks it against the time)
+            wave=seconds // LEADERBOARD_WAVE_S,  # the leaderboard's wave clock (30 s), checked against the time
             kills=p.kills,
             level=p.level,
             bosses=self.bosses_killed,
