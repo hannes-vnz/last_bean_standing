@@ -123,7 +123,7 @@ def test_screens_fit_and_have_buttons(renderer, size, content):
     ]:
         assert needed <= {b.action for b in buttons}
         assert all(canvas.contains(b.rect) for b in buttons), [b for b in buttons if not canvas.contains(b.rect)]
-    play = screens.draw_menu(r, p, web=True)[0]
+    play = next(b for b in screens.draw_menu(r, p, web=True) if b.action == "play")
     assert screens.hit([play], play.rect.center) == "play"
 
 

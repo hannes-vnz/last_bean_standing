@@ -204,5 +204,90 @@
    }
   ],
   "text": "Rein kosmetische Zusatzfarben für jeden Charakter (Paletten-Tausch der Ramp-Farben)."
- }
+ },
+ "wonders": [
+  {
+   "id": "wonder_fourth_card",
+   "name": "Vierblatt",
+   "cost": 400,
+   "effect": {
+    "level_up_choices_add": 1
+   },
+   "text": "Beim Level-up stehen 4 Karten zur Wahl statt 3."
+  },
+  {
+   "id": "wonder_weapon_slot",
+   "name": "Großes Beet",
+   "cost": 600,
+   "effect": {
+    "weapon_slots_add": 1
+   },
+   "text": "Ein fünfter Waffenplatz."
+  },
+  {
+   "id": "wonder_second_seed",
+   "name": "Zweite Saat",
+   "cost": 500,
+   "effect": {
+    "revives": 1
+   },
+   "text": "Einmal pro Lauf wiederbeleben."
+  },
+  {
+   "id": "wonder_starter",
+   "name": "Startpaket",
+   "cost": 300,
+   "effect": {
+    "start_weapon": 1
+   },
+   "text": "Jeder Lauf beginnt mit einer zufälligen Zusatzwaffe."
+  },
+  {
+   "id": "wonder_chest_key",
+   "name": "Kistenschlüssel",
+   "cost": 250,
+   "effect": {
+    "chest_discount_pct": 25
+   },
+   "text": "Kisten auf der Karte kosten 25 % weniger Samen."
+  }
+ ],
+ "seeds": [
+  {
+   "weapon": "leaf_boomerang",
+   "cost": 120
+  },
+  {
+   "weapon": "nettle_trail",
+   "cost": 120
+  },
+  {
+   "weapon": "garlic_mine",
+   "cost": 150
+  },
+  {
+   "weapon": "seed_shotgun",
+   "cost": 150
+  },
+  {
+   "weapon": "cactus",
+   "cost": 180
+  },
+  {
+   "weapon": "firefly",
+   "cost": 200
+  },
+  {
+   "weapon": "sickle",
+   "cost": 200
+  },
+  {
+   "weapon": "dragonfly",
+   "cost": 220
+  },
+  {
+   "weapon": "sunbeam",
+   "cost": 250
+  }
+ ]
 }

@@ -170,6 +170,14 @@ class Renderer:
         for o in snap.orbs:
             sx, sy = round(o.x / UNITS_PER_PX) - cam_x, round(o.y / UNITS_PER_PX) - cam_y
             if 0 <= sx < self.w and 0 <= sy < self.h:
+                if o.kind == "sparkle":  # Funkelstein: a pink gem that twinkles
+                    c.fill(ink, (sx - 3, sy - 4, 7, 9))
+                    c.fill((255, 159, 192), (sx - 2, sy - 3, 5, 7))
+                    c.fill((255, 214, 230), (sx - 1, sy - 3, 2, 3))
+                    if (snap.tick // 8 + sx) % 6 == 0:
+                        c.fill(WHITE, (sx + 3, sy - 6, 1, 3))
+                        c.fill(WHITE, (sx + 2, sy - 5, 3, 1))
+                    continue
                 if o.kind == "seeds":  # golden seed
                     c.fill(ink, (sx - 2, sy - 3, 5, 7))
                     c.fill(self.crit_color, (sx - 1, sy - 2, 3, 5))
@@ -412,7 +420,7 @@ class Renderer:
             clock = f"{m}:{s:02d}"
         parts = [f"Beet {snap.stage}", clock, f"Level {focus.level}", f"Kills {focus.kills}",
                  f"HP {int(focus.hp)}/{int(focus.max_hp)}" + (f" +{int(focus.shield)}" if focus.shield >= 1 else ""),
-                 f"Samen {focus.seeds}"]  # fmt: skip
+                 f"Samen {focus.seeds}"] + ([f"Funkel {focus.sparkles}"] if focus.sparkles else [])  # fmt: skip
         if snap.difficulty != 1.0:
             parts.append(f"Schwierigkeit {round(snap.difficulty * 100)} %")
         line, y = "", 9

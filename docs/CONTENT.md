@@ -311,6 +311,12 @@ Kosten je Stufe: `round(base_cost x 1.5^(Stufe-1))`. Jederzeit zu 100 % erstattb
 
 Alle Werkstatt-Stufen zusammen kosten 6703 Funkelsteine. Bei etwa 60 Funkelsteinen je Lauf sind das rund 112 Läufe, also ein langes, aber freiwilliges Ziel.
 
+### Gewächshaus: Wunder und Saatgut
+
+Wunder (einmal kaufen, gelten für jeden Lauf): **Vierblatt** (400): Beim Level-up stehen 4 Karten zur Wahl statt 3.; **Großes Beet** (600): Ein fünfter Waffenplatz.; **Zweite Saat** (500): Einmal pro Lauf wiederbeleben.; **Startpaket** (300): Jeder Lauf beginnt mit einer zufälligen Zusatzwaffe.; **Kistenschlüssel** (250): Kisten auf der Karte kosten 25 % weniger Samen..
+
+Saatgut (Waffe wächst in den Kartenpool): `leaf_boomerang` 120, `nettle_trail` 120, `garlic_mine` 150, `seed_shotgun` 150, `cactus` 180, `firefly` 200, `sickle` 200, `dragonfly` 220, `sunbeam` 250. Die übrigen Waffen sind von Anfang an da.
+
 ### Startpakete (vor dem Lauf, verbrauchen sich)
 
 Höchstens 2 je Lauf. **Proviant** (25): +5 % Heilkugel-Chance in diesem Lauf.; **Glücksbringer** (40): +10 Glück in diesem Lauf.; **Schatzkarte** (30): Schreine sind in diesem Lauf auf der Karte sichtbar.; **Frühstart** (60): Start bei Level 3 (2 Gratis-Upgradewahlen)..
