@@ -7,6 +7,8 @@
 
 const CHARACTERS = new Set(["ranger", "pyro", "rogue", "guardian", "cryo", "summoner", "storm", "bomber", "venom", "sniper"]);
 const MODES = new Set(["normal", "eternal_night"]);
+const MODE_SCORE_MULT = { normal: 1.0, eternal_night: 1.5 }; // data/modes.json score_mult
+const FLOOD_START_S = 180; // the flood begins when the first garden bed (3:00, data/stages.json) runs out
 const NAME_RE = /^[A-Za-z0-9ÄÖÜäöüß _\-.]{2,16}$/;
 const RUN_ID_RE = /^[A-Za-z0-9-]+$/;
 const PERIOD_SECONDS = { day: 86400, week: 7 * 86400, month: 30 * 86400 };
@@ -66,14 +68,14 @@ export function maxPlausibleScore(s) {
   let base = 2 * s.seconds + 5 * s.kills + 20 * s.level + 500 * s.bosses;
   base += s.victory ? 20000 : 0;
   base += 1000 * (s.swarm_seconds / 10) * 8;
-  return base * (1 + 0.8 * (s.difficulty - 1)) * 1.02 + 50;
+  return base * (1 + 0.8 * (s.difficulty - 1)) * (MODE_SCORE_MULT[s.mode] ?? 1.0) * 1.02 + 50;
 }
 
 export function plausibilityError(s, env) {
   if (s.score > maxPlausibleScore(s)) return "Punkte passen nicht zu Zeit, Kills und Level";
   if (s.kills > s.seconds * 40) return "zu viele Kills fuer die Spielzeit";
   if (Math.abs(s.wave - (Math.floor(s.seconds / 30) + 1)) > 2 && s.swarm_seconds === 0) return "Welle passt nicht zur Spielzeit";
-  if (s.swarm_seconds > Math.max(0, s.seconds - 300 + 5)) return "Flutzeit passt nicht zur Spielzeit";
+  if (s.swarm_seconds > Math.max(0, s.seconds - FLOOD_START_S + 5)) return "Flutzeit passt nicht zur Spielzeit";
   if (s.bosses > 6 + Math.floor(s.seconds / 900)) return "zu viele Bosse";
   const allowed = (env.ALLOWED_VERSIONS || "").split(",").filter(Boolean);
   if (allowed.length && !allowed.includes(s.version)) return "Spielversion wird nicht mehr angenommen";

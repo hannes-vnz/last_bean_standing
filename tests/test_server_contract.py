@@ -143,6 +143,14 @@ def test_implausible_is_rejected(srv, kw):
     assert call("POST", srv + "/v1/scores", payload(**kw))[0] == 422
 
 
+def test_flood_from_minute_three_and_eternal_night_points(srv):
+    # The flood starts when the first 3:00 bed runs out; eternal night pays 1.5 times the points.
+    assert call("POST", srv + "/v1/scores", payload(seconds=300, swarm_seconds=110, wave=11))[0] == 200
+    assert call("POST", srv + "/v1/scores", payload(seconds=300, swarm_seconds=130, wave=11))[0] == 422
+    assert call("POST", srv + "/v1/scores", payload(score=3500, mode="eternal_night", client_token="n" * 32))[0] == 200
+    assert call("POST", srv + "/v1/scores", payload(score=3500, mode="normal", client_token="m" * 32))[0] == 422
+
+
 def test_difficulty_allows_more_points(srv):
     assert call("POST", srv + "/v1/scores", payload(score=4200, difficulty=1.0))[0] == 422
     assert call("POST", srv + "/v1/scores", payload(score=4200, difficulty=2.0))[0] == 200
