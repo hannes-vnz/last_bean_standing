@@ -21,6 +21,8 @@ schläft nicht ein, Daten liegen dauerhaft in D1 (SQLite). Beide Server prüft d
 
 Danach deployt jeder Push auf `main`, der `worker/` ändert, automatisch.
 
+Aktuelle Adresse: `https://last-bean-standing.hannesvincenz.workers.dev`.
+
 ## Lokal
 ```bash
 cd worker
