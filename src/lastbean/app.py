@@ -451,6 +451,7 @@ async def run(
     effects.item_rarity = {i.id: i.rarity for i in content.items}
     effects.taglines = {st.index: st.tagline for st in content.stages}
     audio = Audio()
+    audio.bed_tracks = {st.index: st.biome for st in content.stages}
     touch = TouchState()
 
     def zoom(steps: int) -> None:
@@ -751,6 +752,8 @@ async def run(
                     touch.reset()
             else:
                 acc = 0.0
+                if game.state != "pause" and not (game.state == "settings" and game.settings_return == "pause"):
+                    audio.music(None)  # menus are quiet; the next run starts its bed's track
             choice, offer_action = None, None
             was_paused = game.state == "play" and game.world.paused
             t1 = time.perf_counter()
