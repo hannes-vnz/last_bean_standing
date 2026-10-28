@@ -93,6 +93,7 @@ from .tuning import (
     BULWARK_SHIELD,
     BURN_S,
     BURN_SHARE,
+    CHALLENGE_LOW_HP_SHARE,
     CHEST_PICKUP_RADIUS,
     CHILL_S,
     COURAGE_MIN_RARITY,
@@ -561,6 +562,12 @@ class World:
         self.elites_killed = 0
         self.curse_total = 0  # Fluchstein: boss copies so far (at most CURSE_MAX_COPIES per run)
         self.curse_pending = 0  # copies the next bed boss brings
+        # Challenge statistics of this run (meta/challenges.py): crits, poison_damage, low_hp_s,
+        # kills_<biome>, flawless_wave (highest run-wide wave without damage), stage2_s.
+        self.run_stats: dict[str, float] = {}
+        self.bosses_defeated: list[str] = []
+        self._wave_hurt = False
+        self._run_wave = 0
         if cfg.economy is not None:
             for p in self.players:
                 p.rerolls = cfg.economy.rerolls + int(meta.get("rerolls", 0.0))
@@ -677,6 +684,7 @@ class World:
             return events
 
         self.tick += 1
+        self._track_run_stats()
         self.stage_tick += 1
         st = self.stage_cfg
         if self.stage_tick > st.duration_s * TICK_HZ:
@@ -741,6 +749,8 @@ class World:
         for o in self.orbs:
             self._collect_orb(alive[0], o, events)
         self.stage += 1
+        if self.stage == 1:
+            self.run_stats["stage2_s"] = self.time_s
         self.stage_tick = self.wave = 0
         self.gate = None
         self._boss_spawned = False
@@ -1040,6 +1050,8 @@ class World:
                 dmg -= absorbed
         p.hp = max(0.0, p.hp - dmg)
         p.damage_taken += dmg
+        if dmg > 0:
+            self._wave_hurt = True
         if use_i_frames:
             p.i_frames = self.config.character.i_frames_s * s.i_frames_mult
             events.append(PlayerHit(self.tick, p.player_id, dmg, p.hp))
@@ -1305,6 +1317,9 @@ class World:
 
     def _kill(self, e: Enemy, killer: int | None, events: list[Event]) -> None:
         events.append(EnemyKilled(self.tick, killer, e.eid, e.kind, e.x, e.y))
+        self._count(f"kills_{self.stage_cfg.biome}")
+        if e.boss:
+            self.bosses_defeated.append(e.boss)
         if e.elite:
             self.elites_killed += 1
         if e.xp > 0:
@@ -1531,6 +1546,8 @@ class World:
     def _roll_crit(self, p: Player, damage: float) -> tuple[float, bool]:
         s = p.stats
         crit = self.rng.random() * 100.0 < s.crit_chance_pct
+        if crit:
+            self._count("crits")
         return damage * (s.crit_mult if crit else 1.0), crit
 
     def _move_projectiles(self, events: list[Event]) -> None:
@@ -1748,6 +1765,8 @@ class World:
             if (self.tick + e.eid) % DOT_PULSE_TICKS:
                 continue
             dps = (e.poison_dps if e.poison_t > 0 else 0.0) + (e.burn_dps if e.burn_t > 0 else 0.0)
+            if e.poison_t > 0 and e.eid not in killed:
+                self._count("poison_damage", min(e.hp, e.poison_dps * DOT_PULSE_TICKS * DT))
             if dps > 0 and e.eid not in killed:
                 self._weapon_hit(owners.get(e.dot_owner), e.dot_owner, e, dps * DOT_PULSE_TICKS * DT, False, killed,
                                  events, procs=False)  # fmt: skip
@@ -2252,6 +2271,20 @@ class World:
             self._give_item(owner, c.kind, events)
         self.chests = remaining
 
+    def _count(self, key: str, amount: float = 1.0) -> None:
+        self.run_stats[key] = self.run_stats.get(key, 0.0) + amount
+
+    def _track_run_stats(self) -> None:
+        """Per tick: seconds at low HP, and run-wide waves (on the leaderboard clock) passed without damage."""
+        for p in self.players:
+            if p.alive and p.hp < CHALLENGE_LOW_HP_SHARE * p.max_hp:
+                self._count("low_hp_s", DT)
+        wave = int(self.time_s // LEADERBOARD_WAVE_S) + 1
+        if wave != self._run_wave:
+            if self._run_wave and not self._wave_hurt:
+                self.run_stats["flawless_wave"] = max(self.run_stats.get("flawless_wave", 0.0), self._run_wave)
+            self._run_wave, self._wave_hurt = wave, False
+
     def _charge_shrines(self, alive: list[Player], events: list[Event]) -> None:
         """Standing in a shrine's circle charges it (the Gier-Schrein only while standing still);
         outside, the charge drains twice as fast. A full shrine raises D, rewards and disappears."""
@@ -2344,6 +2377,10 @@ class World:
             stage=self.stage_cfg.index,
             elites=self.elites_killed,
             chests=self.chests_opened,
+            shrines=p.shrines_activated,
+            stats=dict(self.run_stats),
+            boss_ids=list(self.bosses_defeated),
+            owned=sorted(set(p.upgrades) | set(p.items)),
         )
 
     # ------------------------------------------------------------------ views

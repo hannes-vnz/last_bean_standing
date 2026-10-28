@@ -19,7 +19,7 @@ import pygame
 
 from .audio import Audio
 from .data import load_content
-from .meta import workshop
+from .meta import challenges, workshop
 from .meta.profile import ProfileStore, default_store, new_profile, record_run, set_nickname, valid_nickname
 from .online.leaderboard import REFRESH_S, Leaderboard
 from .render.effects import Effects
@@ -134,6 +134,7 @@ class Game:
         self.normal = self._world_config(self.character)
         self.config = self.normal
         renderer.character_sprite = self.character
+        self.apply_skin()
         self.fixed_seed = seed
         self.seed = seed if seed is not None else secrets.randbelow(2**31)
         self.world = World(self.seed, self.config)
@@ -149,6 +150,7 @@ class Game:
             self.state = "menu" if self.profile.get("nickname") else "name"
         self.first_name = not self.profile.get("nickname")
         self.settings_return = "menu"
+        self.challenge_page = 0
         self.leaderboard = Leaderboard()
         self.online: tuple[str, int | None, int | None] = ("", None, None)
         self.board: dict = {"period": "all", "entries": None, "loading": False, "fetched_at": 0.0}
@@ -163,12 +165,35 @@ class Game:
         self.save()
         self.normal = self.config = self._world_config(cid)
         self.renderer.character_sprite = cid
+        self.apply_skin()
 
     def _world_config(self, cid: str) -> WorldConfig:
         """Config for runs with this bean, including the workshop bonuses."""
         return WorldConfig.from_content(
             self.content, cid, meta_mods=workshop.meta_mods(self.profile, self.content.shop)
         )
+
+    def skin_choices(self) -> list:
+        """Unlocked skins of the chosen bean (None = its normal look first)."""
+        owned = set(self.profile.get("skins", []))
+        return [None] + [s for s in self.content.skins if s.character == self.character and s.id in owned]
+
+    def next_skin(self) -> None:
+        choices = self.skin_choices()
+        current = self.profile.setdefault("skin", {}).get(self.character)
+        ids = [s.id if s else None for s in choices]
+        nxt = ids[(ids.index(current) + 1) % len(ids)] if current in ids else ids[0]
+        if nxt is None:
+            self.profile["skin"].pop(self.character, None)
+        else:
+            self.profile["skin"][self.character] = nxt
+        self.save()
+        self.apply_skin()
+
+    def apply_skin(self) -> None:
+        sid = self.profile.get("skin", {}).get(self.character)
+        skin = next((s for s in self.content.skins if s.id == sid), None)
+        self.renderer.character_tint = tuple(skin.tint) if skin else None
 
     def workshop_action(self, kind: str, item_id: str) -> None:
         item = next((w for w in self.content.shop.workshop if w.id == item_id), None)
@@ -210,6 +235,10 @@ class Game:
         self.online = ("", None, None)
         if self.config is self.normal:
             self.flags = record_run(self.profile, self.result)
+            challenges.record_lifetime(self.profile, self.result)
+            new = challenges.evaluate(self.profile, self.result, self.content.challenges, len(self.characters))
+            names = challenges.reward_names(self.content)
+            self.result["challenges"] = [(ch.text, challenges.reward_text(ch, names)) for ch in new]
             earned = workshop.payout(self.result, self.content.shop, self.world.victory)
             self.result["sparkles"] = earned
             self.profile["sparkles"] = self.profile.get("sparkles", 0) + sum(earned.values())
@@ -531,6 +560,12 @@ async def run(
             game.state, acc = "play", 0.0
         elif action == "mute":
             audio.muted = not audio.muted
+        elif action == "challenges":
+            game.state, game.challenge_page = "challenges", 0
+        elif action.startswith("page:"):
+            game.challenge_page = max(0, game.challenge_page + int(action[5:]))
+        elif action == "skin":
+            game.next_skin()
         elif action == "workshop":
             game.state = "workshop"
         elif action == "workshop_back":
@@ -691,6 +726,11 @@ async def run(
                 elif game.state == "workshop":
                     if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER):
                         do("workshop_back")
+                elif game.state == "challenges":
+                    if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER):
+                        do("menu")
+                    elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                        do("page:1" if event.key == pygame.K_RIGHT else "page:-1")
                 elif game.state == "pause":
                     if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE, pygame.K_p):
                         do("resume")
@@ -776,13 +816,24 @@ async def run(
                 buttons = screens.draw_menu(renderer, game.profile, WEB)
             elif game.state == "characters":
                 best = game.profile["highscores"].get("by_character", {})
-                buttons = screens.draw_characters(renderer, game.characters, game.character, best)
+                choices = game.skin_choices()
+                skins = {c.id: tuple(s.tint) for c in game.characters for s in content.skins
+                         if s.id == game.profile.get("skin", {}).get(c.id)}  # fmt: skip
+                label = ""
+                if len(choices) > 1:
+                    current = next((s for s in choices if s and s.id == game.profile["skin"].get(game.character)), None)
+                    who = next(c.name for c in game.characters if c.id == game.character)
+                    label = f"{who}: {current.name if current else 'normal'}"
+                buttons = screens.draw_characters(renderer, game.characters, game.character, best, skins, label)
             elif game.state == "prologue":
                 buttons = screens.draw_prologue(renderer)
             elif game.state == "settings":
                 buttons = screens.draw_settings(renderer, game.profile["settings"])
             elif game.state == "workshop":
                 buttons = screens.draw_workshop(renderer, content.shop, game.profile)
+            elif game.state == "challenges":
+                buttons = screens.draw_challenges(renderer, content, game.profile, game.challenge_page,
+                                                  len(game.characters))  # fmt: skip
             elif game.state == "board":
                 if time.monotonic() - game.board["fetched_at"] > REFRESH_S:
                     game.refresh_board()

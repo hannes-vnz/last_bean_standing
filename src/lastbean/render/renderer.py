@@ -118,6 +118,7 @@ class Renderer:
         self._build_pop: dict[str, int] = {}  # HUD icon -> frame it last changed
         self.sprites = SpriteBank()
         self.character_sprite = "ranger"
+        self.character_tint: tuple[int, int, int] | None = None  # skin (skins.json)
         self.base_radius = {m.id: float(m.radius) for m in content.mobs}
         self.base_radius.update({b.id: BOSS_RADIUS for b in content.bosses})
         self._last_x: dict[int, float] = {}
@@ -262,7 +263,7 @@ class Renderer:
             bob = (0, 2, 1, 0)[phase] if walking else 0  # hop while walking
             squash = WALK_SQUASH[phase] if walking else (0 if (snap.tick // 40) % 2 else -1)  # idle: breathing
             flip = self._facing(-1 - p.player_id, p.x)
-            img = self.sprites.get(self.character_sprite, 1.0, flip, blink, squash)
+            img = self.sprites.get(self.character_sprite, 1.0, flip, blink, squash, self.character_tint)
             if effects and p.player_id == focus.player_id:
                 effects.footstep(p.x, p.y + 8 * UNITS_PER_PX, walking)
             if img is not None:

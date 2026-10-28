@@ -112,8 +112,8 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
         r.dark_text("Noch kein Rekord.", (cx, panel.y + 38), center=True)
     t = profile["totals"]
     r.dark_text(f"Läufe {t['runs']}   Funkelsteine {profile.get('sparkles', 0)}", (cx, panel.y + 70), center=True)
-    items = [("Spielen", "play"), ("Werkstatt", "workshop"), ("Bestenliste", "board"), ("Name ändern", "name"),
-             ("Einstellungen", "settings")]  # fmt: skip
+    items = [("Spielen", "play"), ("Werkstatt", "workshop"), ("Challenges", "challenges"), ("Bestenliste", "board"),
+             ("Name ändern", "name"), ("Einstellungen", "settings")]  # fmt: skip
     if not web:
         items.append(("Beenden", "quit"))
     if r.w > r.h:  # landscape: "Spielen" big, the rest in one row, so it fits the 360 pixel height
@@ -126,7 +126,8 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
     return buttons
 
 
-def draw_characters(r: Renderer, characters: list, current: str, best: dict[str, Any]) -> list[Button]:
+def draw_characters(r: Renderer, characters: list, current: str, best: dict[str, Any], skins: dict | None = None,
+                    skin_label: str = "") -> list[Button]:  # fmt: skip
     """Pick a bean: one card per playable character with sprite, role, passive and active ability."""
     _backdrop(r)
     cx = r.w // 2
@@ -145,7 +146,7 @@ def draw_characters(r: Renderer, characters: list, current: str, best: dict[str,
         chosen = c.id == current
         r.canvas.fill(r.crit_color if chosen else r.ink, rect.inflate(6 if chosen else 4, 6 if chosen else 4))
         r.canvas.fill((58, 42, 74), rect)
-        img = r.sprites.get(c.id, 2.0)
+        img = r.sprites.get(c.id, 2.0, tint=(skins or {}).get(c.id))
         if img is not None:
             r.canvas.blit(img, (rect.x + 4, rect.y + 6))
         tx = rect.x + 42
@@ -164,7 +165,8 @@ def draw_characters(r: Renderer, characters: list, current: str, best: dict[str,
                 r.text(part, (rect.x + 6 if y >= rect.y + 46 else tx, y))
                 y += 12
         buttons.append(Button(rect, f"char:{c.id}"))
-    buttons += _button_row(r, top + 36 + rows * (ch + gap) + 6, [("Zurück", "menu")], width=140)
+    row = [("Zurück", "menu")] + ([(skin_label, "skin")] if skin_label else [])
+    buttons += _button_row(r, top + 36 + rows * (ch + gap) + 6, row, width=160)
     if not r.touch and r.w >= 500:
         r.text("Antippen oder 1 bis 6 · Enter: die markierte Bohne", (cx, r.h - 14), center=True)
     return buttons
@@ -229,6 +231,46 @@ def draw_workshop(r: Renderer, shop, profile: dict[str, Any]) -> list[Button]:
             r.dark_text("zurück", (sell.centerx, sell.centery - 5), center=True)
             buttons.append(Button(sell, f"ws_sell:{it.id}"))
     buttons += _button_row(r, top + 44 + rows * (ch + gap), [("Fertig", "workshop_back")], width=140)
+    return buttons
+
+
+def draw_challenges(r: Renderer, content, profile: dict[str, Any], page: int, playable: int) -> list[Button]:
+    """All challenges with progress bars, done ones ticked, a page at a time."""
+    from ..meta.challenges import progress, reward_names, reward_text
+
+    _backdrop(r)
+    cx = r.w // 2
+    items = list(content.challenges)
+    done = set(profile.get("challenges_done", []))
+    items.sort(key=lambda ch: ch.id in done)  # open ones first
+    row_h, top = 30, 44
+    per_page = max(3, (r.h - top - 50) // (row_h + 4))
+    pages = (len(items) + per_page - 1) // per_page
+    page = min(page, pages - 1)
+    r.text(f"Challenges  {len(done)}/{len(items)}", (cx, 16), r.big_font, center=True)
+    names = reward_names(content)
+    w = min(520, r.w - 16)
+    x = cx - w // 2
+    for i, ch in enumerate(items[page * per_page : (page + 1) * per_page]):
+        rect = pygame.Rect(x, top + i * (row_h + 4), w, row_h)
+        finished = ch.id in done
+        r.canvas.fill(r.ink, rect.inflate(2, 2))
+        r.canvas.fill((232, 246, 214) if finished else (255, 250, 240), rect)
+        r.dark_text(_fit(r, ("✓ " if finished else "") + ch.text, w - 90), (rect.x + 5, rect.y + 3))
+        r.dark_text(_fit(r, reward_text(ch, names), w - 10), (rect.x + 5, rect.y + 16))
+        if not finished:
+            cur, target = progress(ch, profile, playable)
+            bar = pygame.Rect(rect.right - 80, rect.y + 5, 74, 8)
+            r.canvas.fill(r.ink, bar.inflate(2, 2))
+            r.canvas.fill((220, 214, 204), bar)
+            r.canvas.fill(r.crit_color, (bar.x, bar.y, round(bar.w * min(1.0, cur / target)), bar.h))
+    nav = [("Zurück", "menu")]
+    if page > 0:
+        nav.append(("< Seite", "page:-1"))
+    if page < pages - 1:
+        nav.append(("Seite >", "page:1"))
+    buttons = _button_row(r, r.h - 42, nav, width=120)
+    r.text(f"{page + 1}/{pages}", (cx, r.h - 52), center=True)
     return buttons
 
 
@@ -385,9 +427,17 @@ def draw_results(
         r.dark_text(f"+{sum(sparkles.values())} Funkelsteine", (cx, y + 3), center=True)
         detail = " · ".join(f"{k} {v}" for k, v in sparkles.items())
         r.dark_text(_fit(r, detail, panel.w - 24), (cx, y + 16), center=True)
+    done = result.get("challenges") or []
+    y = panel.bottom + 12
+    if done:  # challenges completed in this run: the first one, and how many more
+        more = f" (+{len(done) - 1} weitere)" if len(done) > 1 else ""
+        r.text(_fit(r, f"Challenge geschafft: {done[0][0]}", r.w - 20), (cx, y), center=True)
+        r.text(_fit(r, done[0][1] + more, r.w - 20), (cx, y + 12), center=True)
+        y += 26
     if online:
-        r.text(online, (cx, panel.bottom + 14), center=True)
-    return _button_row(r, panel.bottom + 30, [("Neuer Lauf", "again"), ("Menü", "menu")])
+        r.text(online, (cx, y), center=True)
+        y += 14
+    return _button_row(r, max(panel.bottom + 30, y + 6), [("Neuer Lauf", "again"), ("Menü", "menu")])
 
 
 def draw_board(r: Renderer, board: dict, profile: dict[str, Any], enabled: bool) -> list[Button]:
