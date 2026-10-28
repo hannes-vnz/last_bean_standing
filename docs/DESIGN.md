@@ -156,6 +156,13 @@ last-bean-standing/
 - Bestenlisten-Server: kostenloses Hosting mit GitHub als Basis (Deploy per GitHub Actions); Anbieter noch offen.
 - Charaktere: Bohnen-Stil freigegeben, aber **deutlicher als Bohne** (Nierenform, Naht, Keimblatt). Entwurf v2: `docs/art/characters_beans.png`.
 
+**Entschieden am 28.10.2026 (Kurswechsel nach den ersten Testspielen):**
+- **Feuern auch im Laufen.** Stop-and-Shoot (Abschnitt 2) entfällt; ob Stehen noch einen kleinen Bonus gibt, ist offen.
+- Stärker an **Megabonk-Mechaniken** orientieren: Items aus Kisten, Kisten und Fundstücke auf der Karte, Gold im Lauf, schnelle Progression, Magnet. Optik, Namen und Texte bleiben eigene.
+- Die **Karte wird deutlich größer** (Vorschlag 200 x 200 Felder).
+- Die Progression war zu langsam: flachere XP-Kurve, größerer Aufsammelradius.
+- Der Umfang der 1.0 wächst entsprechend, siehe `docs/ROADMAP.md`.
+
 ## 16. Optik und Effekte (entschieden)
 **Richtung:** nicht fotorealistisch, Pixel-Art als einfachster brauchbarer Stil, aber mit auffälligen Projektil-Animationen und viel Rückmeldung ("Game Feel"). Pro Charakter steht die Effektbeschreibung in `data/characters.json` (Feld `vfx`) und in `docs/CONTENT.md`.
 
