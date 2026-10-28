@@ -75,11 +75,11 @@ def test_mob_pool_respects_phase_and_behaviour(make_config):
 def test_biome_lookup_prefers_clearing(make_config):
     areas = make_config().biomes
     t = 32
-    assert biome_at(areas, 30 * t, 30 * t) == "plaza"
-    assert biome_at(areas, 5 * t, 5 * t) == "forest"
-    assert biome_at(areas, 55 * t, 5 * t) == "desert"
-    assert biome_at(areas, 5 * t, 55 * t) == "ice"
-    assert biome_at(areas, 55 * t, 55 * t) == "lava"
+    assert biome_at(areas, 100 * t, 100 * t) == "plaza"  # centre of the 200 x 200 map
+    assert biome_at(areas, 20 * t, 20 * t) == "forest"
+    assert biome_at(areas, 180 * t, 20 * t) == "desert"
+    assert biome_at(areas, 20 * t, 180 * t) == "ice"
+    assert biome_at(areas, 180 * t, 180 * t) == "lava"
 
 
 def test_run_to_five_minutes(make_config):

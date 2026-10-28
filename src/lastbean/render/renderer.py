@@ -6,6 +6,8 @@ dark outlines, own projectiles warm yellow, XP orbs mint, white text with dark o
 
 from __future__ import annotations
 
+from collections import OrderedDict
+
 import pygame
 
 from ..data.schema import Content
@@ -19,6 +21,8 @@ CANVAS_W, CANVAS_H = 640, 360
 # World units per canvas pixel (DESIGN.md section 16: 1 tile = 32 units = 16 px).
 UNITS_PER_PX = 2
 WHITE = (255, 255, 255)
+CHUNK_PX = 256  # ground is rendered in square chunks of this many canvas pixels
+MAX_CHUNKS = 40  # chunks kept in memory (about 10 MB)
 RARITY_NAMES = {
     "common": "Gewöhnlich",
     "uncommon": "Ungewöhnlich",
@@ -46,6 +50,7 @@ class Renderer:
         self.ability_rect = pygame.Rect(0, 0, 0, 0)
         self.pause_rect = pygame.Rect(0, 0, 0, 0)
         self.touch = False  # touch device: bigger buttons, no keyboard hints
+        self.hud_bottom = 24
         self._dest, self._scale = (0, 0), 1
         style = content.style
         self.tile_px = content.balance.tile_px
@@ -187,7 +192,9 @@ class Renderer:
 
         if effects:
             self._draw_effects(effects, cam_x, cam_y)
+        self._draw_boss_arrow(snap, cam_x, cam_y)
         self._draw_hud(snap, focus)
+        self._draw_minimap(snap, focus)
         if effects and effects.banner:
             self.text(effects.banner[0], (self.w // 2, 70), self.big_font, center=True)
         if snap.boss_bar:
@@ -216,6 +223,7 @@ class Renderer:
             else:
                 line = trial
         self.text(line, (6, y))
+        self.hud_bottom = y + 14
         # Pause button (touch has no Esc key) and ability button, both big enough for a thumb on touch.
         size = 22 if self.touch else 0
         self.pause_rect = pygame.Rect(self.w - size - 6, 8, size, size)
@@ -239,6 +247,56 @@ class Renderer:
         c.fill(WHITE, (cx - 2, cy - 2, 5, 5))
         if not self.touch:
             self.text("Leer", (box.centerx, box.y - 9), center=True)
+
+    def _draw_minimap(self, snap: Snapshot, focus) -> None:
+        """Small map in the top right: biomes, you (white), elites (gold), the boss (coral)."""
+        size = self.minimap_size()
+        key = ("minimap", size)
+        img = self._number_cache.get(key)
+        if img is None:
+            img = pygame.transform.scale(self.overview, (size, size))
+            self._number_cache[key] = img
+        top = self.pause_rect.bottom + 6 if self.touch else 8
+        box = pygame.Rect(self.w - size - 6, top, size, size)
+        c = self.canvas
+        c.fill(self.ink, box.inflate(4, 4))
+        c.blit(img, box)
+        sx, sy = size / snap.arena_w, size / snap.arena_h
+        for e in snap.enemies:
+            if e.boss or e.elite:
+                color = self.telegraph if e.boss else self.crit_color
+                c.fill(self.ink, (box.x + int(e.x * sx) - 2, box.y + int(e.y * sy) - 2, 5, 5))
+                c.fill(color, (box.x + int(e.x * sx) - 1, box.y + int(e.y * sy) - 1, 3, 3))
+        view_w, view_h = max(2, int(self.w * UNITS_PER_PX * sx)), max(2, int(self.h * UNITS_PER_PX * sy))
+        px, py = box.x + int(focus.x * sx), box.y + int(focus.y * sy)
+        pygame.draw.rect(c, WHITE, (px - view_w // 2, py - view_h // 2, view_w, view_h), 1)
+        c.fill(self.ink, (px - 2, py - 2, 5, 5))
+        c.fill(WHITE, (px - 1, py - 1, 3, 3))
+
+    def _draw_boss_arrow(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
+        """Coral arrow at the screen edge pointing to a boss that is off screen."""
+        boss = next((e for e in snap.enemies if e.boss), None)
+        if boss is None:
+            return
+        bx, by = boss.x / UNITS_PER_PX - cam_x, boss.y / UNITS_PER_PX - cam_y
+        if 0 <= bx < self.w and 0 <= by < self.h:
+            return
+        cx, cy = self.w / 2, self.h / 2
+        dx, dy = bx - cx, by - cy
+        # Scale the direction so the arrow sits just inside the screen edge.
+        t = min((self.w / 2 - 22) / abs(dx) if dx else 1e9, (self.h / 2 - 22) / abs(dy) if dy else 1e9)
+        ax, ay = cx + dx * t, cy + dy * t
+        ay = max(ay, self.hud_bottom + 40)  # stay below the HUD lines and the boss bar
+        if ay < self.minimap_size() + 50:
+            ax = min(ax, self.w - self.minimap_size() - 24)  # and left of the minimap
+        length = (dx * dx + dy * dy) ** 0.5 or 1.0
+        ux, uy = dx / length, dy / length
+        tip = (ax + ux * 10, ay + uy * 10)
+        left = (ax - uy * 7 - ux * 6, ay + ux * 7 - uy * 6)
+        right = (ax + uy * 7 - ux * 6, ay - ux * 7 - uy * 6)
+        pygame.draw.polygon(self.canvas, self.ink, [tip, left, right])
+        pygame.draw.polygon(self.canvas, self.telegraph, [tip, left, right], 0)
+        pygame.draw.polygon(self.canvas, self.ink, [tip, left, right], 2)
 
     def draw_stick(self, stick) -> None:
         """Floating touch joystick: translucent base where the thumb landed, knob under the thumb."""
@@ -335,13 +393,18 @@ class Renderer:
             c.blit(overlay, (0, 0))
 
     def _draw_boss_bar(self, bar) -> None:
+        """Below the HUD lines and left of the minimap, so nothing overlaps on narrow screens."""
         c, ink = self.canvas, self.ink
-        w = 300
-        rect = pygame.Rect((self.w - w) // 2, 30, w, 8)
+        free = self.w - self.minimap_size() - 24  # room left of the minimap
+        w = min(300, free)
+        rect = pygame.Rect(6 + (free - w) // 2, self.hud_bottom + 6, w, 8)
         c.fill(ink, rect.inflate(2, 2))
         c.fill((90, 60, 100), rect)
         c.fill(self.enemy_colors.get(bar.boss, self.telegraph), (rect.x, rect.y, round(w * bar.hp_frac), rect.h))
-        self.text(self.boss_names.get(bar.boss, bar.boss), (self.w // 2, 46), center=True)
+        self.text(self.boss_names.get(bar.boss, bar.boss), (rect.centerx, rect.bottom + 10), center=True)
+
+    def minimap_size(self) -> int:
+        return 64 if min(self.w, self.h) < 340 else 80
 
     def _draw_offer(self, focus) -> None:
         c, ink = self.canvas, self.ink
@@ -398,23 +461,62 @@ class Renderer:
         self.canvas.blit(img, (x, y))
 
     def set_arena(self, config: WorldConfig) -> None:
-        """Pre-render the static map (biome grounds, obstacles) once; each frame blits the visible part."""
-        tile = self.tile_px // UNITS_PER_PX
-        w, h = int(config.arena_w / UNITS_PER_PX), int(config.arena_h / UNITS_PER_PX)
-        surf = pygame.Surface((w, h))
-        for row in range(h // tile):
-            for col in range(w // tile):
-                cx, cy = (col + 0.5) * tile * UNITS_PER_PX, (row + 0.5) * tile * UNITS_PER_PX
-                pal = self.palettes.get(biome_at(config.biomes, cx, cy) or "plaza", self.palettes["plaza"])
-                color = pal["detail"] if (row + col) % 2 else pal["ground"]
-                surf.fill(hex_rgb(color), (col * tile, row * tile, tile, tile))
+        """Prepare the static map. The ground is drawn in chunks on demand (the 200 x 200 tile map would be
+        a 3200 x 3200 pixel image, too much for phones); a small overview image feeds the minimap."""
+        self.arena_px = (int(config.arena_w / UNITS_PER_PX), int(config.arena_h / UNITS_PER_PX))
+        self.arena_biomes = config.biomes
+        self._chunks: OrderedDict[tuple[int, int], pygame.Surface] = OrderedDict()
+        self._chunk_obstacles: dict[tuple[int, int], list] = {}
+        reach = 16  # obstacles are drawn a little larger than their radius
         for o in config.obstacles:
-            self._draw_obstacle(surf, o)
-        pygame.draw.rect(surf, self.ink, surf.get_rect(), 1)
-        self.map_surface = surf
+            x, y = o.x / UNITS_PER_PX, o.y / UNITS_PER_PX
+            for cx in {int((x - reach) // CHUNK_PX), int((x + reach) // CHUNK_PX)}:
+                for cy in {int((y - reach) // CHUNK_PX), int((y + reach) // CHUNK_PX)}:
+                    self._chunk_obstacles.setdefault((cx, cy), []).append(o)
+        self._build_overview(config)
 
-    def _draw_obstacle(self, surf: pygame.Surface, o) -> None:
-        x, y = round(o.x / UNITS_PER_PX), round(o.y / UNITS_PER_PX)
+    def _chunk(self, cx: int, cy: int) -> pygame.Surface:
+        key = (cx, cy)
+        surf = self._chunks.get(key)
+        if surf is not None:
+            self._chunks.move_to_end(key)
+            return surf
+        tile = self.tile_px // UNITS_PER_PX
+        surf = pygame.Surface((CHUNK_PX, CHUNK_PX))
+        surf.fill(self.void)
+        x0, y0 = cx * CHUNK_PX, cy * CHUNK_PX
+        aw, ah = self.arena_px
+        for ty in range(y0 // tile, min(ah, y0 + CHUNK_PX) // tile):
+            for tx in range(x0 // tile, min(aw, x0 + CHUNK_PX) // tile):
+                if tx < 0 or ty < 0:
+                    continue
+                wx, wy = (tx + 0.5) * tile * UNITS_PER_PX, (ty + 0.5) * tile * UNITS_PER_PX
+                pal = self.palettes.get(biome_at(self.arena_biomes, wx, wy) or "plaza", self.palettes["plaza"])
+                color = pal["detail"] if (tx + ty) % 2 else pal["ground"]
+                surf.fill(hex_rgb(color), (tx * tile - x0, ty * tile - y0, tile, tile))
+        for o in self._chunk_obstacles.get(key, ()):
+            self._draw_obstacle(surf, o, -x0, -y0)
+        pygame.draw.rect(surf, self.ink, (-x0, -y0, aw, ah), 1)  # arena border where it crosses this chunk
+        self._chunks[key] = surf
+        if len(self._chunks) > MAX_CHUNKS:
+            self._chunks.popitem(last=False)
+        return surf
+
+    def _build_overview(self, config: WorldConfig) -> None:
+        """One pixel per tile: biome colours and darker dots for obstacles."""
+        tiles_w = int(config.arena_w // self.tile_px)
+        tiles_h = int(config.arena_h // self.tile_px)
+        surf = pygame.Surface((tiles_w, tiles_h))
+        for b in sorted(config.biomes, key=lambda a: -a.w * a.h):  # big areas first, the clearing on top
+            surf.fill(hex_rgb(self.palettes[b.id]["ground"]),
+                      (b.x // self.tile_px, b.y // self.tile_px, b.w // self.tile_px, b.h // self.tile_px))  # fmt: skip
+        dark = hex_rgb(self.palettes["forest"].get("tree") or "#5aa05a")
+        for o in config.obstacles:
+            surf.set_at((int(o.x // self.tile_px), int(o.y // self.tile_px)), dark)
+        self.overview = surf
+
+    def _draw_obstacle(self, surf: pygame.Surface, o, ox: int = 0, oy: int = 0) -> None:
+        x, y = round(o.x / UNITS_PER_PX) + ox, round(o.y / UNITS_PER_PX) + oy
         r = max(3, round(o.radius / UNITS_PER_PX) + 1)
         pal = self.palettes.get("forest", {})
         canopy = hex_rgb(pal.get("tree") or "#5aa05a")
@@ -429,7 +531,16 @@ class Renderer:
         pygame.draw.circle(surf, light, (x - r // 3, y - 1 - r // 3), max(1, r // 3))
 
     def _draw_ground(self, c: pygame.Surface, cam_x: int, cam_y: int) -> None:
-        c.blit(self.map_surface, (-cam_x, -cam_y))
+        for cy in range(cam_y // CHUNK_PX, (cam_y + self.h) // CHUNK_PX + 1):
+            for cx in range(cam_x // CHUNK_PX, (cam_x + self.w) // CHUNK_PX + 1):
+                c.blit(self._chunk(cx, cy), (cx * CHUNK_PX - cam_x, cy * CHUNK_PX - cam_y))
+
+    def draw_ground_at(self, wx: float, wy: float) -> None:
+        """Menus: the map around a world position as background."""
+        cam_x = round(wx / UNITS_PER_PX) - self.w // 2
+        cam_y = round(wy / UNITS_PER_PX) - self.h // 2
+        self.canvas.fill(self.void)
+        self._draw_ground(self.canvas, cam_x, cam_y)
 
     def text(self, text: str, pos: tuple[int, int], font=None, center: bool = False) -> None:
         """White text with a dark outline (readability rule, DESIGN.md section 16)."""

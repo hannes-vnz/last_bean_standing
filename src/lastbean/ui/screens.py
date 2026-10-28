@@ -71,9 +71,8 @@ def _dim(r: Renderer, alpha: int) -> None:
 
 def _backdrop(r: Renderer) -> None:
     """The arena map, dimmed, as a friendly background."""
-    r.canvas.fill(r.void)
-    m = r.map_surface
-    r.canvas.blit(m, (r.w // 2 - m.get_width() // 2, r.h // 2 - m.get_height() // 2))
+    aw, ah = r.arena_px
+    r.draw_ground_at(aw, ah)  # canvas pixels to world units: the clearing in the middle of the map
     _dim(r, 120)
 
 

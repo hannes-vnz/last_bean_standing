@@ -73,16 +73,24 @@ class ObstacleMap:
 
     def __init__(self, obstacles: tuple[Obstacle, ...], cell: float = 64.0) -> None:
         self.obstacles = obstacles
+        self.cell = cell
         self._grid = SpatialHash(cell)
         for o in obstacles:
             self._grid.insert(o, o.x, o.y)
         self.max_radius = max((o.radius for o in obstacles), default=0.0)
+        # Cells with an obstacle in them or next to them: everything else skips the lookup (fast path).
+        self._hot: set[tuple[int, int]] = set()
+        for o in obstacles:
+            cx, cy = int(o.x // cell), int(o.y // cell)
+            self._hot.update((cx + dx, cy + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1))
 
     def near(self, x: float, y: float, radius: float) -> list[Obstacle]:
         return self._grid.query(x, y, radius + self.max_radius) if self.obstacles else []
 
     def push_out(self, x: float, y: float, radius: float) -> tuple[float, float]:
         """Move a circle out of every solid obstacle it overlaps."""
+        if (int(x // self.cell), int(y // self.cell)) not in self._hot:
+            return x, y
         for o in self.near(x, y, radius):
             if not o.solid:
                 continue
@@ -99,6 +107,8 @@ class ObstacleMap:
         return x, y
 
     def blocks_point(self, x: float, y: float, radius: float) -> bool:
+        if (int(x // self.cell), int(y // self.cell)) not in self._hot:
+            return False
         for o in self.near(x, y, radius):
             if o.blocks_projectiles:
                 r = o.radius + radius

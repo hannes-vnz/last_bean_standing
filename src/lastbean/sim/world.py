@@ -604,16 +604,18 @@ class World:
             events.append(BossSpawned(self.tick, None, e.eid, b.id))
 
     def _boss_spawn_point(self, b: BossStats, p: Player) -> tuple[float, float]:
-        """A free spot in the boss's own biome, not right next to the player."""
-        area = next((a for a in self.config.biomes if a.id == b.biome), None)
-        for _ in range(200):
-            if area is None:
-                break
-            x = self.rng.uniform(area.x + b.radius, area.x + area.w - b.radius)
-            y = self.rng.uniform(area.y + b.radius, area.y + area.h - b.radius)
-            far = (x - p.x) ** 2 + (y - p.y) ** 2 >= BOSS_MIN_SPAWN_DISTANCE**2
-            if far and biome_at(self.config.biomes, x, y) == b.biome:
-                return self._clamp(*self.obstacles.push_out(x, y, b.radius), b.radius)
+        """Near the player, preferably in the boss's own biome (the map is too big to make the player walk there).
+
+        Tries the normal spawn ring first, then rings farther out, then gives up on the biome."""
+        lo, hi = self.config.spawn_distance
+        lo = max(lo, BOSS_MIN_SPAWN_DISTANCE)
+        for ring in range(4):
+            for _ in range(40):
+                dx, dy = self._random_direction()
+                dist = self.rng.uniform(lo, hi) * (1.0 + 0.5 * ring)
+                x, y = self._clamp(p.x + dx * dist, p.y + dy * dist, b.radius)
+                if b.biome is None or biome_at(self.config.biomes, x, y) == b.biome:
+                    return self._clamp(*self.obstacles.push_out(x, y, b.radius), b.radius)
         return self._spawn_point([p])
 
     def summon_around(self, boss: Enemy, mob_id: str, count: int, events: list[Event]) -> None:

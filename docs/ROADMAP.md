@@ -29,10 +29,10 @@ Sprites, Effekte, Sound, Profil und Highscore, Browser-Version, Bestenlisten-Cli
 - [ ] Test auf echtem iPad, Handy (iOS und Android) und Desktop-Browsern. (Im Browser mit Handy-Emulation geprüft: Name, Menü, Joystick, Fähigkeit, Pause.)
 
 ## Paket B: Große Karte
-- [ ] Karte **deutlich größer**: Vorschlag 200 x 200 statt 60 x 60 Felder (rund 11-mal die Fläche).
-- [ ] Biome als große zusammenhängende Gebiete, Lichtung in der Mitte, mit Seed verteilte Hindernisse, Deko und Fundstellen.
-- [ ] Karte in Kacheln vorrendern (nur sichtbare Teile), damit Speicher und Browser mitkommen.
-- [ ] **Minikarte** mit Kisten, Schreinen, Boss; Pfeil am Bildschirmrand zum Boss.
+- [x] Karte **deutlich größer**: 200 x 200 statt 60 x 60 Felder (rund 11-mal die Fläche); Biome je 100 x 100, Lichtung 30 x 30; Hindernisse mit gleicher Dichte (Wald 780 Bäume).
+- [x] Biome als große zusammenhängende Gebiete, Lichtung in der Mitte, Hindernisse mit Seed verteilt. Deko und Fundstellen folgen mit Paket C/D.
+- [x] Boden in Kacheln (256 px, nur sichtbare, höchstens 40 im Speicher) statt eines 3200 x 3200 Bildes.
+- [x] **Minikarte** (Biome, du, Elites, Boss; Kisten und Schreine folgen mit Paket C) und Pfeil am Bildschirmrand zum Boss. Bosse erscheinen in deiner Nähe, wenn möglich in ihrem Biom.
 - [ ] Wüste, Eis, Lava zeigen schon ihre Effekte? (offene Frage 4)
 
 ## Paket C: Items und Kisten
