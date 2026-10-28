@@ -67,6 +67,17 @@ def benchmark(content, renderer: Renderer, enemies: int = STRESS_ENEMIES, ticks:
     return f"Messlauf {len(world.enemies)} Gegner: sim {sim * 1000:.2f} ms/Schritt, Zeichnen {draw * 1000:.2f} ms/Bild"
 
 
+def use_whole_page() -> None:
+    """pygbag sizes the canvas to half the page until main.py returns, which a game loop never does."""
+    try:
+        import platform
+
+        platform.window.config.gui_divider = 1
+        platform.window.window_resize()
+    except Exception as exc:  # noqa: BLE001 - layout tweak only, never stop the game
+        print("Vollbreite nicht gesetzt:", exc)
+
+
 def stress_config(config: WorldConfig, enemies: int = STRESS_ENEMIES) -> WorldConfig:
     immortal = dataclasses.replace(config.character, hp=10**9)
     return dataclasses.replace(config, character=immortal, enemy_target=enemies)
@@ -223,6 +234,8 @@ async def run(
     pygame.init()
     pygame.display.set_caption("Last Bean Standing")
     window = pygame.display.set_mode((CANVAS_W * 2, CANVAS_H * 2), 0 if WEB else pygame.RESIZABLE)
+    if WEB:
+        use_whole_page()
     renderer = Renderer(content)
     effects = Effects(*effect_palette(renderer))
     audio = Audio()
