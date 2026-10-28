@@ -1,5 +1,7 @@
 # Bestenlisten-Server (Referenzimplementierung)
 
+Im Betrieb läuft die Bestenliste als Cloudflare Worker in `worker/` (gleiche Schnittstelle). Dieser Server bleibt Referenz und Spezifikation; `tests/test_server_contract.py` prüft beide gegen dieselben Anfragen.
+
 Kleiner Server für die Online-Bestenliste von Last Bean Standing. FastAPI plus SQLite, keine Konten. Spieler haben einen Spitznamen und ein zufälliges Token, das nur lokal liegt (der Server speichert nur den Hash).
 
 ## Starten

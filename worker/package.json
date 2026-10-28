@@ -1,0 +1,13 @@
+{
+  "name": "last-bean-standing-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "migrate:local": "wrangler d1 migrations apply last-bean-standing --local",
+    "deploy": "wrangler d1 migrations apply last-bean-standing --remote && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.154.0"
+  }
+}

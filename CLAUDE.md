@@ -20,7 +20,7 @@ Stop-and-Shoot-Roguelite: zeitbasierte, endlos härter werdende Wellen in einer 
 
 - Co-op später (Abschnitt 18): `World` mit Liste von Spielern und Eingaben je `player_id`, Ereignisse mit `player_id`, `player_count`-Hook in der Schwierigkeit, Spielstand hinter einer Schnittstelle. Kein Co-op jetzt bauen.
 
-- Online-Bestenliste (Abschnitt 19): Server in `server/` (Tests: `cd server && python -m pytest -q`). Das Spiel muss auch ohne Server laufen. Punkteformel in `docs/CONTENT.md` und `server/app.py` synchron halten.
+- Online-Bestenliste (Abschnitt 19): Referenzserver `server/` (Python), Produktion `worker/` (Cloudflare Workers + D1, gleiche API; `tests/test_server_contract.py` prüft beide). Das Spiel muss auch ohne Server laufen. Punkteformel in `docs/CONTENT.md` und `server/app.py` synchron halten.
 
 ## Befehle
 - Tests: `python -m pytest -q`; Lint: `ruff check`
