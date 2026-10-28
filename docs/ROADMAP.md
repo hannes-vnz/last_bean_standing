@@ -17,6 +17,14 @@ Sprites, Effekte, Sound, Profil und Highscore, Browser-Version, Bestenlisten-Cli
 - [ ] Bildrate im echten Browser messen (F3) und falls nötig optimieren.
 - [ ] Fledermausschwärme entschärfen (Gewicht oder Kosten).
 
+## Paket A2: Vollbild, Handy, iPad (direkt nach A)
+- [ ] **Vollbild:** Die Seite füllt das ganze Browserfenster ohne Rand und Ladeterminal; ein Knopf (und Taste F) schaltet echtes Vollbild ein (Fullscreen-API; auf dem iPhone nur „Zum Home-Bildschirm“).
+- [ ] **Bildformat passt sich an:** Statt fester 16:9-Fläche mit Rand wird der sichtbare Kartenausschnitt an das Gerät angepasst (Querformat breiter, Hochformat höher), Pixel weiter ganzzahlig skaliert.
+- [ ] **Lesbar auf kleinen Bildschirmen:** HUD, Karten und Menüs mit größerer Schrift und größeren Flächen; auf dem Handy etwas näher herangezoomt.
+- [ ] **Touch-Steuerung:** virtueller Joystick (Daumen irgendwo links aufsetzen), Knopf für die Fähigkeit, Upgrade-Karten und Menüs per Antippen. Funktioniert, weil im Laufen gefeuert wird.
+- [ ] Desktop-Fenster startet maximiert bzw. im Vollbild (F11 / Taste F), Mausklicks in Menüs.
+- [ ] Test auf echtem iPad, Handy (iOS und Android) und Desktop-Browsern.
+
 ## Paket B: Große Karte
 - [ ] Karte **deutlich größer**: Vorschlag 200 x 200 statt 60 x 60 Felder (rund 11-mal die Fläche).
 - [ ] Biome als große zusammenhängende Gebiete, Lichtung in der Mitte, mit Seed verteilte Hindernisse, Deko und Fundstellen.
