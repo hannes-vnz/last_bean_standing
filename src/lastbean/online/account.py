@@ -53,6 +53,18 @@ class Account:
                                        _auth(session))  # fmt: skip
         return status
 
+    async def passkey_begin(self, purpose: str) -> dict | None:
+        status, data = await self.request("POST", self.base_url + "/v1/passkey/begin", {"purpose": purpose})
+        return data if status == 200 and isinstance(data, dict) else None
+
+    async def passkey_finish(self, purpose: str, data: dict, session: str | None = None) -> tuple[dict | None, str]:
+        """Send the browser's passkey answer; with `session` a new passkey joins the signed-in account."""
+        status, res = await self.request("POST", f"{self.base_url}/v1/passkey/{purpose}", data,
+                                         _auth(session) if session else None)  # fmt: skip
+        if status == 200 and isinstance(res, dict) and res.get("session"):
+            return res, ""
+        return None, self._error(status, res)
+
     async def sign_out(self, session: str) -> None:
         await self.request("POST", self.base_url + "/v1/account/logout", None, _auth(session))
 
@@ -157,3 +169,121 @@ async def browser_id_token(provider: str, client_id: str, timeout_s: float = 180
         await asyncio.sleep(0.1)
         waited += 0.1
     return ""
+
+
+# ---------------------------------------------------------------------------- browser: passkeys (Face ID & Co.)
+
+_JS_PASSKEY = """
+window.lbsPasskeyResult = "";
+window.lbsTakePasskey = function () { const r = window.lbsPasskeyResult; window.lbsPasskeyResult = ""; return r; };
+(function () {
+  const toBuf = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)),
+                                        (c) => c.charCodeAt(0));
+  const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)))
+                           .replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/, "");
+  const done = (obj) => { window.lbsPasskeyBusy = false; window.lbsPasskeyResult = JSON.stringify(obj); };
+  // Safari starts Face ID only inside a tap: the game tells the page where its passkey buttons are
+  // (fractions of the drawing buffer) and the tap itself starts the dialog.
+  window.lbsPasskeyZones = [];
+  window.lbsPasskeyFired = "";
+  document.addEventListener("pointerup", function (ev) {
+    const canvas = document.querySelector("canvas");
+    if (!canvas || !window.lbsPasskeyZones.length || window.lbsPasskeyBusy) return;
+    const r = canvas.getBoundingClientRect();
+    const s = Math.min(r.width / canvas.width, r.height / canvas.height);
+    const ox = r.left + (r.width - canvas.width * s) / 2, oy = r.top + (r.height - canvas.height * s) / 2;
+    const x = (ev.clientX - ox) / (canvas.width * s), y = (ev.clientY - oy) / (canvas.height * s);
+    for (const z of window.lbsPasskeyZones) {
+      if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) {
+        window.lbsPasskeyFired = z.purpose;
+        window.lbsPasskey(z.purpose, z.begin, z.user);
+        return;
+      }
+    }
+  }, true);
+  window.lbsPasskey = function (purpose, beginJson, userName) {
+    if (window.lbsPasskeyBusy) return;  // one dialog at a time (mouse down and the tap's pointerup)
+    window.lbsPasskeyBusy = true;
+    window.lbsPasskeyResult = "";
+    const b = JSON.parse(beginJson);
+    if (!window.PublicKeyCredential) { done({error: "unsupported"}); return; }
+    if (location.hostname !== b.rp_id) { done({error: "wrong_site"}); return; }
+    const fail = (e) => done({error: (e && e.name) || "error"});
+    if (purpose === "register") {
+      navigator.credentials.create({publicKey: {
+        challenge: toBuf(b.challenge), rp: {name: "Last Bean Standing", id: b.rp_id},
+        user: {id: toBuf(b.user_id), name: userName, displayName: userName},
+        pubKeyCredParams: [{type: "public-key", alg: -7}, {type: "public-key", alg: -257}],
+        authenticatorSelection: {residentKey: "required", requireResidentKey: true, userVerification: "preferred"},
+        attestation: "none", timeout: 120000,
+      }}).then((c) => done({
+        challenge_id: b.challenge_id, credential_id: c.id, public_key: toB64(c.response.getPublicKey()),
+        alg: c.response.getPublicKeyAlgorithm(), authenticator_data: toB64(c.response.getAuthenticatorData()),
+        client_data_json: toB64(c.response.clientDataJSON),
+      })).catch(fail);
+    } else {
+      const opts = {challenge: toBuf(b.challenge), rpId: b.rp_id, userVerification: "preferred", timeout: 120000};
+      navigator.credentials.get({publicKey: opts})
+        .then((c) => done({
+          challenge_id: b.challenge_id, credential_id: c.id, authenticator_data: toB64(c.response.authenticatorData),
+          client_data_json: toB64(c.response.clientDataJSON), signature: toB64(c.response.signature),
+        })).catch(fail);
+    }
+  };
+})();
+"""
+_passkey_installed = False
+PASSKEY_ERRORS = {
+    "unsupported": "Dieser Browser kann keine Passkeys",
+    "wrong_site": "Passkeys gehen nur auf der Spielseite im Browser",
+    "NotAllowedError": "Abgebrochen (oder kein Passkey für dieses Spiel gefunden)",
+    "InvalidStateError": "Auf diesem Gerät gibt es schon einen Passkey für dieses Spiel",
+}
+
+
+def _window():
+    try:
+        import platform  # pygbag's bridge to the page
+
+        window = platform.window
+    except (ImportError, AttributeError):
+        return None
+    global _passkey_installed
+    if not _passkey_installed:
+        window.eval(_JS_PASSKEY)
+        _passkey_installed = True
+    return window
+
+
+def set_passkey_zones(zones: list[dict]) -> None:
+    """Where the passkey buttons are ({x, y, w, h} as fractions of the drawing buffer, purpose, begin, user)."""
+    window = _window()
+    if window is not None:
+        window.lbsPasskeyZones = window.JSON.parse(json.dumps(zones))
+
+
+async def browser_passkey(
+    purpose: str, begin: dict, user_name: str, timeout_s: float = 150.0
+) -> tuple[dict | None, str]:
+    """Run the browser's passkey dialog (Face ID, Touch ID, Windows Hello, fingerprint). Returns (data, error).
+    When the tap already started it (see set_passkey_zones), only the answer is awaited."""
+    import asyncio
+
+    window = _window()
+    if window is None:
+        return None, "Passkeys gehen nur in der Browser-Version"
+    if str(window.lbsPasskeyFired or "") == purpose:
+        window.lbsPasskeyFired = ""
+    else:
+        window.lbsPasskey(purpose, json.dumps(begin), user_name)
+    waited = 0.0
+    while waited < timeout_s:
+        raw = str(window.lbsTakePasskey() or "")
+        if raw:
+            data = json.loads(raw)
+            if "error" in data:
+                return None, PASSKEY_ERRORS.get(data["error"], "Passkey hat nicht geklappt")
+            return data, ""
+        await asyncio.sleep(0.1)
+        waited += 0.1
+    return None, "Keine Antwort vom Passkey"

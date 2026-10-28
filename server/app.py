@@ -9,6 +9,7 @@ Eintraege loeschen. Ergebnisse werden auf Plausibilitaet geprueft (Stufe 1). Ein
 Start:  uvicorn app:app --host 0.0.0.0 --port 8000
 Umgebungsvariablen: LEADERBOARD_DB (Pfad), ADMIN_TOKEN (Moderation), ALLOWED_ORIGINS (Komma-Liste, Standard "*"),
                     GOOGLE_CLIENT_ID / APPLE_CLIENT_ID (nur gemeldet, Prüfung im Worker),
+                    PASSKEY_RP_ID / PASSKEY_ORIGINS (Passkeys, Standard: die GitHub-Pages-Seite),
                     ALLOWED_VERSIONS (Komma-Liste, leer = alle), RATE_LIMIT_PER_MIN (Standard 10)
 """
 from __future__ import annotations
@@ -86,6 +87,19 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS sessions (
             token_hash TEXT PRIMARY KEY,
             account_id INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS passkeys (
+            credential_id TEXT PRIMARY KEY,
+            account_id INTEGER NOT NULL,
+            public_key TEXT NOT NULL,
+            alg INTEGER NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS challenges (
+            id TEXT PRIMARY KEY,
+            challenge TEXT NOT NULL,
+            purpose TEXT NOT NULL,
             expires_at INTEGER NOT NULL
         );
         CREATE TABLE IF NOT EXISTS saves (
@@ -355,10 +369,140 @@ def delete_account(authorization: Optional[str] = Header(None)) -> dict:
     init_db()
     with closing(connect()) as con:
         account = _account(con, authorization)
-        for table, col in (("saves", "account_id"), ("sessions", "account_id"), ("accounts", "id")):
+        for table, col in (("saves", "account_id"), ("sessions", "account_id"), ("passkeys", "account_id"),
+                           ("accounts", "id")):
             con.execute(f"DELETE FROM {table} WHERE {col}=?", (account,))
         con.commit()
     return {"deleted": True}
+
+
+# ----------------------------------------------------------------------------- passkeys (WebAuthn, Paket K)
+# Face ID / Touch ID / Windows Hello: the browser makes a key pair, the server keeps the public key and checks
+# signatures. No attestation (it is a game), but challenge, origin, relying party and user presence are checked.
+
+CHALLENGE_S = 300
+
+
+def _b64url(data: bytes) -> str:
+    import base64
+
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _unb64url(text: str) -> bytes:
+    import base64
+
+    if not isinstance(text, str):
+        raise HTTPException(422, "ungültige Passkey-Daten")
+    try:
+        return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+    except ValueError as exc:
+        raise HTTPException(422, "ungültige Passkey-Daten") from exc
+
+
+def _passkey_site() -> tuple[str, list[str]]:
+    rp = os.environ.get("PASSKEY_RP_ID", "hannes-vnz.github.io")
+    origins = os.environ.get("PASSKEY_ORIGINS", "https://hannes-vnz.github.io").split(",")
+    return rp, [o.strip() for o in origins if o.strip()]
+
+
+def _check_client(con: sqlite3.Connection, body: dict, purpose: str) -> tuple[bytes, bytes]:
+    """Challenge, type and origin of clientDataJSON, relying party and user presence of authenticatorData."""
+    row = con.execute("SELECT challenge, purpose, expires_at FROM challenges WHERE id=?", (str(body.get("challenge_id")),)).fetchone()
+    con.execute("DELETE FROM challenges WHERE id=? OR expires_at<?", (str(body.get("challenge_id")), int(time.time())))
+    con.commit()
+    if row is None or row["purpose"] != purpose or row["expires_at"] < time.time():
+        raise HTTPException(401, "Passkey-Anfrage abgelaufen, bitte nochmal")
+    client_raw = _unb64url(body.get("client_data_json", ""))
+    auth = _unb64url(body.get("authenticator_data", ""))
+    try:
+        client = json.loads(client_raw)
+    except ValueError as exc:
+        raise HTTPException(422, "ungültige Passkey-Daten") from exc
+    rp, origins = _passkey_site()
+    expected_type = "webauthn.create" if purpose == "register" else "webauthn.get"
+    if (client.get("type") != expected_type or client.get("challenge") != row["challenge"]
+            or client.get("origin") not in origins or len(auth) < 37
+            or auth[:32] != hashlib.sha256(rp.encode()).digest() or not auth[32] & 0x01):
+        raise HTTPException(401, "Passkey passt nicht")
+    return client_raw, auth
+
+
+@app.post("/v1/passkey/begin")
+def passkey_begin(request: Request, body: dict = Body(...)) -> dict:
+    ip = request.client.host if request.client else "?"
+    if rate_limited("auth:" + ip, int(os.environ.get("RATE_LIMIT_PER_MIN", "10")) * 3):
+        raise HTTPException(429, "zu viele Anfragen")
+    purpose = body.get("purpose")
+    if purpose not in ("register", "login"):
+        raise HTTPException(422, "purpose: register oder login")
+    cid, challenge = secrets.token_hex(16), _b64url(secrets.token_bytes(32))
+    init_db()
+    with closing(connect()) as con:
+        con.execute("INSERT INTO challenges (id, challenge, purpose, expires_at) VALUES (?,?,?,?)",
+                    (cid, challenge, purpose, int(time.time()) + CHALLENGE_S))
+        con.commit()
+    rp, _ = _passkey_site()
+    return {"challenge_id": cid, "challenge": challenge, "rp_id": rp, "user_id": _b64url(secrets.token_bytes(16))}
+
+
+@app.post("/v1/passkey/register")
+def passkey_register(authorization: Optional[str] = Header(None), body: dict = Body(...)) -> dict:
+    """A new passkey: for the signed-in account (Authorization) or as a new account of its own."""
+    from cryptography.hazmat.primitives.serialization import load_der_public_key
+
+    cred = str(body.get("credential_id", ""))
+    alg = body.get("alg")
+    if not 16 <= len(cred) <= 512 or alg not in (-7, -257):
+        raise HTTPException(422, "ungültige Passkey-Daten")
+    public_key = _unb64url(body.get("public_key", ""))
+    try:
+        load_der_public_key(public_key)
+    except ValueError as exc:
+        raise HTTPException(422, "ungültiger Schlüssel") from exc
+    init_db()
+    with closing(connect()) as con:
+        _check_client(con, body, "register")
+        if con.execute("SELECT 1 FROM passkeys WHERE credential_id=?", (cred,)).fetchone():
+            raise HTTPException(409, "Passkey ist schon angemeldet")
+        if authorization:
+            account = _account(con, authorization)
+            name = con.execute("SELECT name FROM accounts WHERE id=?", (account,)).fetchone()["name"]
+        else:
+            cur = con.execute("INSERT INTO accounts (name, password, provider, subject, created_at) VALUES (NULL, NULL, ?, ?, ?)",
+                              ("passkey", cred, int(time.time())))
+            account, name = cur.lastrowid, None
+        con.execute("INSERT INTO passkeys (credential_id, account_id, public_key, alg, created_at) VALUES (?,?,?,?,?)",
+                    (cred, account, _b64url(public_key), alg, int(time.time())))
+        con.commit()
+        return {"name": name, "session": _new_session(con, account)}
+
+
+@app.post("/v1/passkey/login")
+def passkey_login(body: dict = Body(...)) -> dict:
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec, padding
+    from cryptography.hazmat.primitives.serialization import load_der_public_key
+
+    init_db()
+    with closing(connect()) as con:
+        client_raw, auth = _check_client(con, body, "login")
+        row = con.execute("SELECT p.account_id, p.public_key, p.alg, a.name FROM passkeys p JOIN accounts a ON a.id = p.account_id "
+                          "WHERE p.credential_id=?", (str(body.get("credential_id", "")),)).fetchone()
+        if row is None:
+            raise HTTPException(401, "Diesen Passkey kennt der Server nicht")
+        key = load_der_public_key(_unb64url(row["public_key"]))
+        signed = auth + hashlib.sha256(client_raw).digest()
+        signature = _unb64url(body.get("signature", ""))
+        try:
+            if row["alg"] == -7:
+                key.verify(signature, signed, ec.ECDSA(hashes.SHA256()))
+            else:
+                key.verify(signature, signed, padding.PKCS1v15(), hashes.SHA256())
+        except (InvalidSignature, TypeError, ValueError) as exc:
+            raise HTTPException(401, "Passkey passt nicht") from exc
+        return {"name": row["name"], "session": _new_session(con, row["account_id"])}
 
 
 @app.get("/v1/save")

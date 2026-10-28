@@ -7,6 +7,7 @@
 // Accounts (Paket K, optional): name + password (PBKDF2), or Google / Apple sign-in when the vars
 // GOOGLE_CLIENT_ID / APPLE_CLIENT_ID are set (their ID tokens are checked against the providers' public keys).
 // A signed-in player keeps the profile in the cloud: GET/PUT /v1/save.
+// Passkeys (WebAuthn): vars PASSKEY_RP_ID / PASSKEY_ORIGINS, defaults: the GitHub Pages site.
 
 const CHARACTERS = new Set(["ranger", "pyro", "rogue", "guardian", "cryo", "summoner", "storm", "bomber", "venom", "sniper"]);
 const MODES = new Set(["normal", "eternal_night"]);
@@ -337,6 +338,131 @@ async function oauth(request, env) {
   return { name: row.name, session: await newSession(env, row.id) };
 }
 
+// ----------------------------------------------------------------------------- passkeys (WebAuthn)
+
+const CHALLENGE_S = 300;
+const b64urlEncode = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+function passkeySite(env) {
+  const rp = env.PASSKEY_RP_ID || "hannes-vnz.github.io";
+  const origins = (env.PASSKEY_ORIGINS || "https://hannes-vnz.github.io").split(",").map((s) => s.trim()).filter(Boolean);
+  return { rp, origins };
+}
+
+function unb64(text) {
+  if (typeof text !== "string") throw new HttpError(422, "ungültige Passkey-Daten");
+  try {
+    return b64url(text);
+  } catch {
+    throw new HttpError(422, "ungültige Passkey-Daten");
+  }
+}
+
+// ECDSA signatures come DER-encoded; WebCrypto wants r || s, 32 bytes each.
+function derToRaw(der) {
+  let i = 2;
+  const read = () => {
+    if (der[i] !== 0x02) throw new HttpError(401, "Passkey passt nicht");
+    const len = der[i + 1];
+    let v = der.slice(i + 2, i + 2 + len);
+    i += 2 + len;
+    while (v.length > 32 && v[0] === 0) v = v.slice(1);
+    const out = new Uint8Array(32);
+    out.set(v, 32 - v.length);
+    return out;
+  };
+  const r = read();
+  const s = read();
+  const raw = new Uint8Array(64);
+  raw.set(r, 0);
+  raw.set(s, 32);
+  return raw;
+}
+
+async function checkClient(env, b, purpose) {
+  const id = String(b.challenge_id || "");
+  const row = await env.DB.prepare("SELECT challenge, purpose, expires_at FROM challenges WHERE id=?").bind(id).first();
+  await env.DB.prepare("DELETE FROM challenges WHERE id=? OR expires_at<?").bind(id, Math.floor(Date.now() / 1000)).run();
+  if (!row || row.purpose !== purpose || row.expires_at < Date.now() / 1000) throw new HttpError(401, "Passkey-Anfrage abgelaufen, bitte nochmal");
+  const clientRaw = unb64(b.client_data_json);
+  const auth = unb64(b.authenticator_data);
+  let client;
+  try {
+    client = JSON.parse(new TextDecoder().decode(clientRaw));
+  } catch {
+    throw new HttpError(422, "ungültige Passkey-Daten");
+  }
+  const { rp, origins } = passkeySite(env);
+  const rpHash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rp)));
+  const sameRp = auth.length >= 37 && rpHash.every((v, k) => auth[k] === v);
+  const expected = purpose === "register" ? "webauthn.create" : "webauthn.get";
+  if (client.type !== expected || client.challenge !== row.challenge || !origins.includes(client.origin) || !sameRp || !(auth[32] & 0x01))
+    throw new HttpError(401, "Passkey passt nicht");
+  return { clientRaw, auth };
+}
+
+async function passkeyBegin(request, env) {
+  const ip = request.headers.get("CF-Connecting-IP") || "?";
+  if (rateLimited("auth:" + ip, parseInt(env.RATE_LIMIT_PER_MIN || "10", 10) * 3)) throw new HttpError(429, "zu viele Anfragen");
+  const b = await readJson(request);
+  if (b.purpose !== "register" && b.purpose !== "login") throw new HttpError(422, "purpose: register oder login");
+  const id = hex(crypto.getRandomValues(new Uint8Array(16)));
+  const challenge = b64urlEncode(crypto.getRandomValues(new Uint8Array(32)));
+  await env.DB.prepare("INSERT INTO challenges (id, challenge, purpose, expires_at) VALUES (?,?,?,?)")
+    .bind(id, challenge, b.purpose, Math.floor(Date.now() / 1000) + CHALLENGE_S).run();
+  return { challenge_id: id, challenge, rp_id: passkeySite(env).rp, user_id: b64urlEncode(crypto.getRandomValues(new Uint8Array(16))) };
+}
+
+async function importKey(spki, alg) {
+  const params = alg === -7 ? { name: "ECDSA", namedCurve: "P-256" } : { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" };
+  return crypto.subtle.importKey("spki", spki, params, false, ["verify"]);
+}
+
+async function passkeyRegister(request, env) {
+  const b = await readJson(request);
+  const cred = String(b.credential_id || "");
+  if (cred.length < 16 || cred.length > 512 || (b.alg !== -7 && b.alg !== -257)) throw new HttpError(422, "ungültige Passkey-Daten");
+  const publicKey = unb64(b.public_key);
+  try {
+    await importKey(publicKey, b.alg);
+  } catch {
+    throw new HttpError(422, "ungültiger Schlüssel");
+  }
+  await checkClient(env, b, "register");
+  if (await env.DB.prepare("SELECT 1 AS x FROM passkeys WHERE credential_id=?").bind(cred).first()) throw new HttpError(409, "Passkey ist schon angemeldet");
+  let account, name = null;
+  if (request.headers.get("Authorization")) {
+    account = await accountOf(request, env);
+    name = (await env.DB.prepare("SELECT name FROM accounts WHERE id=?").bind(account).first()).name;
+  } else {
+    const res = await env.DB.prepare("INSERT INTO accounts (name, password, provider, subject, created_at) VALUES (NULL, NULL, 'passkey', ?, ?)")
+      .bind(cred, Math.floor(Date.now() / 1000)).run();
+    account = res.meta.last_row_id;
+  }
+  await env.DB.prepare("INSERT INTO passkeys (credential_id, account_id, public_key, alg, created_at) VALUES (?,?,?,?,?)")
+    .bind(cred, account, b64urlEncode(publicKey), b.alg, Math.floor(Date.now() / 1000)).run();
+  return { name, session: await newSession(env, account) };
+}
+
+async function passkeyLogin(request, env) {
+  const b = await readJson(request);
+  const { clientRaw, auth } = await checkClient(env, b, "login");
+  const row = await env.DB.prepare("SELECT p.account_id, p.public_key, p.alg, a.name FROM passkeys p JOIN accounts a ON a.id = p.account_id WHERE p.credential_id=?")
+    .bind(String(b.credential_id || "")).first();
+  if (!row) throw new HttpError(401, "Diesen Passkey kennt der Server nicht");
+  const key = await importKey(unb64(row.public_key), row.alg);
+  const clientHash = new Uint8Array(await crypto.subtle.digest("SHA-256", clientRaw));
+  const signed = new Uint8Array(auth.length + 32);
+  signed.set(auth, 0);
+  signed.set(clientHash, auth.length);
+  const sig = unb64(b.signature);
+  const ok = row.alg === -7
+    ? await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, derToRaw(sig), signed)
+    : await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, sig, signed);
+  if (!ok) throw new HttpError(401, "Passkey passt nicht");
+  return { name: row.name, session: await newSession(env, row.account_id) };
+}
+
 async function logout(request, env) {
   const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/, "").trim();
   await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await sha256(token)).run();
@@ -348,6 +474,7 @@ async function deleteAccount(request, env) {
   await env.DB.batch([
     env.DB.prepare("DELETE FROM saves WHERE account_id=?").bind(id),
     env.DB.prepare("DELETE FROM sessions WHERE account_id=?").bind(id),
+    env.DB.prepare("DELETE FROM passkeys WHERE account_id=?").bind(id),
     env.DB.prepare("DELETE FROM accounts WHERE id=?").bind(id),
   ]);
   return { deleted: true };
@@ -389,6 +516,9 @@ export default {
       if (url.pathname === "/v1/account/logout" && request.method === "POST") return json(await logout(request, env), 200, cors);
       if (url.pathname === "/v1/account" && request.method === "DELETE") return json(await deleteAccount(request, env), 200, cors);
       if (url.pathname === "/v1/save" && request.method === "GET") return json(await getSave(request, env), 200, cors);
+      if (url.pathname === "/v1/passkey/begin" && request.method === "POST") return json(await passkeyBegin(request, env), 200, cors);
+      if (url.pathname === "/v1/passkey/register" && request.method === "POST") return json(await passkeyRegister(request, env), 200, cors);
+      if (url.pathname === "/v1/passkey/login" && request.method === "POST") return json(await passkeyLogin(request, env), 200, cors);
       if (url.pathname === "/v1/save" && request.method === "PUT") return json(await putSave(request, env), 200, cors);
       const m = url.pathname.match(/^\/v1\/scores\/(\d+)$/);
       if (m && request.method === "DELETE") return json(await adminDelete(request, env, Number(m[1])), 200, cors);

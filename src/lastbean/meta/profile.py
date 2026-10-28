@@ -72,7 +72,9 @@ def normalize(data: Any) -> dict[str, Any]:
         out["account"] = {
             "session": acc["session"],
             "name": acc.get("name") if isinstance(acc.get("name"), str) else None,
-            "provider": acc.get("provider") if acc.get("provider") in ("password", "google", "apple") else "password",
+            "provider": acc.get("provider")
+            if acc.get("provider") in ("password", "google", "apple", "passkey")
+            else "password",
             "synced_at": acc.get("synced_at") if isinstance(acc.get("synced_at"), int) else 0,
         }
     gh = data.get("greenhouse") if isinstance(data.get("greenhouse"), dict) else {}

@@ -228,3 +228,92 @@ def test_two_devices_share_progress_through_the_cloud(server):
     assert set(both["challenges_done"]) == {"unlock_pyro", "unlock_storm"}
     _, err = asyncio.run(acc.sign_in("login", {"name": name, "password": "falsch!!"}))
     assert err == "Name oder Passwort stimmt nicht"
+
+
+# ----------------------------------------------------------------------------- passkeys (WebAuthn, Paket K)
+
+
+def _b64(data: bytes) -> str:
+    import base64
+
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+
+class FakeAuthenticator:
+    """What Face ID / Touch ID does in the browser: a P-256 key pair, authenticatorData and clientDataJSON."""
+
+    def __init__(self, origin: str = "https://hannes-vnz.github.io", rp_id: str = "hannes-vnz.github.io"):
+        pytest.importorskip("cryptography")
+        from cryptography.hazmat.primitives.asymmetric import ec
+
+        self.key = ec.generate_private_key(ec.SECP256R1())
+        self.cred = _b64(os.urandom(20))
+        self.origin, self.rp_id = origin, rp_id
+
+    def _common(self, begin: dict, kind: str) -> tuple[bytes, bytes]:
+        import hashlib
+        import json
+
+        client = json.dumps({"type": kind, "challenge": begin["challenge"], "origin": self.origin}).encode()
+        auth = hashlib.sha256(self.rp_id.encode()).digest() + bytes([0x05]) + (1).to_bytes(4, "big")
+        return client, auth
+
+    def create(self, begin: dict) -> dict:
+        from cryptography.hazmat.primitives import serialization
+
+        client, auth = self._common(begin, "webauthn.create")
+        spki = self.key.public_key().public_bytes(
+            serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        return {"challenge_id": begin["challenge_id"], "credential_id": self.cred, "public_key": _b64(spki), "alg": -7,
+                "authenticator_data": _b64(auth), "client_data_json": _b64(client)}  # fmt: skip
+
+    def get(self, begin: dict) -> dict:
+        import hashlib
+
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import ec
+
+        client, auth = self._common(begin, "webauthn.get")
+        sig = self.key.sign(auth + hashlib.sha256(client).digest(), ec.ECDSA(hashes.SHA256()))
+        return {"challenge_id": begin["challenge_id"], "credential_id": self.cred, "authenticator_data": _b64(auth),
+                "client_data_json": _b64(client), "signature": _b64(sig)}  # fmt: skip
+
+
+def begin(server, purpose):
+    status, data = call("POST", server + "/v1/passkey/begin", {"purpose": purpose})
+    assert status == 200 and data["rp_id"] == "hannes-vnz.github.io", data
+    return data
+
+
+def test_passkey_sign_up_and_face_id_login(server):
+    face = FakeAuthenticator()
+    status, acc = call("POST", server + "/v1/passkey/register", face.create(begin(server, "register")))
+    assert status == 200 and acc["name"] is None and len(acc["session"]) >= 32
+    auth = {"Authorization": "Bearer " + acc["session"]}
+    assert call("PUT", server + "/v1/save", {"profile": {"sparkles": 7}}, auth)[0] == 200
+    status, again = call("POST", server + "/v1/passkey/login", face.get(begin(server, "login")))
+    assert status == 200 and again["session"] != acc["session"]
+    status, got = call("GET", server + "/v1/save", None, {"Authorization": "Bearer " + again["session"]})
+    assert got["profile"] == {"sparkles": 7}
+    used = begin(server, "login")
+    assert call("POST", server + "/v1/passkey/login", face.get(used))[0] == 200
+    assert call("POST", server + "/v1/passkey/login", face.get(used))[0] == 401  # a challenge works once
+    bad = face.get(begin(server, "login"))
+    bad["signature"] = FakeAuthenticator().get(begin(server, "login"))["signature"]
+    assert call("POST", server + "/v1/passkey/login", bad)[0] == 401
+    phishing = FakeAuthenticator(origin="https://boese.example")
+    phishing.key, phishing.cred = face.key, face.cred
+    assert call("POST", server + "/v1/passkey/login", phishing.get(begin(server, "login")))[0] == 401
+    assert call("POST", server + "/v1/passkey/login", FakeAuthenticator().get(begin(server, "login")))[0] == 401
+
+
+def test_passkey_added_to_a_password_account(server):
+    name = "Face" + uuid.uuid4().hex[:6]
+    _, acc = call("POST", server + "/v1/account/register", {"name": name, "password": "geheim123"})
+    face = FakeAuthenticator()
+    status, added = call("POST", server + "/v1/passkey/register", face.create(begin(server, "register")),
+                         {"Authorization": "Bearer " + acc["session"]})  # fmt: skip
+    assert status == 200 and added["name"] == name
+    status, login = call("POST", server + "/v1/passkey/login", face.get(begin(server, "login")))
+    assert status == 200 and login["name"] == name

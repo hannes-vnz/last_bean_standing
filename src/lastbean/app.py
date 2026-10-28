@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import json
 import secrets
 import sys
 import time
@@ -29,7 +30,7 @@ from .meta.profile import (
     set_nickname,
     valid_nickname,
 )
-from .online.account import Account, browser_id_token, merge
+from .online.account import Account, browser_id_token, browser_passkey, merge, set_passkey_zones
 from .online.leaderboard import REFRESH_S, Leaderboard
 from .render.effects import Effects
 from .render.interp import interpolate
@@ -177,6 +178,8 @@ class Game:
         self.acc_status = ""
         self.acc_config: dict = {}
         self.text_target = "nickname"  # what the text entry fills: nickname, acc_name or acc_pw
+        self.pk_begin: dict[str, dict] = {}  # passkey challenges fetched ahead (Safari wants the dialog in the tap)
+        self._pk_zones = ""
         self.online: tuple[str, int | None, int | None] = ("", None, None)
         self.board: dict = {"period": "all", "mode": "normal", "entries": None, "loading": False, "fetched_at": 0.0}
         self._tasks: dict[str, asyncio.Future] = {}
@@ -349,6 +352,40 @@ class Game:
         self.state, self.acc_status = "account", ""
         if self.account.enabled and not self.acc_config and not self._busy("acc_config"):
             self._tasks["acc_config"] = asyncio.ensure_future(self._load_acc_config())
+        self.prefetch_passkeys()
+
+    def prefetch_passkeys(self) -> None:
+        if WEB and self.account.enabled and not self._busy("pk_prefetch"):
+            self._tasks["pk_prefetch"] = asyncio.ensure_future(self._prefetch_passkeys())
+
+    async def _prefetch_passkeys(self) -> None:
+        for purpose in ("login", "register"):
+            if purpose not in self.pk_begin:
+                begin = await self.account.passkey_begin(purpose)
+                if begin:
+                    self.pk_begin[purpose] = begin
+
+    def passkey_zones(self, buttons: list, screen) -> None:
+        """Tell the page where the passkey buttons are, with their prepared challenges (see online/account.py)."""
+        if not WEB:
+            return
+        zones = []
+        if self.state == "account":
+            r = self.renderer
+            ww, wh = screen.window.get_size()
+            user = self.profile.get("nickname") or "Bohne"
+            for b in buttons:
+                purpose = {"acc_pk_login": "login", "acc_pk_new": "register", "acc_pk_add": "register"}.get(b.action)
+                if purpose and purpose in self.pk_begin:
+                    k = r._scale
+                    x, y = r._dest[0] + b.rect.x * k, r._dest[1] + b.rect.y * k
+                    begin = json.dumps(self.pk_begin[purpose])
+                    zones.append({"x": x / ww, "y": y / wh, "w": b.rect.w * k / ww, "h": b.rect.h * k / wh,
+                                  "purpose": purpose, "begin": begin, "user": user})  # fmt: skip
+        key = json.dumps(zones)
+        if key != self._pk_zones:
+            self._pk_zones = key
+            set_passkey_zones(zones)
 
     async def _load_acc_config(self) -> None:
         self.acc_config = await self.account.config()
@@ -373,6 +410,10 @@ class Game:
             kind = "login" if action == "acc_login" else "register"
             body = {"name": name, "password": pw}
             self._tasks["account"] = asyncio.ensure_future(self._sign_in(kind, body, "password"))
+        elif action in ("acc_pk_login", "acc_pk_new", "acc_pk_add"):
+            purpose = "login" if action == "acc_pk_login" else "register"
+            attach = action == "acc_pk_add"
+            self._tasks["account"] = asyncio.ensure_future(self._passkey(purpose, attach))
         elif action in ("acc_google", "acc_apple"):
             provider = action[4:]
             self._tasks["account"] = asyncio.ensure_future(self._sign_in_with(provider))
@@ -393,12 +434,37 @@ class Game:
             return
         await self._sign_in("oauth", {"provider": provider, "id_token": token}, provider)
 
+    async def _passkey(self, purpose: str, attach: bool) -> None:
+        """Face ID / Touch ID / fingerprint: sign in with a passkey, make one (new account) or add one."""
+        begin = self.pk_begin.pop(purpose, None) or await self.account.passkey_begin(purpose)
+        if begin is None:
+            self.acc_status = "Server nicht erreichbar"
+            return
+        self.acc_status = "Passkey-Fenster ist offen ..."
+        data, error = await browser_passkey(purpose, begin, self.profile.get("nickname") or "Bohne")
+        self.prefetch_passkeys()
+        if data is None:
+            self.acc_status = error
+            return
+        session = self.profile.get("account", {}).get("session") if attach else None
+        res, error = await self.account.passkey_finish(purpose, data, session)
+        if res is None:
+            self.acc_status = error
+            return
+        if attach:
+            self.acc_status = "Passkey hinzugefügt: ab jetzt geht die Anmeldung per Face ID"
+            return
+        await self._signed_in(res, "passkey")
+
     async def _sign_in(self, kind: str, body: dict, provider: str) -> None:
         self.acc_status = "Verbinde ..."
         data, error = await self.account.sign_in(kind, body)
         if data is None:
             self.acc_status = error
             return
+        await self._signed_in(data, provider)
+
+    async def _signed_in(self, data: dict, provider: str) -> None:
         self.profile["account"] = {"session": data["session"], "name": data.get("name"), "provider": provider,
                                    "synced_at": 0}  # fmt: skip
         self.acc_form["acc_pw"] = ""
@@ -1069,6 +1135,7 @@ async def run(
             if game.state == "account":
                 buttons = screens.draw_account(renderer, game.profile, game.acc_form, game.acc_status,
                                                game.acc_config, game.account.enabled, WEB)  # fmt: skip
+            game.passkey_zones(buttons, screen)
             if touch_debug is not None:
                 for i, line in enumerate((touch_debug or "Tippe irgendwo hin").split("\n")):
                     renderer.text(line, (4, renderer.h - 34 + i * 14))
