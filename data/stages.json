@@ -5,7 +5,7 @@
    "index": 1,
    "name": "Saatbeet",
    "biome": "seedbed",
-   "duration_s": 300,
+   "duration_s": 180,
    "boss": "snail_queen",
    "hp_mult": 1.0,
    "damage_mult": 1.0,
@@ -18,12 +18,12 @@
    "index": 2,
    "name": "Gemüsebeet",
    "biome": "veggiebed",
-   "duration_s": 300,
+   "duration_s": 180,
    "boss": "beetle_king",
    "hp_mult": 2.6,
    "damage_mult": 1.7,
    "budget_mult": 1.35,
-   "head_start_s": 150,
+   "head_start_s": 90,
    "tagline": "Das Gemüse ist vergiftet. Halte durch!"
   },
   {
@@ -31,12 +31,12 @@
    "index": 3,
    "name": "Komposthaufen",
    "biome": "compost",
-   "duration_s": 300,
+   "duration_s": 180,
    "boss": "reaper",
    "hp_mult": 6.0,
    "damage_mult": 2.6,
    "budget_mult": 1.7,
-   "head_start_s": 180,
+   "head_start_s": 108,
    "tagline": "Der Schnitter wartet im Kompost."
   }
  ],

@@ -13,11 +13,11 @@ DATA, DOCS = ROOT / "data", ROOT / "docs"
 
 # ---------------------------------------------------------------------------- Balance
 BALANCE = {
-    "tick_hz": 60, "wave_interval_s": 30, "max_wave": 40, "swarm_time_s": 300, "max_alive_enemies": 350,
+    "tick_hz": 60, "wave_interval_s": 18, "max_wave": 40, "swarm_time_s": 300, "max_alive_enemies": 350,
     "budget": {"base": 40, "linear": 7.0, "quadratic": 0.22},           # je Welle w: base + linear*w + quadratic*w^2 (mehr Gegner früh, seit 28.10.2026)
-    "hp_mult": {"linear": 0.10, "quadratic": 0.012},                     # 1 + a*m + b*m^2, m = Minuten
-    "damage_mult": {"linear": 0.05, "quadratic": 0.004},
-    "speed_mult": {"linear": 0.01, "cap": 1.2},
+    "hp_mult": {"linear": 0.17, "quadratic": 0.033},                     # 1 + a*m + b*m^2, m = Minuten (28.10.2026: Beete 3:00, Tempo x5/3)
+    "damage_mult": {"linear": 0.085, "quadratic": 0.011},
+    "speed_mult": {"linear": 0.017, "cap": 1.2},
     "xp_to_next": {"base": 2, "linear": 1.2, "quadratic": 0.12},        # Level L -> L+1 (Paket F: noch schnellere Level)
     "elite_every_n_waves": 5, "boss_waves": {},                         # Bosse kommen seit Paket F je Beet (stages.json)
     "spawn_distance_px": [520, 700], "arena_tiles": [120, 120], "tile_px": 32,
@@ -199,15 +199,15 @@ def mob(id, name, beh, hp, speed, dmg, cost, xp, min_t, biomes, text, phase, **e
 # Paket F (28.10.2026): Gartenplagen und verpestetes Gemüse, je Beet eigene Gewichte. min_time_s zählt ab Beginn des Beets.
 MOBS = [
  mob("slug", "Nacktschnecke", "chaser", 12, 80, 5, 1, 1, 0, dict(seedbed=1, veggiebed=0.5, compost=0.3), "Kriecht stur auf dich zu. Die häufigste Plage.", 1, radius=12),
- mob("aphid", "Blattlaus", "swarm", 4, 160, 3, 0.4, 0.4, 20, dict(seedbed=0.8, veggiebed=0.6, compost=0.4), "Kommt in Schwärmen zu 5, wuselt schnell und unregelmäßig.", 1, radius=8, group_size=5),
- mob("snail", "Gartenschnecke", "chaser_tank", 50, 52, 10, 4, 4, 60, dict(seedbed=0.6, veggiebed=0.4, compost=0.3), "Langsam, aber das Haus hält viel aus.", 1, radius=17),
- mob("mold", "Schimmelpilz", "ranged_lobbed", 16, 60, 4, 3, 3, 90, dict(seedbed=0.5, veggiebed=0.3, compost=0.5), "Hält 260 px Abstand und wirft Sporen, die eine Schimmelpfütze (4 Schaden/s, 3 s) hinterlassen.", 1, radius=12, keep_distance_px=260, shot_interval_s=2.4),
+ mob("aphid", "Blattlaus", "swarm", 4, 160, 3, 0.4, 0.4, 12, dict(seedbed=0.8, veggiebed=0.6, compost=0.4), "Kommt in Schwärmen zu 5, wuselt schnell und unregelmäßig.", 1, radius=8, group_size=5),
+ mob("snail", "Gartenschnecke", "chaser_tank", 50, 52, 10, 4, 4, 36, dict(seedbed=0.6, veggiebed=0.4, compost=0.3), "Langsam, aber das Haus hält viel aus.", 1, radius=17),
+ mob("mold", "Schimmelpilz", "ranged_lobbed", 16, 60, 4, 3, 3, 54, dict(seedbed=0.5, veggiebed=0.3, compost=0.5), "Hält 260 px Abstand und wirft Sporen, die eine Schimmelpfütze (4 Schaden/s, 3 s) hinterlassen.", 1, radius=12, keep_distance_px=260, shot_interval_s=2.4),
  mob("potato_beetle", "Kartoffelkäfer", "chaser", 18, 130, 7, 2, 2, 0, dict(veggiebed=1, compost=0.4), "Flinker Käfer, kommt im Trupp zu 3.", 1, radius=12, group_size=3),
- mob("toxic_carrot", "Giftmöhre", "charger", 30, 70, 12, 3, 3, 30, dict(veggiebed=1, compost=0.5), "Zielt 0,8 s (Warnlinie), stürmt dann 0,6 s mit Tempo 340 los und ist 1 s benommen.", 1, radius=13, telegraph_s=0.8, charge_s=0.6, charge_speed=340, recovery_s=1.0),
- mob("spray_cucumber", "Spritzgurke", "ranged_direct", 14, 70, 7, 2, 2, 60, dict(veggiebed=0.8, compost=0.6), "Hält 300 px Abstand und spritzt gerade Giftstrahlen (Tempo 280).", 1, radius=12, keep_distance_px=300, shot_interval_s=1.8, projectile_speed=280),
+ mob("toxic_carrot", "Giftmöhre", "charger", 30, 70, 12, 3, 3, 18, dict(veggiebed=1, compost=0.5), "Zielt 0,8 s (Warnlinie), stürmt dann 0,6 s mit Tempo 340 los und ist 1 s benommen.", 1, radius=13, telegraph_s=0.8, charge_s=0.6, charge_speed=340, recovery_s=1.0),
+ mob("spray_cucumber", "Spritzgurke", "ranged_direct", 14, 70, 7, 2, 2, 36, dict(veggiebed=0.8, compost=0.6), "Hält 300 px Abstand und spritzt gerade Giftstrahlen (Tempo 280).", 1, radius=12, keep_distance_px=300, shot_interval_s=1.8, projectile_speed=280),
  mob("pest_tomato", "Pestizid-Tomate", "exploder", 10, 140, 18, 2, 2, 0, dict(compost=1, veggiebed=0.2), "Rollt auf dich zu und platzt bei Berührung (Radius 70, 18 Schaden, 0,4 s Warnung).", 1, radius=11, explosion_radius=70),
- mob("vole", "Wühlmaus", "chaser_tank", 90, 58, 14, 7, 7, 60, dict(compost=0.6, veggiebed=0.2), "Zäh und bissig, frisst sich durch alles.", 1, radius=20),
- mob("spray_shroom", "Sprühpilz", "ranged_lobbed", 18, 64, 7, 3, 3, 30, dict(compost=0.8), "Hält 280 px Abstand und sprüht Giftwolken (Radius 50, 3 s).", 1, radius=12, keep_distance_px=280, shot_interval_s=2.2),
+ mob("vole", "Wühlmaus", "chaser_tank", 90, 58, 14, 7, 7, 36, dict(compost=0.6, veggiebed=0.2), "Zäh und bissig, frisst sich durch alles.", 1, radius=20),
+ mob("spray_shroom", "Sprühpilz", "ranged_lobbed", 18, 64, 7, 3, 3, 18, dict(compost=0.8), "Hält 280 px Abstand und sprüht Giftwolken (Radius 50, 3 s).", 1, radius=12, keep_distance_px=280, shot_interval_s=2.2),
 ]
 ELITE_AFFIXES = [
  dict(id="armored", name="Gepanzert", text="-30 % erlittener Schaden."),
@@ -270,13 +270,13 @@ SWARM = dict(start_s=300, entity="floodwisp", name="Flutgeist", hp=6, speed=75, 
              score_mult_start=1, score_mult_gain_per_45s=1, score_mult_cap=8, hp_damage_scaling="wie normale Gegner (hp_mult, damage_mult), setzt sich unbegrenzt fort",
              text="Seit Paket F ersetzt die Plagenflut am Ende jedes Beets (stages.json, flood) die Schwarmflut; diese Werte sind für spätere Flutgeister vorgemerkt.")
 BOSSES = [
- dict(id="snail_queen", name="Schleimrun, die Schneckenkönigin", spawn_wave=7, spawn_time_s=210, hp=2400, speed=50, damage=14, biome="seedbed", impl_phase=1, summon_mob="snail",
+ dict(id="snail_queen", name="Schleimrun, die Schneckenkönigin", spawn_wave=7, spawn_time_s=126, hp=2400, speed=50, damage=14, biome="seedbed", impl_phase=1, summon_mob="snail",
       phases=[dict(at_hp_pct=100, pattern="Schleimring (8 Tropfen), alle 4 s"), dict(at_hp_pct=60, pattern="Schleimspur: verlangsamt dich 40 % in einem Kreis, ruft 3 Gartenschnecken"), dict(at_hp_pct=30, pattern="Schleimring doppelt so schnell, Sporenregen")],
       reward="boss_chest_epic", first_kill_challenge="boss_snail_queen"),
- dict(id="beetle_king", name="Knollgrimm, der Käferkönig", spawn_wave=7, spawn_time_s=210, hp=6000, speed=60, damage=18, biome="veggiebed", impl_phase=1, summon_mob="potato_beetle",
+ dict(id="beetle_king", name="Knollgrimm, der Käferkönig", spawn_wave=7, spawn_time_s=126, hp=6000, speed=60, damage=18, biome="veggiebed", impl_phase=1, summon_mob="potato_beetle",
       phases=[dict(at_hp_pct=100, pattern="Stachelfächer (5 Geschosse, alle 3 s) und Sturmangriff nach Warnlinie (Tempo 380)"), dict(at_hp_pct=60, pattern="ruft 4 Kartoffelkäfer, Fächer mit 7 Geschossen"), dict(at_hp_pct=30, pattern="stürmt zweimal hintereinander, Fächer doppelt so schnell")],
       reward="boss_chest_epic", first_kill_challenge="boss_beetle_king"),
- dict(id="reaper", name="Der Schnitter", spawn_wave=7, spawn_time_s=210, hp=14000, speed=60, damage=24, biome="compost", impl_phase=1, summon_mob="pest_tomato",
+ dict(id="reaper", name="Der Schnitter", spawn_wave=7, spawn_time_s=126, hp=14000, speed=60, damage=24, biome="compost", impl_phase=1, summon_mob="pest_tomato",
       phases=[dict(at_hp_pct=100, pattern="Sensenring (12 Geschosse), alle 3,5 s"), dict(at_hp_pct=66, pattern="Seelenregen: 6 Einschläge mit Warnkreis (Radius 80), ruft Pestizid-Tomaten"), dict(at_hp_pct=33, pattern="Sensenring alle 2 s, stürmt nach Warnlinie")],
       reward="victory", first_kill_challenge="boss_reaper"),
 ]
@@ -291,15 +291,15 @@ PALETTES = {
  "veggiebed": dict(ground="#a8d887", detail="#8fc46f", hazard=None, cabbage="#b7e39a", soil="#9a6d4c", sprout="#ffb35c"),
  "compost":   dict(ground="#8c7a6a", detail="#77665a", hazard="#b6e05a", heap="#6f5b49", soil="#5f4c3d", sprout="#c8f06a"),
 }
-# Ablauf eines Laufs: drei Beete à 5:00. Der Boss kommt bei 3:30 des Beets; ist er besiegt, öffnet sich das Gartentor
+# Ablauf eines Laufs: drei Beete à 3:00 (seit 28.10.2026, vorher 5:00). Der Boss kommt bei 2:06 des Beets; ist er besiegt, öffnet sich das Gartentor
 # zum nächsten Beet (der Build bleibt). Läuft die Zeit ab, beginnt die Plagenflut: endlos, immer dichter und härter.
 # Nach dem Schnitter im dritten Beet ist der Lauf gewonnen. Gegnerwerte: Grundwert x Beet-Faktor x Zeitfaktor im Beet.
 STAGES = [
- dict(id="seedbed", index=1, name="Saatbeet", biome="seedbed", duration_s=300, boss="snail_queen", hp_mult=1.0, damage_mult=1.0, budget_mult=1.0, head_start_s=0,
+ dict(id="seedbed", index=1, name="Saatbeet", biome="seedbed", duration_s=180, boss="snail_queen", hp_mult=1.0, damage_mult=1.0, budget_mult=1.0, head_start_s=0,
       tagline="Die Keimlinge brauchen dich!"),
- dict(id="veggiebed", index=2, name="Gemüsebeet", biome="veggiebed", duration_s=300, boss="beetle_king", hp_mult=2.6, damage_mult=1.7, budget_mult=1.35, head_start_s=150,
+ dict(id="veggiebed", index=2, name="Gemüsebeet", biome="veggiebed", duration_s=180, boss="beetle_king", hp_mult=2.6, damage_mult=1.7, budget_mult=1.35, head_start_s=90,
       tagline="Das Gemüse ist vergiftet. Halte durch!"),
- dict(id="compost", index=3, name="Komposthaufen", biome="compost", duration_s=300, boss="reaper", hp_mult=6.0, damage_mult=2.6, budget_mult=1.7, head_start_s=180,
+ dict(id="compost", index=3, name="Komposthaufen", biome="compost", duration_s=180, boss="reaper", hp_mult=6.0, damage_mult=2.6, budget_mult=1.7, head_start_s=108,
       tagline="Der Schnitter wartet im Kompost."),
 ]
 # head_start_s (Paket G): spätere Beete beginnen mit so viel Wellen-Vorsprung (Gegnermenge und -arten), sonst laufen sie zu langsam an.
@@ -605,8 +605,8 @@ def md():
     P("# CONTENT: festes Inhaltskonzept\n")
     P("Alle Zahlen sind **Startwerte aus einer Modellrechnung**, nicht aus gespielten Runs. Sie werden später mit einer Headless-Simulation (Bot-Läufe) justiert. Diese Datei wird von `tools/build_content.py` erzeugt, die Quelle der Wahrheit sind die JSON-Dateien in `data/`. IDs nie ohne Rückfrage ändern.\n")
     P("## Lauf und Schwierigkeit\n")
-    P("""- **Drei Beete, je 5:00 (Paket F, 28.10.2026).** Saatbeet, Gemüsebeet, Komposthaufen. Jedes Beet ist eine eigene Karte; Level, Upgrades, Waffen und Items bleiben beim Wechsel erhalten. Ein Lauf dauert höchstens etwa 15 Minuten.
-- **Boss bei 3:30 jedes Beets.** Ist er besiegt, öffnet sich das **Gartentor** zum nächsten Beet (volle Heilung). Der Schnitter im dritten Beet beendet den Lauf mit einem Sieg.
+    P("""- **Drei Beete, je 3:00 (Paket F, 28.10.2026; seit Paket I 3:00 statt 5:00, Gegner skalieren x5/3 schneller).** Saatbeet, Gemüsebeet, Komposthaufen. Jedes Beet ist eine eigene Karte; Level, Upgrades, Waffen und Items bleiben beim Wechsel erhalten. Ohne Flut dauert ein Lauf etwa 9 Minuten, mit Flut-Zockerei etwa 10 bis 13.
+- **Boss bei 2:06 jedes Beets.** Ist er besiegt, öffnet sich das **Gartentor** zum nächsten Beet (volle Heilung). Der Schnitter im dritten Beet beendet den Lauf mit einem Sieg.
 - **Plagenflut:** Läuft die Zeit eines Beets ab, wird es endlos: alle 10 s +40 % Gegner, +15 % HP, +8 % Schaden. Wer den Boss besiegt hat, kann jederzeit durchs Tor.
 - Welle alle **30 s** innerhalb des Beets, ohne Pause. Level-ups pausieren das Spiel.
 - **Gegnerwerte:** Grundwert x Beet-Faktor (1 / 2,6 / 6 bei HP) x Zeitfaktor im Beet `(1 + 0,10*m + 0,012*m²)`, m = Minuten im Beet.
@@ -617,7 +617,7 @@ def md():
     P(f"### Modellrechnung (Ø {hpc:.1f} HP je Budgetpunkt, alles wird getötet)\n")
     P("| Minute | Welle | Budget | HP x | Schaden x | nötige HP/s | Level (ca.) | XP gesamt |\n|---|---|---|---|---|---|---|---|")
     for r in rows:
-        if r["minute"] in (1, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20):
+        if r["wave"] in (2, 4, 6, 8, 10, 14, 20, 30, 40):  # minutes within one bed (3:00 = wave 10)
             P(f"| {r['minute']:g} | {r['wave']} | {r['budget']:.0f} | {r['hp_mult']:.1f} | {r['dmg_mult']:.1f} | {r['spawn_hp_per_s']:.0f} | {r['level']} | {r['cum_xp']:.0f} |")
     P("\nDie Spalte „nötige HP/s“ ist die Leistung, die du brauchst, um alles Erscheinende zu töten. Ein Start-Jäger macht rund 19 Schaden pro Sekunde auf ein Ziel. Das Spiel soll so gebaut sein, dass starke Builds (Flächenschaden, Durchschlag, Ketten) diese Kurve bis etwa Minute 14 bis 18 halten können.\n")
     P("## Charaktere (10)\n")

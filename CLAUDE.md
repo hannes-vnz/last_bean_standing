@@ -1,6 +1,6 @@
 # Last Bean Standing
 
-Roguelite mit Auto-Feuer nach Megabonk-Vorbild (eigene Optik: Bohnen verteidigen die letzte Saat gegen Gartenplagen): drei Beete à 5:00 (Saatbeet, Gemüsebeet, Komposthaufen), Boss je Beet bei 3:30, Gartentor ins nächste Beet, nach Ablauf der Zeit endlose Plagenflut, Sieg mit dem Schnitter. Python plus pygame, Simulation und Darstellung getrennt.
+Roguelite mit Auto-Feuer nach Megabonk-Vorbild (eigene Optik: Bohnen verteidigen die letzte Saat gegen Gartenplagen): drei Beete à 3:00 (Saatbeet, Gemüsebeet, Komposthaufen), Boss je Beet bei 2:06, Gartentor ins nächste Beet, nach Ablauf der Zeit endlose Plagenflut, Sieg mit dem Schnitter. Python plus pygame, Simulation und Darstellung getrennt.
 
 ## Quellen der Wahrheit
 - `docs/DESIGN.md`: Konzept, Architektur, Meilensteine M0 bis M8.
