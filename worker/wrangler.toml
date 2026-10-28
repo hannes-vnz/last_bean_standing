@@ -1,0 +1,16 @@
+# Cloudflare Worker for the Last Bean Standing leaderboard. Deployed by .github/workflows/worker.yml.
+name = "last-bean-standing"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://hannes-vnz.github.io"
+ALLOWED_VERSIONS = ""
+RATE_LIMIT_PER_MIN = "10"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "last-bean-standing"
+# Filled in once after `wrangler d1 create last-bean-standing` (see worker/README.md).
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

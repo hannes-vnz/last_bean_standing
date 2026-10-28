@@ -20,6 +20,7 @@ import pygame
 from .audio import Audio
 from .data import load_content
 from .meta.profile import ProfileStore, default_store, new_profile, record_run, set_nickname, valid_nickname
+from .online.leaderboard import REFRESH_S, Leaderboard
 from .render.effects import Effects
 from .render.renderer import CANVAS_H, CANVAS_W, Renderer, effect_palette
 from .sim import DT, PlayerInput, World, WorldConfig
@@ -118,6 +119,10 @@ class Game:
         self.name_buffer = ""
         self.state = "play" if autostart else ("menu" if self.profile.get("nickname") else "name")
         self.first_name = not self.profile.get("nickname")
+        self.leaderboard = Leaderboard()
+        self.online: tuple[str, int | None, int | None] = ("", None, None)
+        self.board: dict = {"period": "all", "entries": None, "loading": False, "fetched_at": 0.0}
+        self._tasks: dict[str, asyncio.Future] = {}
 
     def new_run(self) -> None:
         self.seed = self.seed + 1 if self.fixed_seed is not None else secrets.randbelow(2**31)
@@ -128,10 +133,56 @@ class Game:
         """Record the result once, when the run ends (stress-test runs are not recorded)."""
         self.result = self.world.result().to_dict()
         self.flags = {}
+        self.online = ("", None, None)
         if self.config is self.normal:
             self.flags = record_run(self.profile, self.result)
+            if self.leaderboard.queue(self.profile, self.result):
+                self.online = ("sending", None, None)
             self.save()
+            self.start_sync()
         self.state = "results"
+
+    # ------------------------------------------------------------------ online leaderboard
+
+    def start_sync(self) -> None:
+        """Send queued runs in the background (an asyncio task, no threads)."""
+        if self.leaderboard.enabled and self.profile["pending_submissions"] and not self._busy("sync"):
+            self._tasks["sync"] = asyncio.ensure_future(self._sync())
+
+    async def _sync(self) -> None:
+        report = await self.leaderboard.sync(self.profile)
+        self.save()
+        if report.last_rank:
+            self.online = ("rank", report.last_rank, report.last_rank_character)
+        elif report.offline and self.online[0] == "sending":
+            self.online = ("offline", None, None)
+        elif report.error and self.online[0] == "sending":
+            self.online = (f"Nicht angenommen: {report.error}", None, None)
+
+    def open_board(self) -> None:
+        self.state = "board"
+        self.refresh_board()
+
+    def refresh_board(self) -> None:
+        if self.leaderboard.enabled and not self._busy("board"):
+            self.board["loading"] = True
+            self._tasks["board"] = asyncio.ensure_future(self._fetch_board())
+
+    async def _fetch_board(self) -> None:
+        self.board["entries"] = await self.leaderboard.top(self.board["period"])
+        self.board["loading"] = False
+        self.board["fetched_at"] = time.monotonic()
+
+    def switch_period(self, step: int) -> None:
+        periods = list(screens.PERIOD_NAMES)
+        i = periods.index(self.board["period"])
+        self.board["period"] = periods[(i + step) % len(periods)]
+        self.board["entries"] = None
+        self.refresh_board()
+
+    def _busy(self, name: str) -> bool:
+        task = self._tasks.get(name)
+        return task is not None and not task.done()
 
     def save(self) -> None:
         try:
@@ -178,6 +229,7 @@ async def run(
     game = Game(content, renderer, store or default_store(), seed, autostart)
     if game.state == "name":
         game.start_name_entry()
+    game.start_sync()  # runs queued while offline
     renderer.set_arena(game.config)
     clock = pygame.time.Clock()
     timer, show_timings, bench_result = FrameTimer(), False, ""
@@ -207,8 +259,17 @@ async def run(
                         acc = 0.0
                     elif event.key == pygame.K_n:
                         game.start_name_entry()
+                    elif event.key == pygame.K_l:
+                        game.open_board()
                     elif event.key == pygame.K_ESCAPE and not WEB:
                         running = False
+                elif game.state == "board":
+                    if event.key in (pygame.K_LEFT, pygame.K_a):
+                        game.switch_period(-1)
+                    elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                        game.switch_period(1)
+                    elif event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER):
+                        game.state = "menu"
                 elif game.state == "results":
                     if event.key == pygame.K_r:
                         game.new_run()
@@ -260,9 +321,14 @@ async def run(
                 debug = f"{timer.text(world)}  {bench_result}" if show_timings else None
                 renderer.draw(world.snapshot(), debug=debug, effects=effects)
                 if game.state == "results":
-                    screens.draw_results(renderer, game.result, game.flags, game.profile)
+                    line = screens.online_line(*game.online)
+                    screens.draw_results(renderer, game.result, game.flags, game.profile, line)
             elif game.state == "menu":
                 screens.draw_menu(renderer, game.profile, WEB)
+            elif game.state == "board":
+                if time.monotonic() - game.board["fetched_at"] > REFRESH_S:
+                    game.refresh_board()
+                screens.draw_board(renderer, game.board, game.profile, game.leaderboard.enabled)
             else:
                 screens.draw_name_entry(renderer, game.name_buffer, valid_nickname(game.name_buffer), game.first_name)
             renderer.present(window)

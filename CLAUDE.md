@@ -20,7 +20,7 @@ Stop-and-Shoot-Roguelite: zeitbasierte, endlos härter werdende Wellen in einer 
 
 - Co-op später (Abschnitt 18): `World` mit Liste von Spielern und Eingaben je `player_id`, Ereignisse mit `player_id`, `player_count`-Hook in der Schwierigkeit, Spielstand hinter einer Schnittstelle. Kein Co-op jetzt bauen.
 
-- Online-Bestenliste (Abschnitt 19): Server in `server/` (Tests: `cd server && python -m pytest -q`). Das Spiel muss auch ohne Server laufen. Punkteformel in `docs/CONTENT.md` und `server/app.py` synchron halten.
+- Online-Bestenliste (Abschnitt 19): Referenzserver `server/` (Python), Produktion `worker/` (Cloudflare Workers + D1, gleiche API; `tests/test_server_contract.py` prüft beide). Das Spiel muss auch ohne Server laufen. Punkteformel in `docs/CONTENT.md` und `server/app.py` synchron halten.
 
 ## Befehle
 - Tests: `python -m pytest -q`; Lint: `ruff check`
@@ -30,10 +30,11 @@ Stop-and-Shoot-Roguelite: zeitbasierte, endlos härter werdende Wellen in einer 
 - Benchmark Simulation: `python tools/bench.py` (Schritte pro Sekunde, Ergebnis messen und notieren)
 - Web: `python tools/build_web.py [--serve]` (pygbag; `web/main.py` muss pygame direkt importieren); Push auf `main` deployt GitHub Pages
 
-## Struktur (Stand M6)
+## Struktur (Stand M6b)
 - `sim/world.py`: `World(seed, WorldConfig.from_content(...))`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; `PlayerInput(player_id, move_x, move_y, choice)`; Level-up pausiert nur im Einzelspiel
 - `sim/waves.py` (Budget, Skalierung, XP-Kurve, Biome), `sim/upgrades.py` (Stat-Summen, Kartenwahl), `sim/arena.py` (Hindernisse, Deckung), `sim/enemies.py` (Verhalten je `behavior`, Elite-Affixe, Boss-Muster), `sim/entities.py`, `sim/spatial.py`; neue Verhalten in `BEHAVIORS`/`BOSS_BEHAVIORS`, Hindernisarten in `OBSTACLE_KINDS`
 - `sim/tuning.py`: Zahlen, die noch nicht in `data/` stehen (Annahmen, mit Hannes klären und dann ins JSON)
+- `online/leaderboard.py`: Senden mit Warteschlange im Profil, Rangliste; `online/http.py`: async HTTP ohne Threads (Desktop: asyncio, Browser: fetch); Server-URL `DEFAULT_URL` oder `LBS_LEADERBOARD_URL`
 - `bots.py`: Heuristik-Spieler; `tools/balance.py` misst Todeszeiten über viele Seeds
 - `data/loader.py`: `load_content()` liefert typisierte `Content` (`data/schema.py`), sammelt alle Fehler in `ContentError`
 - `meta/profile.py`: Profil (Spitzname, Token, Highscores, Export-Code), Speicher Datei/localStorage; `sim/score.py`: Punkte (synchron mit `server/app.py`); `ui/screens.py`: Menü, Name, Ergebnis; `render/effects.py` (Partikel, Blitz, Zahlen, Wackeln, Hit-Stop aus Ereignissen), `render/sprites.py` (`assets/sprites/sprites.json`, erzeugt von `tools/sprites/mobs.py`), `audio.py` (synthetische Töne); `render/renderer.py`: 640x360-Fläche, ganzzahlig skaliert, Karte einmal vorgerendert (`set_arena`), Level-up-Karten

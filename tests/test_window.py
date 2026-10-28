@@ -44,3 +44,25 @@ def test_screens_render(monkeypatch, content):
     flags = record_run(profile, result)
     screens.draw_results(r, result, flags, profile)
     screens.draw_menu(r, profile, web=False)
+
+
+def test_board_screen_states(monkeypatch, content):
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    pygame.init()
+    from lastbean.meta.profile import new_profile
+    from lastbean.render.renderer import Renderer
+    from lastbean.ui import screens
+
+    r = Renderer(content)
+    p = new_profile()
+    entry = dict(rank=1, name="Fenn", seconds=300, kills=300, score=2000)
+    for board, enabled in [
+        ({"period": "all", "entries": None, "loading": True}, True),
+        ({"period": "week", "entries": None, "loading": False}, True),
+        ({"period": "month", "entries": [], "loading": False}, True),
+        ({"period": "all", "entries": [entry] * 12, "loading": False}, True),
+        ({"period": "all", "entries": None, "loading": False}, False),
+    ]:
+        screens.draw_board(r, board, p, enabled)
+    assert screens.online_line("rank", 3, 1) == "Online-Rang #3 (Jäger #1)"
+    assert screens.online_line("offline", None, None).startswith("Offline")

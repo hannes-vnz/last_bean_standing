@@ -47,7 +47,7 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> None:
         r.dark_text("Noch kein Rekord. Zeit für den ersten Lauf!", (CX, panel.y + 40), center=True)
     t = profile["totals"]
     r.dark_text(f"Läufe {t['runs']}   Kills gesamt {t['kills']}", (CX, panel.y + 74), center=True)
-    r.dark_text("Enter: Spielen     N: Spitzname ändern", (CX, panel.y + 100), center=True)
+    r.dark_text("Enter: Spielen   L: Bestenliste   N: Name", (CX, panel.y + 100), center=True)
     if not web:
         r.text("Esc: Beenden", (CX, 270), center=True)
     r.text("WASD/Pfeile laufen  ·  im Stand wird geschossen  ·  1/2/3 Upgrade wählen", (CX, CANVAS_H - 24), center=True)
@@ -67,7 +67,9 @@ def draw_name_entry(r: Renderer, current: str, valid: bool, first_time: bool) ->
     r.text("Der Name erscheint später in der Online-Bestenliste.", (CX, 260), center=True)
 
 
-def draw_results(r: Renderer, result: dict[str, Any], flags: dict[str, bool], profile: dict[str, Any]) -> None:
+def draw_results(
+    r: Renderer, result: dict[str, Any], flags: dict[str, bool], profile: dict[str, Any], online: str = ""
+) -> None:
     dim = pygame.Surface((CANVAS_W, CANVAS_H), pygame.SRCALPHA)
     dim.fill((*r.ink, 150))
     r.canvas.blit(dim, (0, 0))
@@ -94,4 +96,66 @@ def draw_results(r: Renderer, result: dict[str, Any], flags: dict[str, bool], pr
     best = profile["highscores"]["overall"]
     if best and not flags.get("new_best"):
         r.dark_text(f"Rekord: {best['score']}", (CX, panel.bottom - 22), center=True)
-    r.text("R: neuer Lauf     Enter: Menü", (CX, panel.bottom + 18), center=True)
+    if online:
+        r.text(online, (CX, panel.bottom + 14), center=True)
+    r.text("R: neuer Lauf     Enter: Menü", (CX, panel.bottom + 32), center=True)
+
+
+PERIOD_NAMES = {"all": "Gesamt", "week": "Woche", "month": "Monat"}
+
+
+def draw_board(r: Renderer, board: dict, profile: dict[str, Any], enabled: bool) -> None:
+    """Online leaderboard: tabs for all time / week / month, top 10, own name highlighted."""
+    _backdrop(r)
+    r.text("Bestenliste", (CX, 34), r.big_font, center=True)
+    tabs = " ".join(f"[{v}]" if k == board["period"] else f" {v} " for k, v in PERIOD_NAMES.items())
+    r.text(tabs, (CX, 58), center=True)
+    panel = pygame.Rect(CX - 200, 74, 400, 214)
+    _panel(r, panel)
+    entries = board.get("entries")
+    if not enabled:
+        r.dark_text("Die Online-Bestenliste ist noch nicht verbunden.", (CX, panel.y + 90), center=True)
+    elif entries is None:
+        msg = "Lade ..." if board.get("loading") else "Server nicht erreichbar. Versuch es später nochmal."
+        r.dark_text(msg, (CX, panel.y + 90), center=True)
+    elif not entries:
+        r.dark_text("Noch keine Einträge. Sei die erste Bohne!", (CX, panel.y + 90), center=True)
+    else:
+        cols = (panel.x + 14, panel.x + 54, panel.x + 210, panel.x + 290, panel.x + 386)
+        for label, x in zip(("#", "Name", "Zeit", "Kills"), cols, strict=False):
+            r.dark_text(label, (x, panel.y + 8))
+        _right(r, "Punkte", cols[4], panel.y + 8)
+        me = profile.get("nickname")
+        for i, e in enumerate(entries[:10]):
+            y = panel.y + 28 + i * 18
+            if e.get("name") == me:
+                r.canvas.fill(r.crit_color, (panel.x + 4, y - 2, panel.w - 8, 16))
+            r.dark_text(str(e["rank"]), (cols[0], y))
+            r.dark_text(str(e["name"]), (cols[1], y))
+            r.dark_text(_mmss(int(e["seconds"])), (cols[2], y))
+            r.dark_text(str(e["kills"]), (cols[3], y))
+            _right(r, str(e["score"]), cols[4], y)
+    best = (profile.get("online") or {}).get("best_rank")
+    pending = len(profile.get("pending_submissions", []))
+    footer = f"Dein bester Rang: #{best}" if best else "Noch kein Lauf online"
+    if pending:
+        footer += f"   ({pending} Lauf/Läufe warten aufs Senden)"
+    r.text(footer, (CX, 300), center=True)
+    r.text("Pfeile: Zeitraum   Esc/Enter: zurück", (CX, 322), center=True)
+
+
+def _right(r: Renderer, text: str, right_x: int, y: int) -> None:
+    img = r.font.render(text, True, r.ink)
+    r.canvas.blit(img, (right_x - img.get_width(), y))
+
+
+def online_line(status: str, rank: int | None, rank_character: int | None) -> str:
+    if status == "sending":
+        return "Wird an die Bestenliste gesendet ..."
+    if status == "rank" and rank:
+        return f"Online-Rang #{rank}" + (f" (Jäger #{rank_character})" if rank_character else "")
+    if status == "offline":
+        return "Offline: wird später gesendet"
+    if status == "no_name":
+        return ""
+    return status

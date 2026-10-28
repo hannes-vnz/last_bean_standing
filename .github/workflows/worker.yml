@@ -1,0 +1,39 @@
+name: Leaderboard (Cloudflare Worker)
+
+# Deploys worker/ to Cloudflare on every push to main that touches it.
+# One-time setup (see worker/README.md): repository secrets CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
+# CLOUDFLARE_D1_ID and LEADERBOARD_ADMIN_TOKEN. Without them the job only reports that it was skipped.
+
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", ".github/workflows/worker.yml"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    env:
+      HAS_SECRETS: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_D1_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: env.HAS_SECRETS != 'true'
+        run: echo "::notice::Cloudflare secrets missing, deploy skipped (see worker/README.md)"
+      - if: env.HAS_SECRETS == 'true'
+        name: Put the D1 database id into wrangler.toml
+        run: sed -i "s/00000000-0000-0000-0000-000000000000/${{ secrets.CLOUDFLARE_D1_ID }}/" wrangler.toml
+      - if: env.HAS_SECRETS == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          wranglerVersion: "4.154.0"
+          secrets: ADMIN_TOKEN
+          preCommands: npx wrangler d1 migrations apply last-bean-standing --remote
+          command: deploy
+        env:
+          ADMIN_TOKEN: ${{ secrets.LEADERBOARD_ADMIN_TOKEN }}

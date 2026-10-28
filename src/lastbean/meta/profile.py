@@ -51,6 +51,9 @@ def normalize(data: Any) -> dict[str, Any]:
     out["recent"] = [r for r in recent if _is_entry(r)][:RECENT_RUNS]
     pending = data.get("pending_submissions")
     out["pending_submissions"] = [r for r in pending if isinstance(r, dict)] if isinstance(pending, list) else []
+    online = data.get("online") if isinstance(data.get("online"), dict) else {}
+    best_rank = online.get("best_rank")
+    out["online"] = {"best_rank": best_rank if isinstance(best_rank, int) and best_rank > 0 else None}
     return out
 
 

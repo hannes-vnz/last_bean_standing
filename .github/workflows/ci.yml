@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev]" -r server/requirements.txt  # server deps: leaderboard round-trip test
       - run: ruff check
       - run: ruff format --check
       - run: pytest -q
@@ -27,6 +27,22 @@ jobs:
           python tools/build_content.py
           git diff --exit-code -- data docs/CONTENT.md
       - run: python tools/bench.py --seconds 30 --render
+
+  worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+        working-directory: worker
+      - run: pip install -e ".[dev]" -r server/requirements.txt
+      - name: Same HTTP contract for the Python reference server and the Cloudflare Worker
+        run: pytest -q tests/test_server_contract.py
 
   server:
     runs-on: ubuntu-latest
