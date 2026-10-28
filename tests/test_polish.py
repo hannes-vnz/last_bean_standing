@@ -65,10 +65,10 @@ def test_effect_details(content):
     fx.handle([LevelUp(1, 0, 2)], players={0: (10.0, 10.0)})
     assert fx.rings
     fx.handle([BossSpawned(1, None, 9, "ildra")], boss_names={"ildra": "Ildra"})
-    assert fx.banner[0] == "Ildra erscheint!"
-    for _ in range(200):
+    assert fx.intro[1] == "Ildra"  # boss entrance (the run waits meanwhile)
+    for _ in range(300):
         fx.update()
-    assert not fx.flash and fx.banner is None and fx.trauma == 0.0
+    assert not fx.flash and fx.intro is None and fx.trauma == 0.0
 
 
 def test_audio_synthesises_all_sounds():

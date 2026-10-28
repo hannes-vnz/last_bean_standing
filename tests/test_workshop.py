@@ -49,3 +49,18 @@ def test_every_bed_has_its_music(content):
 
     for track in {st.biome for st in content.stages} | {"boss"}:
         assert (MUSIC_DIR / f"{track}.ogg").stat().st_size > 10_000
+
+
+def test_boss_entrance_and_phase_announcements(content):
+    from lastbean.render.effects import INTRO_FRAMES, Effects
+    from lastbean.sim.events import BossPhase, BossSpawned
+
+    fx = Effects({"white": (255, 255, 255), "crit": (255, 212, 94)}, {})
+    fx.boss_phases = {b.id: [str(ph.get("pattern", "")) for ph in b.phases] for b in content.bosses}
+    fx.handle([BossSpawned(1, None, 7, "snail_queen")], {"snail_queen": "Schleimrun, die Schneckenkönigin"})
+    assert fx.intro == ["snail_queen", "Schleimrun, die Schneckenkönigin", INTRO_FRAMES]
+    for _ in range(INTRO_FRAMES):
+        fx.update()
+    assert fx.intro is None
+    fx.handle([BossPhase(2, None, 7, "snail_queen", 1)])
+    assert fx.banner[0] == "Phase 2!" and fx.subtitle[0] == fx.boss_phases["snail_queen"][1]
