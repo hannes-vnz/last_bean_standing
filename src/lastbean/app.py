@@ -151,11 +151,12 @@ class Game:
         self.first_name = not self.profile.get("nickname")
         self.settings_return = "menu"
         self.challenge_page = 0
+        self.mode = "normal"  # modes.json; "eternal_night" once its challenge is done
         self.recording = True  # stress-test runs are not recorded
         self.workshop_tab = "workshop"
         self.leaderboard = Leaderboard()
         self.online: tuple[str, int | None, int | None] = ("", None, None)
-        self.board: dict = {"period": "all", "entries": None, "loading": False, "fetched_at": 0.0}
+        self.board: dict = {"period": "all", "mode": "normal", "entries": None, "loading": False, "fetched_at": 0.0}
         self._tasks: dict[str, asyncio.Future] = {}
 
     def choose_character(self, cid: str) -> None:
@@ -171,9 +172,15 @@ class Game:
 
     def _world_config(self, cid: str) -> WorldConfig:
         """Config for runs with this bean, including the workshop bonuses."""
-        return WorldConfig.from_content(
-            self.content, cid, meta_mods=workshop.meta_mods(self.profile, self.content.shop)
-        )
+        meta = workshop.meta_mods(self.profile, self.content.shop)
+        return WorldConfig.from_content(self.content, cid, meta_mods=meta, mode=getattr(self, "mode", "normal"))
+
+    def toggle_mode(self) -> None:
+        """Normal <-> eternal night (once unlocked); counts from the next run."""
+        if "eternal_night" not in self.profile.get("unlocked", {}).get("modes", []):
+            return
+        self.mode = "eternal_night" if self.mode == "normal" else "normal"
+        self.apply_workshop()
 
     def skin_choices(self) -> list:
         """Unlocked skins of the chosen bean (None = its normal look first)."""
@@ -231,7 +238,7 @@ class Game:
         packs = tuple(self.profile.get("packs", []))
         if packs and self.config is self.normal:  # run packs count for this run only, then they are used up
             meta = workshop.meta_mods(self.profile, self.content.shop, packs)
-            config = WorldConfig.from_content(self.content, self.character, meta_mods=meta)
+            config = WorldConfig.from_content(self.content, self.character, meta_mods=meta, mode=self.mode)
             self.profile["packs"] = []
             self.save()
         self.recording = self.config is self.normal
@@ -285,7 +292,7 @@ class Game:
             self._tasks["board"] = asyncio.ensure_future(self._fetch_board())
 
     async def _fetch_board(self) -> None:
-        self.board["entries"] = await self.leaderboard.top(self.board["period"])
+        self.board["entries"] = await self.leaderboard.top(self.board["period"], mode=self.board["mode"])
         self.board["loading"] = False
         self.board["fetched_at"] = time.monotonic()
 
@@ -574,6 +581,12 @@ async def run(
             game.state, game.challenge_page = "challenges", 0
         elif action.startswith("page:"):
             game.challenge_page = max(0, game.challenge_page + int(action[5:]))
+        elif action == "mode":
+            game.toggle_mode()
+        elif action == "board_mode":
+            game.board["mode"] = "eternal_night" if game.board["mode"] == "normal" else "normal"
+            game.board["entries"] = None
+            game.refresh_board()
         elif action == "skin":
             game.next_skin()
         elif action == "workshop":
@@ -843,7 +856,11 @@ async def run(
                     current = next((s for s in choices if s and s.id == game.profile["skin"].get(game.character)), None)
                     who = next(c.name for c in game.characters if c.id == game.character)
                     label = f"{who}: {current.name if current else 'normal'}"
-                buttons = screens.draw_characters(renderer, game.characters, game.character, best, skins, label)
+                mode_label = ""
+                if "eternal_night" in game.profile["unlocked"]["modes"]:
+                    mode_label = "Ewige Nacht" if game.mode == "eternal_night" else "Modus: normal"
+                buttons = screens.draw_characters(renderer, game.characters, game.character, best, skins, label,
+                                                  mode_label)  # fmt: skip
             elif game.state == "prologue":
                 buttons = screens.draw_prologue(renderer)
             elif game.state == "settings":

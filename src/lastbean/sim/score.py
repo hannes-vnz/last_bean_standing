@@ -47,6 +47,7 @@ class RunResult:
     elites: int = 0  # elites killed (Funkelstein drops)
     chests: int = 0  # chests opened
     shrines: int = 0  # shrines activated
+    mode: str = "normal"  # modes.json id; the leaderboard ranks each mode on its own
     stats: dict = field(default_factory=dict)  # challenge statistics (World.run_stats)
     boss_ids: list = field(default_factory=list)  # bosses defeated, by id
     owned: list = field(default_factory=list)  # upgrade and item ids at the end
@@ -65,9 +66,10 @@ def compute_score(
     victory: bool = False,
     swarm_seconds: int = 0,
     swarm_mult: float = 1.0,
+    score_mult: float = 1.0,
 ) -> int:
     base = rules.per_second * seconds + rules.per_kill * kills + rules.per_level * level + rules.per_boss * bosses
     if victory:
         base += rules.victory_bonus
     base += rules.swarm_per_10s * (swarm_seconds // 10) * swarm_mult
-    return int(base * (1.0 + 0.8 * (difficulty - 1.0)))
+    return int(base * (1.0 + 0.8 * (difficulty - 1.0)) * score_mult)  # score_mult: mode (modes.json)

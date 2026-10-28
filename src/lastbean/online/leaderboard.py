@@ -36,7 +36,7 @@ def build_submission(result: dict, profile: dict, version: str = __version__) ->
         "client_token": profile["token"],
         "name": profile["nickname"],
         "character": result["character"],
-        "mode": "normal",
+        "mode": str(result.get("mode", "normal")),
         "score": int(result["score"]),
         "seconds": max(1, int(result["seconds"])),
         "wave": int(result["wave"]) + 1,  # the server counts waves from 1 (seconds // 30 + 1)
@@ -110,11 +110,13 @@ class Leaderboard:
                 report.error = str((data or {}).get("detail", status)) if isinstance(data, dict) else str(status)
         return report
 
-    async def top(self, period: str = "all", character: str | None = None, limit: int = 10) -> list[dict] | None:
+    async def top(
+        self, period: str = "all", character: str | None = None, limit: int = 10, mode: str = "normal"
+    ) -> list[dict] | None:
         """Leaderboard entries, or None when the server cannot be reached."""
         if not self.enabled:
             return None
-        url = f"{self.base_url}/v1/leaderboard?mode=normal&period={period}&limit={limit}"
+        url = f"{self.base_url}/v1/leaderboard?mode={mode}&period={period}&limit={limit}"
         if character:
             url += f"&character={character}"
         status, data = await self.request("GET", url)

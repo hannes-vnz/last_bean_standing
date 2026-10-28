@@ -272,6 +272,11 @@ class WorldConfig:
     # Workshop bonuses bought between runs (meta/workshop.py): stat -> total, plus the specials
     # rerolls, banishes, start_shield_hp and show_shrines_on_map.
     meta_mods: tuple[tuple[str, float], ...] = ()
+    # Mode (modes.json): "normal" or e.g. "eternal_night" with its enemy HP, XP and score factors.
+    mode: str = "normal"
+    mode_hp_mult: float = 1.0
+    mode_xp_mult: float = 1.0
+    mode_score_mult: float = 1.0
 
     @classmethod
     def from_content(
@@ -353,6 +358,11 @@ class WorldConfig:
                 ShrineRules.from_content(s, len(content.stages)) for s in content.shrines if s.id in SHRINE_KINDS
             ),
         )
+        mode = overrides.get("mode", "normal")
+        m = next((m for m in content.modes if m.id == mode), None)
+        if m is not None:
+            values.update(mode_hp_mult=float(m.hp_mult), mode_xp_mult=float(m.xp_mult),
+                          mode_score_mult=float(m.score_mult))  # fmt: skip
         values.update(overrides)
         return cls(**values)
 
@@ -480,6 +490,7 @@ class Snapshot:
     flood: bool = False
     flood_wave: int = 0
     shrine_radar: bool = False  # workshop: shrines on the minimap
+    mode: str = "normal"  # modes.json id (the renderer darkens the eternal night)
     reward_mult: float = 1.0
     gate: tuple[float, float] | None = None
     victory: bool = False
@@ -649,7 +660,7 @@ class World:
     def reward_mult(self) -> float:
         """XP (and seeds) per kill: shrine difficulty, and the Plagenflut pays more the longer you stay."""
         flood = 1.0 + self.config.flood.reward_growth * self.flood_s / 10.0
-        return (1.0 + 0.8 * (self.difficulty - 1.0)) * flood
+        return (1.0 + 0.8 * (self.difficulty - 1.0)) * flood * self.config.mode_xp_mult
 
     # ------------------------------------------------------------------ step
 
@@ -1156,7 +1167,7 @@ class World:
     def _spawn_enemy(self, m: MobStats, x: float, y: float, events: list[Event]) -> Enemy:
         sc, minutes, st = self.config.scaling, self.stage_time_s / 60.0, self.stage_cfg
         x, y = self._clamp(*self.obstacles.push_out(x, y, m.radius), m.radius)
-        hp = m.hp * sc.hp_mult(minutes) * st.hp_mult
+        hp = m.hp * sc.hp_mult(minutes) * st.hp_mult * self.config.mode_hp_mult
         dmg = m.damage * sc.damage_mult(minutes) * self.difficulty * st.damage_mult
         if self.flood_s > 0:
             hp *= self._flood_factor(self.config.flood.hp_growth)
@@ -1207,7 +1218,7 @@ class World:
         cursed = self.curse_pending > 0
         for _ in range(1 + self.curse_pending):  # Fluchstein: the boss comes more than once
             x, y = self._boss_spawn_point(b, p)
-            hp = b.hp * self.difficulty
+            hp = b.hp * self.difficulty * self.config.mode_hp_mult
             e = Enemy(self._next_eid, b.id, x, y, hp, hp, b.speed, b.damage * self.difficulty, b.radius, 0.0, "boss",
                       boss=b.id)  # fmt: skip
             e.cursed = cursed
@@ -2371,7 +2382,7 @@ class World:
             raise ValueError("WorldConfig.score is missing (use WorldConfig.from_content)")
         flood = self.flood_ticks // TICK_HZ
         score = compute_score(self.config.score, seconds, p.kills, p.level, self.bosses_killed, self.difficulty,
-                              self.victory, flood)  # fmt: skip
+                              self.victory, flood, score_mult=self.config.mode_score_mult)  # fmt: skip
         return RunResult(
             character=self.config.character.id,
             seed=self.seed,
@@ -2391,6 +2402,7 @@ class World:
             chests=self.chests_opened,
             shrines=p.shrines_activated,
             stats=dict(self.run_stats),
+            mode=self.config.mode,
             boss_ids=list(self.bosses_defeated),
             owned=sorted(set(p.upgrades) | set(p.items)),
         )
@@ -2491,6 +2503,7 @@ class World:
             stage_duration_s=self.stage_cfg.duration_s,
             flood=self.flood_s > 0,
             shrine_radar=self.shrine_radar,
+            mode=self.config.mode,
             flood_wave=self.flood_wave,
             reward_mult=self.reward_mult,
             gate=self.gate,

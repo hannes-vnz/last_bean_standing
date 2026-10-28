@@ -318,6 +318,13 @@ class Renderer:
 
         if effects:
             self._draw_effects(effects, cam_x, cam_y)
+        if snap.mode == "eternal_night":  # night: a deep blue veil over the bed, the HUD stays bright
+            veil = self._number_cache.get(("veil", self.w, self.h))
+            if veil is None:
+                veil = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+                veil.fill((20, 18, 60, 95))
+                self._number_cache[("veil", self.w, self.h)] = veil
+            c.blit(veil, (0, 0))
         self._draw_boss_arrow(snap, cam_x, cam_y)
         if snap.gate is not None:
             self._draw_edge_arrow(snap.gate[0], snap.gate[1], cam_x, cam_y, (126, 217, 87))
