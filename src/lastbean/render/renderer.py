@@ -20,6 +20,7 @@ from ..sim.world import Snapshot, WorldConfig
 from .effects import Effects
 from .icons import SIZE as ICON_SIZE
 from .icons import IconBank
+from .pixelfont import body_font, tiny_font
 from .sprites import ASSETS_DIR, SpriteBank
 
 CANVAS_W, CANVAS_H = 640, 360
@@ -119,10 +120,11 @@ class Renderer:
         self.set_arena(WorldConfig.from_content(content))
         # Outside the arena: ink darkened, so the ink border and outlines stay visible.
         self.void = tuple(v * 3 // 5 for v in self.ink)
-        self.font = pygame.font.Font(None, 16)
-        self.tiny_font = pygame.font.Font(None, 12)
-        self.big_font = pygame.font.Font(None, 32)
-        self.mid_font = pygame.font.Font(None, 22)
+        # Own bitmap pixel font (render/pixelfont.py): crisp at every integer scale.
+        self.font = body_font()
+        self.tiny_font = tiny_font()
+        self.big_font = body_font(2)
+        self.mid_font = body_font(bold=True)
 
     def draw(
         self, snap: Snapshot, focus_player: int = 0, debug: str | None = None, effects: Effects | None = None
@@ -755,7 +757,7 @@ class Renderer:
                 badge = pygame.Rect(tx, panel.y + 33, 40, 12)
                 surf.fill(ink, badge.inflate(2, 2))
                 surf.fill(self.crit_color, badge)
-                img = self.tiny_font.render("NEU!", True, ink)
+                img = self.tiny_font.render("NEU!", False, ink)
                 surf.blit(img, img.get_rect(center=badge.center))
             else:
                 self.text(f"Lv {level} > {level + 1}" + (f" / {max_level}" if not weapon else ""), (tx, panel.y + 32))
@@ -814,8 +816,8 @@ class Renderer:
         return u.name, u.rarity, u, u.max_level
 
     def _outlined(self, text: str, font, color) -> pygame.Surface:
-        inner = font.render(text, True, color)
-        outline = font.render(text, True, self.ink)
+        inner = font.render(text, False, color)
+        outline = font.render(text, False, self.ink)
         surf = pygame.Surface((inner.get_width() + 2, inner.get_height() + 2), pygame.SRCALPHA)
         for dx, dy in ((0, 1), (2, 1), (1, 0), (1, 2)):
             surf.blit(outline, (dx, dy))
@@ -901,7 +903,7 @@ class Renderer:
                     surf = pygame.Surface(card.size)
                     surf.fill(ink)
                     surf.fill(color, surf.get_rect().inflate(-6, -6))
-                    q = self.big_font.render("?", True, WHITE)
+                    q = self.big_font.render("?", False, WHITE)
                     surf.blit(q, q.get_rect(center=surf.get_rect().center))
                 w_now = max(2, round(card.w * f))
                 surf = pygame.transform.scale(surf, (w_now, card.h))
@@ -945,7 +947,7 @@ class Renderer:
         self.text(hint, (self.w // 2, y + 42), center=True)
 
     def dark_text(self, text: str, pos: tuple[int, int], center: bool = False) -> None:
-        img = self.font.render(text, True, self.ink)
+        img = self.font.render(text, False, self.ink)
         x, y = pos
         if center:
             x -= img.get_width() // 2
@@ -1081,13 +1083,13 @@ class Renderer:
     def text(self, text: str, pos: tuple[int, int], font=None, center: bool = False) -> None:
         """White text with a dark outline (readability rule, DESIGN.md section 16)."""
         font = font or self.font
-        outline = font.render(text, True, self.ink)
+        outline = font.render(text, False, self.ink)
         x, y = pos
         if center:
             x, y = x - outline.get_width() // 2, y - outline.get_height() // 2
         for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
             self.canvas.blit(outline, (x + dx, y + dy))
-        self.canvas.blit(font.render(text, True, WHITE), (x, y))
+        self.canvas.blit(font.render(text, False, WHITE), (x, y))
 
     def resize(self, w: int, h: int) -> None:
         """Change the logical canvas size (portrait or landscape); the world view grows with it."""
@@ -1176,6 +1178,7 @@ def _patch_shade(tx: int, ty: int, n: int) -> int:
     v = top + (bottom - top) * fy
     dither = ((tx & 1) * 2 + (ty & 1) * 3) % 4 / 4.0 - 0.375
     return max(0, min(n - 1, int(v * n + dither * 0.9)))
+
 
 
 def _load_tiles(biomes: set[str]) -> tuple[dict[str, list[pygame.Surface]], dict[str, pygame.Surface]]:
