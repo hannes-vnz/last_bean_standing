@@ -47,6 +47,17 @@ jobs:
           npx wrangler deploy 2>&1 | tee deploy.log
           url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
           echo "::notice title=Leaderboard URL::${url:-not found in wrangler output}"
+      - name: Report the workers.dev address
+        if: env.HAS_SECRETS == 'true'
+        run: |
+          sub=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print((d.get('result') or {}).get('subdomain') or '')")
+          if [ -n "$sub" ]; then
+            echo "::notice title=Leaderboard URL::https://last-bean-standing.$sub.workers.dev"
+          else
+            echo "::warning title=No workers.dev subdomain::Set one in the Cloudflare dashboard (Workers & Pages), then re-run"
+          fi
       - name: Set admin token
         if: env.HAS_SECRETS == 'true'
         env:

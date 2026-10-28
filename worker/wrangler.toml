@@ -2,6 +2,7 @@
 name = "last-bean-standing"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
+workers_dev = true
 
 [vars]
 ALLOWED_ORIGINS = "https://hannes-vnz.github.io"
