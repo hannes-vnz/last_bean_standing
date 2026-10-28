@@ -41,3 +41,21 @@ npx wrangler dev --local          # http://localhost:8787
 
 Datenschutz: gespeichert werden Spitzname, Ergebnis und der Hash des Tokens. Die IP wird nur für das Rate-Limit kurz im
 Arbeitsspeicher gehalten. Pflichten vor einem öffentlichen Start prüfen (keine Rechtsberatung).
+
+## Konten und Cloud-Speicherstand (Paket K)
+
+Spieler können sich freiwillig anmelden; danach liegt ihr Profil in D1 (`/v1/save`). Die Tabellen kommen mit
+`migrations/0002_accounts.sql` (der Deploy-Workflow wendet Migrationen automatisch an).
+
+- **Name + Passwort** funktioniert sofort (PBKDF2-SHA256, 100 000 Runden, nur der Hash wird gespeichert).
+- **Mit Google anmelden** (kostenlos): In der [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+  „OAuth-Client-ID“ vom Typ *Webanwendung* anlegen, als autorisierten JavaScript-Ursprung
+  `https://hannes-vnz.github.io` eintragen, die Client-ID in `wrangler.toml` unter `[vars]` als
+  `GOOGLE_CLIENT_ID = "…apps.googleusercontent.com"` setzen und pushen. Die Client-ID ist kein Geheimnis.
+- **Mit Apple anmelden**: braucht das Apple Developer Program (99 $/Jahr). Dort eine *Services ID* mit
+  „Sign in with Apple“ anlegen, die Domain `hannes-vnz.github.io` und als Return-URL die Spielseite eintragen,
+  dann `APPLE_CLIENT_ID = "<Services ID>"` in `[vars]` setzen.
+
+Die Knöpfe „Mit Google“ / „Mit Apple“ erscheinen im Spiel (Browser-Version), sobald die jeweilige ID gesetzt ist
+(`GET /v1/config`). Der Worker prüft das ID-Token gegen die öffentlichen Schlüssel des Anbieters (Signatur,
+Aussteller, Client-ID, Ablauf). `DELETE /v1/account` löscht Konto, Sitzungen und Spielstand.

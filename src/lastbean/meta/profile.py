@@ -67,6 +67,14 @@ def normalize(data: Any) -> dict[str, Any]:
     out["sparkles"] = _num(data.get("sparkles"))  # Funkelsteine
     ws = data.get("workshop") if isinstance(data.get("workshop"), dict) else {}
     out["workshop"] = {k: v for k, v in ws.items() if isinstance(k, str) and _num(v) > 0}
+    acc = data.get("account") if isinstance(data.get("account"), dict) else {}
+    if isinstance(acc.get("session"), str) and len(acc["session"]) >= 32:  # signed in (online/account.py)
+        out["account"] = {
+            "session": acc["session"],
+            "name": acc.get("name") if isinstance(acc.get("name"), str) else None,
+            "provider": acc.get("provider") if acc.get("provider") in ("password", "google", "apple") else "password",
+            "synced_at": acc.get("synced_at") if isinstance(acc.get("synced_at"), int) else 0,
+        }
     packs = data.get("packs")
     out["packs"] = [x for x in packs if isinstance(x, str)][:2] if isinstance(packs, list) else []  # next run's packs
     # Challenges (meta/challenges.py): lifetime sums, completed ids, rewards, chosen skin per bean

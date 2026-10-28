@@ -4,6 +4,9 @@
 //
 // Bindings (wrangler.toml): DB (D1). Vars: ALLOWED_ORIGINS, ALLOWED_VERSIONS, RATE_LIMIT_PER_MIN.
 // Secret: ADMIN_TOKEN (wrangler secret put ADMIN_TOKEN) for moderation.
+// Accounts (Paket K, optional): name + password (PBKDF2), or Google / Apple sign-in when the vars
+// GOOGLE_CLIENT_ID / APPLE_CLIENT_ID are set (their ID tokens are checked against the providers' public keys).
+// A signed-in player keeps the profile in the cloud: GET/PUT /v1/save.
 
 const CHARACTERS = new Set(["ranger", "pyro", "rogue", "guardian", "cryo", "summoner", "storm", "bomber", "venom", "sniper"]);
 const MODES = new Set(["normal", "eternal_night"]);
@@ -129,8 +132,8 @@ function corsHeaders(request, env) {
   const allow = allowed.includes("*") ? "*" : allowed.includes(origin) ? origin : allowed[0];
   return {
     "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Client-Token, X-Admin-Token",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Token, X-Admin-Token",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };
@@ -223,6 +226,151 @@ async function adminDelete(request, env, id) {
   return { deleted: res.meta.changes };
 }
 
+// ----------------------------------------------------------------------------- accounts and cloud saves
+
+const PBKDF2_ITERATIONS = 100_000; // the most Workers allow; server/app.py uses the same
+const SESSION_DAYS = 180;
+const MAX_SAVE_CHARS = 200_000;
+const OIDC = {
+  google: { jwks: "https://www.googleapis.com/oauth2/v3/certs", issuers: ["https://accounts.google.com", "accounts.google.com"], env: "GOOGLE_CLIENT_ID" },
+  apple: { jwks: "https://appleid.apple.com/auth/keys", issuers: ["https://appleid.apple.com"], env: "APPLE_CLIENT_ID" },
+};
+
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+const unhex = (s) => new Uint8Array(s.match(/../g).map((h) => parseInt(h, 16)));
+
+export async function hashPassword(password, salt) {
+  salt = salt || hex(crypto.getRandomValues(new Uint8Array(16)));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: unhex(salt), iterations: PBKDF2_ITERATIONS }, key, 256);
+  return `pbkdf2$${PBKDF2_ITERATIONS}$${salt}$${hex(bits)}`;
+}
+
+async function checkPassword(password, stored) {
+  const parts = (stored || "").split("$");
+  if (parts.length !== 4) return false;
+  return sameText(await hashPassword(password, parts[2]), stored);
+}
+
+async function readJson(request) {
+  try {
+    return await request.json();
+  } catch {
+    throw new HttpError(422, "ungueltiges JSON");
+  }
+}
+
+async function newSession(env, accountId) {
+  const token = hex(crypto.getRandomValues(new Uint8Array(32)));
+  const expires = Math.floor(Date.now() / 1000) + SESSION_DAYS * 86400;
+  await env.DB.prepare("INSERT INTO sessions (token_hash, account_id, expires_at) VALUES (?,?,?)").bind(await sha256(token), accountId, expires).run();
+  return token;
+}
+
+async function accountOf(request, env) {
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/, "").trim();
+  const row = await env.DB.prepare("SELECT account_id, expires_at FROM sessions WHERE token_hash=?").bind(await sha256(token)).first();
+  if (!row || row.expires_at < Date.now() / 1000) throw new HttpError(401, "nicht angemeldet");
+  return row.account_id;
+}
+
+async function credentials(request, env) {
+  const ip = request.headers.get("CF-Connecting-IP") || "?";
+  if (rateLimited("auth:" + ip, parseInt(env.RATE_LIMIT_PER_MIN || "10", 10))) throw new HttpError(429, "zu viele Anfragen");
+  const b = await readJson(request);
+  const name = typeof b.name === "string" ? b.name.trim() : "";
+  if (!NAME_RE.test(name)) throw new HttpError(422, "Name: 2 bis 16 Zeichen (Buchstaben, Ziffern, Leerzeichen, _ - .)");
+  if (typeof b.password !== "string" || b.password.length < 6 || b.password.length > 128) throw new HttpError(422, "Passwort: 6 bis 128 Zeichen");
+  return { name, password: b.password };
+}
+
+async function register(request, env) {
+  const { name, password } = await credentials(request, env);
+  if (await env.DB.prepare("SELECT 1 AS x FROM accounts WHERE name=?").bind(name).first()) throw new HttpError(409, "Name ist schon vergeben");
+  const res = await env.DB.prepare("INSERT INTO accounts (name, password, provider, subject, created_at) VALUES (?,?,?,?,?)")
+    .bind(name, await hashPassword(password), "password", name.toLowerCase(), Math.floor(Date.now() / 1000)).run();
+  return { name, session: await newSession(env, res.meta.last_row_id) };
+}
+
+async function login(request, env) {
+  const { name, password } = await credentials(request, env);
+  const row = await env.DB.prepare("SELECT id, name, password FROM accounts WHERE name=? AND provider='password'").bind(name).first();
+  if (!row || !(await checkPassword(password, row.password))) throw new HttpError(401, "Name oder Passwort stimmt nicht");
+  return { name: row.name, session: await newSession(env, row.id) };
+}
+
+function b64url(s) {
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(s + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+}
+
+// Checks an OpenID Connect ID token (RS256) from Google or Apple: signature, issuer, audience, expiry.
+async function verifyIdToken(provider, idToken, clientId) {
+  const cfg = OIDC[provider];
+  const [h, p, sig] = (idToken || "").split(".");
+  if (!h || !p || !sig) throw new HttpError(401, "Anmeldung ungültig");
+  const header = JSON.parse(new TextDecoder().decode(b64url(h)));
+  const claims = JSON.parse(new TextDecoder().decode(b64url(p)));
+  const { keys } = await (await fetch(cfg.jwks)).json();
+  const jwk = keys.find((k) => k.kid === header.kid);
+  if (!jwk || header.alg !== "RS256") throw new HttpError(401, "Anmeldung ungültig");
+  const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+  const ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64url(sig), new TextEncoder().encode(`${h}.${p}`));
+  const now = Date.now() / 1000;
+  if (!ok || !cfg.issuers.includes(claims.iss) || claims.aud !== clientId || claims.exp < now || !claims.sub)
+    throw new HttpError(401, "Anmeldung ungültig");
+  return claims.sub;
+}
+
+async function oauth(request, env) {
+  const b = await readJson(request);
+  const cfg = OIDC[b.provider];
+  const clientId = cfg ? env[cfg.env] || "" : "";
+  if (!clientId) throw new HttpError(501, "Anmeldung mit Google/Apple ist hier nicht eingerichtet");
+  const subject = await verifyIdToken(b.provider, b.id_token, clientId);
+  let row = await env.DB.prepare("SELECT id, name FROM accounts WHERE provider=? AND subject=?").bind(b.provider, subject).first();
+  if (!row) {
+    const res = await env.DB.prepare("INSERT INTO accounts (name, password, provider, subject, created_at) VALUES (NULL, NULL, ?, ?, ?)")
+      .bind(b.provider, subject, Math.floor(Date.now() / 1000)).run();
+    row = { id: res.meta.last_row_id, name: null };
+  }
+  return { name: row.name, session: await newSession(env, row.id) };
+}
+
+async function logout(request, env) {
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/, "").trim();
+  await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await sha256(token)).run();
+  return { ok: true };
+}
+
+async function deleteAccount(request, env) {
+  const id = await accountOf(request, env);
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM saves WHERE account_id=?").bind(id),
+    env.DB.prepare("DELETE FROM sessions WHERE account_id=?").bind(id),
+    env.DB.prepare("DELETE FROM accounts WHERE id=?").bind(id),
+  ]);
+  return { deleted: true };
+}
+
+async function getSave(request, env) {
+  const id = await accountOf(request, env);
+  const row = await env.DB.prepare("SELECT data, updated_at FROM saves WHERE account_id=?").bind(id).first();
+  return row ? { profile: JSON.parse(row.data), updated_at: row.updated_at } : { profile: null, updated_at: 0 };
+}
+
+async function putSave(request, env) {
+  const id = await accountOf(request, env);
+  const b = await readJson(request);
+  if (!b || typeof b.profile !== "object" || b.profile === null || Array.isArray(b.profile)) throw new HttpError(422, "profile: JSON-Objekt erwartet");
+  const data = JSON.stringify(b.profile);
+  if (data.length > MAX_SAVE_CHARS) throw new HttpError(413, "Spielstand zu groß");
+  const now = Math.floor(Date.now() / 1000);
+  await env.DB.prepare("INSERT INTO saves (account_id, data, updated_at) VALUES (?,?,?) ON CONFLICT(account_id) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at")
+    .bind(id, data, now).run();
+  return { updated_at: now };
+}
+
 export default {
   async fetch(request, env) {
     const cors = corsHeaders(request, env);
@@ -233,6 +381,15 @@ export default {
       if (url.pathname === "/v1/scores" && request.method === "POST") return json(await submit(request, env), 200, cors);
       if (url.pathname === "/v1/leaderboard" && request.method === "GET") return json(await leaderboard(url, env), 200, cors);
       if (url.pathname === "/v1/me" && request.method === "DELETE") return json(await deleteMine(request, env), 200, cors);
+      if (url.pathname === "/v1/config" && request.method === "GET")
+        return json({ google_client_id: env.GOOGLE_CLIENT_ID || "", apple_client_id: env.APPLE_CLIENT_ID || "" }, 200, cors);
+      if (url.pathname === "/v1/account/register" && request.method === "POST") return json(await register(request, env), 200, cors);
+      if (url.pathname === "/v1/account/login" && request.method === "POST") return json(await login(request, env), 200, cors);
+      if (url.pathname === "/v1/account/oauth" && request.method === "POST") return json(await oauth(request, env), 200, cors);
+      if (url.pathname === "/v1/account/logout" && request.method === "POST") return json(await logout(request, env), 200, cors);
+      if (url.pathname === "/v1/account" && request.method === "DELETE") return json(await deleteAccount(request, env), 200, cors);
+      if (url.pathname === "/v1/save" && request.method === "GET") return json(await getSave(request, env), 200, cors);
+      if (url.pathname === "/v1/save" && request.method === "PUT") return json(await putSave(request, env), 200, cors);
       const m = url.pathname.match(/^\/v1\/scores\/(\d+)$/);
       if (m && request.method === "DELETE") return json(await adminDelete(request, env, Number(m[1])), 200, cors);
       return json({ detail: "Not Found" }, 404, cors);

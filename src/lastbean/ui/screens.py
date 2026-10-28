@@ -121,6 +121,12 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
         buttons += _button_row(r, panel.bottom + 54, items[1:], width=118)
     else:
         buttons = _button_column(r, panel.bottom + 16, items)
+    signed_in = bool(profile.get("account", {}).get("session"))
+    acc = pygame.Rect(r.w - 96, 6, 90, 22)  # account in the corner: cloud save
+    r.canvas.fill(r.ink, acc.inflate(4, 4))
+    r.canvas.fill((232, 246, 214) if signed_in else (255, 250, 240), acc)
+    r.dark_text("Konto: an" if signed_in else "Anmelden", (acc.centerx, acc.y + 6), center=True)
+    buttons.append(Button(acc, "account"))
     if not r.touch and r.w >= 500:  # keyboard hints only where a keyboard is likely and there is room
         r.text("Enter spielen · L Bestenliste · N Name · Leertaste Fähigkeit", (cx, r.h - 18), center=True)
     return buttons
@@ -330,6 +336,59 @@ def draw_challenges(r: Renderer, content, profile: dict[str, Any], page: int, pl
     return buttons
 
 
+def draw_account(r: Renderer, profile: dict[str, Any], form: dict, status: str, config: dict, online: bool,
+                 web: bool) -> list[Button]:  # fmt: skip
+    """Account: sign in (name + password, Google, Apple) so the progress lives in the cloud."""
+    _backdrop(r)
+    cx = r.w // 2
+    acc = profile.get("account") or {}
+    top = _top(r, 280)
+    r.text("Konto", (cx, top + 14), r.big_font, center=True)
+    w = min(320, r.w - 20)
+    panel = pygame.Rect(cx - w // 2, top + 36, w, 64)
+    _panel(r, panel)
+    buttons: list[Button] = []
+    if not online:
+        r.dark_text("Ohne Server: alles bleibt auf diesem Gerät.", (cx, panel.y + 24), center=True)
+        return buttons + _button_row(r, panel.bottom + 16, [("Zurück", "menu")], width=140)
+    if acc.get("session"):
+        who = acc.get("name") or {"google": "Google-Konto", "apple": "Apple-ID"}.get(acc.get("provider"), "Konto")
+        r.dark_text(f"Angemeldet: {who}", (cx, panel.y + 10), center=True)
+        when = acc.get("synced_at") or 0
+        r.dark_text("In der Cloud gesichert" if when else "Noch nicht gesichert", (cx, panel.y + 26), center=True)
+        r.dark_text("Dein Fortschritt ist auf jedem Gerät da.", (cx, panel.y + 42), center=True)
+        items = [("Jetzt sichern", "acc_sync"), ("Abmelden", "acc_logout"), ("Zurück", "menu")]
+        y = panel.bottom + 16
+    else:
+        r.dark_text("Melde dich an, dann ist dein Fortschritt", (cx, panel.y + 10), center=True)
+        r.dark_text("(Bohnen, Challenges, Werkstatt) überall da.", (cx, panel.y + 26), center=True)
+        r.dark_text("Ohne Konto bleibt alles auf diesem Gerät.", (cx, panel.y + 42), center=True)
+        fields = [
+            ("Name", "acc_name", form.get("acc_name", "")),
+            ("Passwort", "acc_pw", "*" * len(form.get("acc_pw", ""))),
+        ]
+        y = panel.bottom + 12
+        for label, key, value in fields:
+            box = pygame.Rect(cx - w // 2, y, w, 24)
+            r.canvas.fill(r.ink, box.inflate(4, 4))
+            r.canvas.fill((255, 250, 240), box)
+            r.dark_text(f"{label}: {value or '(antippen)'}", (box.x + 8, box.y + 7))
+            buttons.append(Button(box, f"acc_field:{key}"))
+            y += 30
+        items = [("Anmelden", "acc_login"), ("Konto erstellen", "acc_register")]
+        if web and config.get("google_client_id"):
+            items.append(("Mit Google", "acc_google"))
+        if web and config.get("apple_client_id"):
+            items.append(("Mit Apple", "acc_apple"))
+        items.append(("Zurück", "menu"))
+        y += 4
+    if status:
+        r.text(_fit(r, status, r.w - 20), (cx, y + 2), center=True)
+        y += 16
+    buttons += _button_row(r, y, items, width=120)
+    return buttons
+
+
 def draw_settings(r: Renderer, settings: dict[str, Any]) -> list[Button]:
     """Volume, damage numbers, screen shake; first-run tips again."""
     _backdrop(r)
@@ -374,7 +433,14 @@ KEY_ROWS = ("1234567890", "QWERTZUIOPÜ", "ASDFGHJKLÖÄ", "YXCVBNMß")
 
 
 def draw_name_entry(
-    r: Renderer, current: str, valid: bool, first_time: bool, keyboard: bool = False, upper: bool = True
+    r: Renderer,
+    current: str,
+    valid: bool,
+    first_time: bool,
+    keyboard: bool = False,
+    upper: bool = True,
+    title: str | None = None,
+    mask: bool = False,
 ) -> list[Button]:
     """Nickname entry. Touch devices get an on-screen keyboard (the browser's text dialog felt clumsy on
     phones and tablets); with a real keyboard you just type."""
@@ -382,14 +448,18 @@ def draw_name_entry(
     cx = r.w // 2
     kb_h = 5 * 30 + 10 if keyboard else 0
     top = _top(r, 150 + kb_h) if keyboard else _top(r, 230)
-    r.text("Wie heißt deine Bohne?" if first_time else "Neuer Spitzname", (cx, top + 16), r.big_font, center=True)
+    title = title or ("Wie heißt deine Bohne?" if first_time else "Neuer Spitzname")
+    r.text(title, (cx, top + 16), r.big_font, center=True)
+    if mask:  # password: dots instead of letters
+        current = "*" * len(current)
     field = pygame.Rect(cx - min(120, r.w // 2 - 10), top + 44, min(240, r.w - 20), 30)
     _panel(r, field)
     caret = "_" if (pygame.time.get_ticks() // 400) % 2 else " "
     r.dark_text(current + caret, (field.x + 10, field.y + 9))
     if not keyboard:
         r.text("2 bis 16 Zeichen: Buchstaben, Ziffern, _ - .", (cx, field.bottom + 16), center=True)
-        r.text("Der Name erscheint in der Bestenliste.", (cx, field.bottom + 32), center=True)
+        if not mask:
+            r.text("Der Name erscheint in der Bestenliste.", (cx, field.bottom + 32), center=True)
         items = [("Übernehmen" if valid else "Name eintippen", "ok" if valid else "type")]
         if not first_time:
             items.append(("Abbrechen", "cancel"))

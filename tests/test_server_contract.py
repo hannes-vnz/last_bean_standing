@@ -168,3 +168,63 @@ def test_moderation_needs_token(srv):
     assert call("DELETE", f"{srv}/v1/scores/{sid}", None, {"X-Admin-Token": "falsch"})[0] == 403
     assert call("DELETE", f"{srv}/v1/scores/{sid}", None, {"X-Admin-Token": "geheim"})[0] == 200
     assert board(srv) == []
+
+
+# ----------------------------------------------------------------------------- accounts and cloud saves (Paket K)
+
+
+def test_account_register_login_and_cloud_save(server):
+    name = "Bohne" + uuid.uuid4().hex[:6]
+    status, acc = call("POST", server + "/v1/account/register", {"name": name, "password": "geheim123"})
+    assert status == 200 and acc["name"] == name and len(acc["session"]) >= 32
+    assert call("POST", server + "/v1/account/register", {"name": name.upper(), "password": "x" * 8})[0] == 409
+    assert call("POST", server + "/v1/account/register", {"name": "x", "password": "geheim123"})[0] == 422
+    assert call("POST", server + "/v1/account/login", {"name": name, "password": "falsch!!"})[0] == 401
+    status, again = call("POST", server + "/v1/account/login", {"name": name, "password": "geheim123"})
+    assert status == 200 and again["session"] != acc["session"]
+    auth = {"Authorization": "Bearer " + again["session"]}
+    assert call("GET", server + "/v1/save", None, auth)[1] == {"profile": None, "updated_at": 0}
+    profile = {"nickname": name, "sparkles": 42, "unlocked": {"characters": ["pyro"]}}
+    status, put = call("PUT", server + "/v1/save", {"profile": profile}, auth)
+    assert status == 200 and put["updated_at"] > 0
+    status, got = call("GET", server + "/v1/save", None, {"Authorization": "Bearer " + acc["session"]})
+    assert status == 200 and got["profile"] == profile  # every session of the account sees the same save
+    assert call("GET", server + "/v1/save", None, {"Authorization": "Bearer nope"})[0] == 401
+    assert call("PUT", server + "/v1/save", {"profile": "x"}, auth)[0] == 422
+    assert call("POST", server + "/v1/account/logout", None, auth)[0] == 200
+    assert call("GET", server + "/v1/save", None, auth)[0] == 401
+    auth = {"Authorization": "Bearer " + acc["session"]}
+    assert call("DELETE", server + "/v1/account", None, auth)[1] == {"deleted": True}
+    assert call("POST", server + "/v1/account/login", {"name": name, "password": "geheim123"})[0] == 401
+
+
+def test_google_and_apple_sign_in_wait_for_their_client_ids(server):
+    status, cfg = call("GET", server + "/v1/config")
+    assert status == 200 and cfg == {"google_client_id": "", "apple_client_id": ""}
+    assert call("POST", server + "/v1/account/oauth", {"provider": "google", "id_token": "a.b.c"})[0] == 501
+
+
+def test_two_devices_share_progress_through_the_cloud(server):
+    from lastbean.meta.profile import new_profile, normalize
+    from lastbean.online.account import Account, merge
+
+    acc = Account(server)
+    name = "Zwei" + uuid.uuid4().hex[:6]
+    phone = new_profile()
+    phone["totals"]["runs"], phone["sparkles"] = 5, 120
+    phone["unlocked"]["characters"], phone["challenges_done"] = ["pyro"], ["unlock_pyro"]
+    data, err = asyncio.run(acc.sign_in("register", {"name": name, "password": "bohnen!"}))
+    assert data and not err
+    assert asyncio.run(acc.store(data["session"], phone)) == 200
+    laptop = new_profile()
+    laptop["totals"]["runs"], laptop["challenges_done"] = 1, ["unlock_storm"]
+    laptop["unlocked"]["characters"] = ["storm"]
+    data2, _ = asyncio.run(acc.sign_in("login", {"name": name, "password": "bohnen!"}))
+    status, cloud = asyncio.run(acc.load(data2["session"]))
+    assert status == 200 and cloud["sparkles"] == 120 and "account" not in cloud
+    both = normalize(merge(laptop, cloud))
+    assert both["totals"]["runs"] == 5 and both["sparkles"] == 120  # the profile with more runs leads
+    assert set(both["unlocked"]["characters"]) == {"pyro", "storm"}
+    assert set(both["challenges_done"]) == {"unlock_pyro", "unlock_storm"}
+    _, err = asyncio.run(acc.sign_in("login", {"name": name, "password": "falsch!!"}))
+    assert err == "Name oder Passwort stimmt nicht"

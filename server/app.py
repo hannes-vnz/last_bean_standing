@@ -1,19 +1,23 @@
 """Referenz-Server fuer die Online-Bestenliste von Last Bean Standing.
 
-Bewusst klein: FastAPI plus SQLite, keine Konten. Spieler haben einen Spitznamen und ein zufaelliges
+Bewusst klein: FastAPI plus SQLite. Konten sind freiwillig (Paket K): Name plus Passwort (PBKDF2) oder
+Google/Apple (nur im Worker geprüft, hier 501), danach liegt der Spielstand in der Cloud (`/v1/save`). Spieler haben einen Spitznamen und ein zufaelliges
 Token, das nur lokal liegt (der Server speichert nur dessen Hash). Mit dem Token kann man alle eigenen
 Eintraege loeschen. Ergebnisse werden auf Plausibilitaet geprueft (Stufe 1). Eine Pruefung per Replay
 (Stufe 2, deterministische Simulation erneut laufen lassen) ist vorbereitet: das Feld `replay` wird gespeichert.
 
 Start:  uvicorn app:app --host 0.0.0.0 --port 8000
 Umgebungsvariablen: LEADERBOARD_DB (Pfad), ADMIN_TOKEN (Moderation), ALLOWED_ORIGINS (Komma-Liste, Standard "*"),
+                    GOOGLE_CLIENT_ID / APPLE_CLIENT_ID (nur gemeldet, Prüfung im Worker),
                     ALLOWED_VERSIONS (Komma-Liste, leer = alle), RATE_LIMIT_PER_MIN (Standard 10)
 """
 from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
+import secrets
 import re
 import sqlite3
 import time
@@ -21,7 +25,7 @@ from collections import defaultdict, deque
 from contextlib import asynccontextmanager, closing
 from typing import Literal, Optional
 
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
@@ -70,6 +74,25 @@ def init_db() -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_scores_rank ON scores (mode, character, score DESC, seconds ASC);
         CREATE INDEX IF NOT EXISTS idx_scores_owner ON scores (owner_hash);
+        CREATE TABLE IF NOT EXISTS accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE COLLATE NOCASE,
+            password TEXT,
+            provider TEXT NOT NULL DEFAULT 'password',
+            subject TEXT,
+            created_at INTEGER NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_subject ON accounts (provider, subject);
+        CREATE TABLE IF NOT EXISTS sessions (
+            token_hash TEXT PRIMARY KEY,
+            account_id INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS saves (
+            account_id INTEGER PRIMARY KEY,
+            data TEXT NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
         """)
 
 
@@ -159,7 +182,7 @@ async def lifespan(_app):
 
 app = FastAPI(title="Last Bean Standing Bestenliste", version="0.1.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=os.environ.get("ALLOWED_ORIGINS", "*").split(","),
-                   allow_methods=["GET", "POST", "DELETE"], allow_headers=["*"])
+                   allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["*"])
 
 
 def _rank(con: sqlite3.Connection, score: int, seconds: int, mode: str, character: Optional[str]) -> int:
@@ -230,6 +253,142 @@ def delete_me(x_client_token: str = Header(...)) -> dict:
         n = con.execute("DELETE FROM scores WHERE owner_hash=?", (owner_hash(x_client_token),)).rowcount
         con.commit()
     return {"deleted": n}
+
+
+# ----------------------------------------------------------------------------- accounts and cloud saves
+
+PBKDF2_ITERATIONS = 100_000  # the most Cloudflare Workers allow; the worker uses the same
+SESSION_DAYS = 180
+MAX_SAVE_CHARS = 200_000
+
+
+def hash_password(password: str, salt: str | None = None) -> str:
+    salt = salt or secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), PBKDF2_ITERATIONS)
+    return f"pbkdf2${PBKDF2_ITERATIONS}${salt}${digest.hex()}"
+
+
+def check_password(password: str, stored: str) -> bool:
+    try:
+        _, _, salt, _ = stored.split("$")
+    except ValueError:
+        return False
+    return hmac.compare_digest(hash_password(password, salt), stored)
+
+
+def _new_session(con: sqlite3.Connection, account_id: int) -> str:
+    token = secrets.token_hex(32)
+    con.execute("INSERT INTO sessions (token_hash, account_id, expires_at) VALUES (?,?,?)",
+                (owner_hash(token), account_id, int(time.time()) + SESSION_DAYS * 86400))
+    con.commit()
+    return token
+
+
+def _account(con: sqlite3.Connection, authorization: Optional[str]) -> int:
+    token = (authorization or "").removeprefix("Bearer ").strip()
+    row = con.execute("SELECT account_id, expires_at FROM sessions WHERE token_hash=?", (owner_hash(token),)).fetchone()
+    if row is None or row["expires_at"] < time.time():
+        raise HTTPException(401, "nicht angemeldet")
+    return row["account_id"]
+
+
+def _credentials(body: dict, request: Request) -> tuple[str, str]:
+    ip = request.client.host if request.client else "?"
+    if rate_limited("auth:" + ip, int(os.environ.get("RATE_LIMIT_PER_MIN", "10"))):
+        raise HTTPException(429, "zu viele Anfragen")
+    name = str(body.get("name", "")).strip()
+    password = body.get("password", "")
+    if not NAME_RE.match(name):
+        raise HTTPException(422, "Name: 2 bis 16 Zeichen (Buchstaben, Ziffern, Leerzeichen, _ - .)")
+    if not isinstance(password, str) or not 6 <= len(password) <= 128:
+        raise HTTPException(422, "Passwort: 6 bis 128 Zeichen")
+    return name, password
+
+
+@app.get("/v1/config")
+def config() -> dict:
+    """What the game may offer: sign-in with Google or Apple only when their client ids are set."""
+    return {"google_client_id": os.environ.get("GOOGLE_CLIENT_ID", ""), "apple_client_id": os.environ.get("APPLE_CLIENT_ID", "")}
+
+
+@app.post("/v1/account/register")
+def register(request: Request, body: dict = Body(...)) -> dict:
+    name, password = _credentials(body, request)
+    init_db()
+    with closing(connect()) as con:
+        if con.execute("SELECT 1 FROM accounts WHERE name=?", (name,)).fetchone():
+            raise HTTPException(409, "Name ist schon vergeben")
+        cur = con.execute("INSERT INTO accounts (name, password, provider, subject, created_at) VALUES (?,?,?,?,?)",
+                          (name, hash_password(password), "password", name.lower(), int(time.time())))
+        return {"name": name, "session": _new_session(con, cur.lastrowid)}
+
+
+@app.post("/v1/account/login")
+def login(request: Request, body: dict = Body(...)) -> dict:
+    name, password = _credentials(body, request)
+    init_db()
+    with closing(connect()) as con:
+        row = con.execute("SELECT id, name, password FROM accounts WHERE name=? AND provider='password'", (name,)).fetchone()
+        if row is None or not check_password(password, row["password"]):
+            raise HTTPException(401, "Name oder Passwort stimmt nicht")
+        return {"name": row["name"], "session": _new_session(con, row["id"])}
+
+
+@app.post("/v1/account/oauth")
+def oauth(body: dict = Body(...)) -> dict:
+    """Google/Apple sign-in: the token check lives in the worker (WebCrypto); the reference only says so."""
+    raise HTTPException(501, "Anmeldung mit Google/Apple ist hier nicht eingerichtet")
+
+
+@app.post("/v1/account/logout")
+def logout(authorization: Optional[str] = Header(None)) -> dict:
+    init_db()
+    token = (authorization or "").removeprefix("Bearer ").strip()
+    with closing(connect()) as con:
+        con.execute("DELETE FROM sessions WHERE token_hash=?", (owner_hash(token),))
+        con.commit()
+    return {"ok": True}
+
+
+@app.delete("/v1/account")
+def delete_account(authorization: Optional[str] = Header(None)) -> dict:
+    init_db()
+    with closing(connect()) as con:
+        account = _account(con, authorization)
+        for table, col in (("saves", "account_id"), ("sessions", "account_id"), ("accounts", "id")):
+            con.execute(f"DELETE FROM {table} WHERE {col}=?", (account,))
+        con.commit()
+    return {"deleted": True}
+
+
+@app.get("/v1/save")
+def get_save(authorization: Optional[str] = Header(None)) -> dict:
+    init_db()
+    with closing(connect()) as con:
+        account = _account(con, authorization)
+        row = con.execute("SELECT data, updated_at FROM saves WHERE account_id=?", (account,)).fetchone()
+    if row is None:
+        return {"profile": None, "updated_at": 0}
+    return {"profile": json.loads(row["data"]), "updated_at": row["updated_at"]}
+
+
+@app.put("/v1/save")
+def put_save(authorization: Optional[str] = Header(None), body: dict = Body(...)) -> dict:
+    profile = body.get("profile")
+    if not isinstance(profile, dict):
+        raise HTTPException(422, "profile: JSON-Objekt erwartet")
+    data = json.dumps(profile, ensure_ascii=False, separators=(",", ":"))
+    if len(data) > MAX_SAVE_CHARS:
+        raise HTTPException(413, "Spielstand zu groß")
+    init_db()
+    now = int(time.time())
+    with closing(connect()) as con:
+        account = _account(con, authorization)
+        con.execute("INSERT INTO saves (account_id, data, updated_at) VALUES (?,?,?) "
+                    "ON CONFLICT(account_id) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at",
+                    (account, data, now))
+        con.commit()
+    return {"updated_at": now}
 
 
 @app.delete("/v1/scores/{score_id}")
