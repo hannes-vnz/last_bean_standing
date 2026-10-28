@@ -244,6 +244,8 @@ class Stats:
     revives: int = 0
     kill_haste_max_pct: float = 0.0
     shrapnel_chance_pct: float = 0.0
+    minions_add: int = 0  # "Gefolgschaft": extra ghosts (will-o'-wisps for other beans)
+    orbit_blades: int = 0  # "Kreisende Klingen"
     # Character passives (Paket H)
     burning_damage_mult: float = 1.0  # Mira "Hitzewelle"
     nearby_damage_pct: float = 0.0  # Kaz "Nervenkitzel": per enemy close by ...
@@ -307,6 +309,8 @@ class Player:
     minion_t: float = 0.0  # Thorn's ghosts: attack timer
     minion_turn: int = 0  # which ghost attacks next
     mine_t: float = 0.0  # Orm's "Minenleger"
+    gravity_t: float = 0.0  # "Schwerkraftbrunnen" timer
+    blades: object = None  # WeaponState of "Kreisende Klingen", made on first use
     storm_t: float = 0.0
     temp_shield: float = 0.0
     temp_shield_t: float = 0.0

@@ -57,3 +57,23 @@ def test_aya_shoots_only_standing_unless_focused(content):
     assert standing
     focused = [e for e in _run(w, 3, move=(1, 0), ability_at=0) if isinstance(e, ShotFired)]
     assert focused
+
+
+def test_unlocked_upgrades_join_the_pool_and_work(content):
+    plain = WorldConfig.from_content(content)
+    ids = ("minion_horde", "orbiting_blades", "gravity_well", "time_warp")
+    assert not {u.id for u in plain.upgrades} & set(ids)
+    cfg = WorldConfig.from_content(content, unlocked_upgrades=ids)
+    assert set(ids) <= {u.id for u in cfg.upgrades}
+    cfg = dataclasses.replace(cfg, character=dataclasses.replace(cfg.character, hp=10**9))
+    w = World(3, cfg)
+    p = w.players[0]
+    for uid in ids:
+        p.upgrades[uid] = 2
+    w._recompute(p)
+    assert w.minion_count(p) == 2 and p.stats.orbit_blades == 2  # wisps for Fenn, two blades
+    events = _run(w, 15)
+    assert any(isinstance(e, WeaponPulse) and e.weapon == "gravity_well" for e in events)
+    assert any(isinstance(e, Zap) for e in events)
+    assert sum(1 for kind, _, _ in w.snapshot().orbiters if kind == "blades") == 2
+    assert w._special("time_warp", "slow_pct", 2) == 20 and w._special("gravity_well", "radius_px", 1) == 200

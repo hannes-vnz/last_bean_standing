@@ -43,6 +43,13 @@ TOXIC_CLOUD_SHARE = 0.35  # (text)
 TOXIC_CLOUD_SLOW = 20.0  # (text)
 FOCUS_S = 4.0  # (text) Aya: "4 s lang: schießt auch im Lauf, doppelte Schussrate"
 FOCUS_RATE = 2.0  # (text)
+WISP_DAMAGE_SHARE = 0.5  # (text) "Gefolgschaft": "ohne Beschwörer: Irrlicht mit 50 % Schaden"
+BLADE_DAMAGE = 6.0  # (text) "Kreisende Klingen": "(6 Schaden)"
+BLADE_RADIUS = 56.0  # the blades circle at this distance
+BLADE_TURNS_PER_S = 0.8
+BLADE_HIT_RADIUS = 10.0
+BLADE_COOLDOWN_S = 0.5  # one enemy is cut at most this often by a blade
+GRAVITY_PULL = 0.6  # "Schwerkraftbrunnen": share of the way to the centre the pull moves enemies (bosses half)
 COURAGE_SPAWN_MULT = 1.5  # (text) Mut-Schrein: "währenddessen 1,5x Spawnrate in der Nähe" (here: the whole bed)
 COURAGE_MIN_RARITY = "rare"  # (text) Mut-Schrein: "Gratis-Upgradewahl mit mindestens Seltenheit selten"
 

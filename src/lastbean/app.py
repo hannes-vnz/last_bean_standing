@@ -181,7 +181,9 @@ class Game:
     def _world_config(self, cid: str) -> WorldConfig:
         """Config for runs with this bean, including the workshop bonuses."""
         meta = workshop.meta_mods(self.profile, self.content.shop)
-        return WorldConfig.from_content(self.content, cid, meta_mods=meta, mode=getattr(self, "mode", "normal"))
+        unlocked = tuple(self.profile.get("unlocked", {}).get("upgrades", []))  # challenge rewards
+        return WorldConfig.from_content(self.content, cid, meta_mods=meta, mode=getattr(self, "mode", "normal"),
+                                        unlocked_upgrades=unlocked)  # fmt: skip
 
     def toggle_mode(self) -> None:
         """Normal <-> eternal night (once unlocked); counts from the next run."""
@@ -246,7 +248,7 @@ class Game:
         packs = tuple(self.profile.get("packs", []))
         if packs and self.config is self.normal:  # run packs count for this run only, then they are used up
             meta = workshop.meta_mods(self.profile, self.content.shop, packs)
-            config = WorldConfig.from_content(self.content, self.character, meta_mods=meta, mode=self.mode)
+            config = dataclasses.replace(self.config, meta_mods=meta)
             self.profile["packs"] = []
             self.save()
         self.recording = self.config is self.normal

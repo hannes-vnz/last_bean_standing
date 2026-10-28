@@ -86,6 +86,11 @@ from .tuning import (
     ARROW_STORM_DAMAGE,
     ARROW_STORM_SHOTS,
     AURA_RADIUS,
+    BLADE_COOLDOWN_S,
+    BLADE_DAMAGE,
+    BLADE_HIT_RADIUS,
+    BLADE_RADIUS,
+    BLADE_TURNS_PER_S,
     BOSS_MIN_SPAWN_DISTANCE,
     BOUNCE_DAMAGE,
     BOUNCE_RANGE,
@@ -113,6 +118,7 @@ from .tuning import (
     FOCUS_S,
     GATE_DELAY_S,
     GATE_OFFSET,
+    GRAVITY_PULL,
     GREED_XP_PCT,
     HOMING_RANGE,
     ICE_AGE_REACH,
@@ -181,6 +187,7 @@ from .tuning import (
     VIAL_STACKS,
     VOLATILE_DELAY_S,
     VOLATILE_RADIUS,
+    WISP_DAMAGE_SHARE,
 )
 from .upgrades import INSTANT_STATS, RARITIES, UpgradeDef, derive_stats, modifier_sums, roll_offer, roll_tier
 from .waves import Scaling
@@ -314,7 +321,8 @@ class WorldConfig:
         upgrades = tuple(
             d
             for d in (UpgradeDef.from_content(u) for u in content.upgrades)
-            if d.impl_phase <= max_phase and d.unlocked_at_start and d.supported
+            if d.supported
+            and ((d.impl_phase <= max_phase and d.unlocked_at_start) or d.id in overrides.get("unlocked_upgrades", ()))
         )
         bosses = tuple(
             BossStats.from_content(content, b.id)
@@ -385,7 +393,7 @@ class WorldConfig:
         if m is not None:
             values.update(mode_hp_mult=float(m.hp_mult), mode_xp_mult=float(m.xp_mult),
                           mode_score_mult=float(m.score_mult))  # fmt: skip
-        values.update(overrides)
+        values.update({k: v for k, v in overrides.items() if k != "unlocked_upgrades"})
         return cls(**values)
 
 
@@ -990,8 +998,11 @@ class World:
         if p.ghosts_t > 0:
             p.ghosts_t -= DT
         ch = self.config.character
-        if ch.weapon_pattern != "single" or dict(ch.weapon_extra).get("minions"):
+        s = p.stats
+        if ch.weapon_pattern != "single" or dict(ch.weapon_extra).get("minions") or s.minions_add:
             self._character_extras(p)
+        if s.orbit_blades or p.upgrades.get("gravity_well") or p.upgrades.get("time_warp"):
+            self._upgrade_specials(p)
         if p.storm_t > 0:  # Vex's "Gewittersturm": strikes in a steady beat
             p.storm_t -= DT
             if int(p.storm_t * TICK_HZ) % int(TICK_HZ / STORM_STRIKES_PER_S) == 0:
@@ -1034,9 +1045,9 @@ class World:
         return dict(self.config.character.passive_extra).get(key, default)
 
     def minion_count(self, p: Player) -> int:
-        """Thorn's ghosts: the ones he always has, more during "Totenruf"."""
+        """Thorn's ghosts: the ones he always has, more during "Totenruf", plus "Gefolgschaft"."""
         base = int(dict(self.config.character.weapon_extra).get("minions", 0))
-        return base + (RAISE_DEAD_EXTRA if p.ghosts_t > 0 and base else 0)
+        return base + (RAISE_DEAD_EXTRA if p.ghosts_t > 0 and base else 0) + p.stats.minions_add
 
     def minion_positions(self, p: Player) -> list[tuple[float, float]]:
         n = self.minion_count(p)
@@ -1045,6 +1056,50 @@ class World:
             dx, dy = cos_sin(self.tick * 0.05 + TAU * k / max(1, n))
             out.append((p.x + dx * MINION_ORBIT, p.y + dy * MINION_ORBIT))
         return out
+
+    def _special(self, uid: str, key: str, level: int) -> float:
+        """A number of an upgrade's special effect at a level (lists in upgrades.json hold one per level)."""
+        u = self._upgrade_defs.get(uid)
+        for _, params in u.specials if u else ():
+            values = dict(params).get(key)
+            if values:
+                return values[min(level, len(values)) - 1]
+        return 0.0
+
+    def _upgrade_specials(self, p: Player) -> None:
+        """Kreisende Klingen (blades around the bean), Schwerkraftbrunnen (a pull every few seconds),
+        Zeitdehnung (enemies around are slower while standing)."""
+        killed: set[int] = set()
+        events = self._pending
+        s = p.stats
+        if s.orbit_blades:
+            if p.blades is None:
+                p.blades = WeaponState("blades")
+            dmg = BLADE_DAMAGE * s.damage / self.config.character.damage * self.damage_mult(p)
+            v = {"turns_per_s": BLADE_TURNS_PER_S, "hit_radius": BLADE_HIT_RADIUS, "cooldown_s": BLADE_COOLDOWN_S,
+                 "count": s.orbit_blades, "radius": BLADE_RADIUS * s.area_mult, "damage": dmg}  # fmt: skip
+            self._weapon_orbit(p, p.blades, v, 1.0, killed, events)
+        level = p.upgrades.get("gravity_well", 0)
+        if level:
+            p.gravity_t += DT
+            if p.gravity_t >= self._special("gravity_well", "interval_s", level):
+                p.gravity_t = 0.0
+                radius = self._special("gravity_well", "radius_px", level) * s.area_mult
+                events.append(WeaponPulse(self.tick, p.player_id, "gravity_well", p.x, p.y, radius))
+                for e in self._grid.query(p.x, p.y, radius):
+                    if (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= radius * radius:
+                        pull = GRAVITY_PULL * (0.5 if e.boss else 1.0)
+                        e.x, e.y = self.obstacles.push_out(e.x + (p.x - e.x) * pull, e.y + (p.y - e.y) * pull, e.radius)
+        level = p.upgrades.get("time_warp", 0)
+        if level and p.standing and self.tick % 6 == 0:
+            radius = self._special("time_warp", "radius_px", level)
+            slow = self._special("time_warp", "slow_pct", level)
+            for e in self._grid.query(p.x, p.y, radius):
+                if (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= radius * radius and (e.chill_t <= 0.1 or e.chill_pct < slow):
+                    e.chill_pct, e.chill_t = slow, 0.15
+        if killed:
+            self.enemies = [e for e in self.enemies if e.eid not in killed]
+            self._rebuild_grid()
 
     def _character_extras(self, p: Player) -> None:
         """Ghosts that attack on their own (Thorn) and mines laid while walking (Orm)."""
@@ -1055,6 +1110,8 @@ class World:
             positions = self.minion_positions(p)
             share = self._passive_num("minion_inherit_damage_pct") / 100.0  # "Seelenband"
             bonus = 1.0 + share * (p.stats.damage / self.config.character.damage * self.damage_mult(p) - 1.0)
+            if not dict(self.config.character.weapon_extra).get("minions"):  # will-o'-wisps of other beans
+                bonus = WISP_DAMAGE_SHARE * p.stats.damage / self.config.character.damage * self.damage_mult(p)
             while p.minion_t >= 1.0:
                 p.minion_t -= 1.0
                 gx, gy = positions[p.minion_turn % n]
@@ -2682,6 +2739,9 @@ class World:
                     orbiters += [(st.weapon, x, y) for x, y in spots]
                 elif w.kind == "aura":
                     auras.append((st.weapon, p.x, p.y, w.at(st.level)["radius"]))
+            if p.blades is not None and p.stats.orbit_blades:
+                spots = orbit_positions(p.blades, p.x, p.y, p.stats.orbit_blades, BLADE_RADIUS * p.stats.area_mult)
+                orbiters += [("blades", x, y) for x, y in spots]
         bombs = []
         for b in self.bombs:
             t = 1.0 - b.delay / b.flight if b.flight > 0 else 1.0
