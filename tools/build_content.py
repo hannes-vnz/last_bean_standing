@@ -13,18 +13,20 @@ DATA, DOCS = ROOT / "data", ROOT / "docs"
 
 # ---------------------------------------------------------------------------- Balance
 BALANCE = {
-    "tick_hz": 60, "wave_interval_s": 30, "max_wave": 40, "swarm_time_s": 1200, "max_alive_enemies": 350,
+    "tick_hz": 60, "wave_interval_s": 30, "max_wave": 40, "swarm_time_s": 300, "max_alive_enemies": 350,
     "budget": {"base": 40, "linear": 7.0, "quadratic": 0.22},           # je Welle w: base + linear*w + quadratic*w^2 (mehr Gegner früh, seit 28.10.2026)
     "hp_mult": {"linear": 0.10, "quadratic": 0.012},                     # 1 + a*m + b*m^2, m = Minuten
     "damage_mult": {"linear": 0.05, "quadratic": 0.004},
     "speed_mult": {"linear": 0.01, "cap": 1.2},
-    "xp_to_next": {"base": 3, "linear": 1.5, "quadratic": 0.15},        # Level L -> L+1 (Vorschlag C, 28.10.2026)
-    "elite_every_n_waves": 5, "boss_waves": {"10": "ildra", "15": "skarra", "20": "kalthorn", "30": "ignarok"},
-    "spawn_distance_px": [520, 700], "arena_tiles": [200, 200], "tile_px": 32,
+    "xp_to_next": {"base": 2, "linear": 1.2, "quadratic": 0.12},        # Level L -> L+1 (Paket F: noch schnellere Level)
+    "elite_every_n_waves": 5, "boss_waves": {},                         # Bosse kommen seit Paket F je Beet (stages.json)
+    "spawn_distance_px": [520, 700], "arena_tiles": [120, 120], "tile_px": 32,
     "player_base": {"hp": 100, "pickup_radius_px": 220, "i_frames_s": 0.6},
     "score": {"per_second": 2, "per_kill": 5, "per_level": 20, "per_boss": 500, "victory_bonus": 20000, "swarm_per_10s": 1000},
     "rarity_weights": {"common": 60, "uncommon": 25, "rare": 10, "epic": 4, "legendary": 1},
     "luck_shift_per_point": 0.4, "level_up_choices": 3, "elite_chest_min_rarity": "rare",
+    # Paket F: jede Karte beim Level-up bekommt eine eigene Seltenheit; sie vervielfacht den Wert (wie Megabonk-Bücher).
+    "card_tier_mult": {"common": 1.0, "uncommon": 1.3, "rare": 1.7, "epic": 2.2, "legendary": 3.0},
     "target_median_death_minutes": {"beginner": [3, 5], "skilled": [8, 12], "expert": [14, 18], "swarm_reached": "extrem selten"},
 }
 
@@ -122,6 +124,8 @@ def up(id, name, rar, maxlv, tags, text, effects, unlocked, phase, unlock_ch=Non
                 unlocked_at_start=unlocked, unlock_challenge=unlock_ch, impl_phase=phase)
 S = lambda stat, v: dict(stat=stat, per_level=v)
 UPGRADES = [
+ # Paket F (28.10.2026): alle umgesetzten Boni wirken über Stat-Schlüssel und sind von Anfang an im Pool.
+ # Werte gelten für eine gewöhnliche Karte; die Kartenseltenheit vervielfacht sie (card_tier_mult).
  # --- gewöhnlich (18)
  up("sharp_edges", "Geschärfte Spitzen", "common", 5, ["damage"], "+8 % Schaden je Stufe.", [S("damage_pct", 8)], True, 1),
  up("quick_hands", "Flinke Hände", "common", 5, ["speed"], "+7 % Angriffstempo je Stufe.", [S("attack_speed_pct", 7)], True, 1),
@@ -131,70 +135,70 @@ UPGRADES = [
  up("thick_skin", "Dicke Haut", "common", 4, ["defense"], "-6 % erlittener Schaden je Stufe.", [S("damage_taken_pct", -6)], True, 1),
  up("swift_feet", "Flinke Füße", "common", 5, ["movement"], "+6 % Lauftempo je Stufe.", [S("move_speed_pct", 6)], True, 1),
  up("magnet", "XP-Magnet", "common", 4, ["utility"], "+30 % Aufsammelradius je Stufe.", [S("pickup_radius_pct", 30)], True, 1),
- up("quick_learner", "Schnelle Auffassung", "common", 4, ["utility"], "+8 % XP je Stufe.", [S("xp_pct", 8)], True, 2),
- up("heal_orbs", "Heilkugeln", "common", 3, ["defense", "utility"], "Gegner lassen mit 3 % je Stufe Heilkugeln fallen (5 HP).", [S("heal_orb_chance_pct", 3)], True, 2),
- up("wide_blast", "Breite Wirkung", "common", 4, ["area"], "+10 % Flächenradius je Stufe.", [S("area_pct", 10)], True, 2),
- up("thorns", "Dornenpanzer", "common", 4, ["defense", "thorns"], "Reflektiert 20 % des erlittenen Nahkampfschadens je Stufe.", [S("thorns_pct", 20)], True, 2),
- up("big_shots", "Schwere Geschosse", "common", 3, ["projectile"], "+12 % Geschossgröße je Stufe (trifft leichter).", [S("projectile_size_pct", 12)], True, 2),
- up("fast_shots", "Schnelle Geschosse", "common", 3, ["projectile"], "+12 % Geschossgeschwindigkeit je Stufe.", [S("projectile_speed_pct", 12)], True, 2),
- up("dodge", "Ausweichen", "common", 5, ["defense"], "3 % Chance je Stufe, einem Treffer zu entgehen.", [S("dodge_chance_pct", 3)], True, 2),
- up("armor_plating", "Panzerplatten", "common", 4, ["defense"], "-1 Schaden je Treffer und Stufe (mindestens 1).", [S("flat_damage_reduction", 1)], True, 2),
- up("lucky_charm", "Glücksklee", "common", 4, ["utility"], "+5 Glück je Stufe: seltenere Upgrades werden wahrscheinlicher.", [S("luck", 5)], True, 2),
- up("bounty_hunter", "Kopfgeldjäger", "common", 4, ["damage"], "+6 % Schaden gegen Elite und Bosse je Stufe.", [S("damage_pct_vs_elite_boss", 6)], True, 2),
+ up("quick_learner", "Schnelle Auffassung", "common", 4, ["utility"], "+10 % XP je Stufe.", [S("xp_gain_pct", 10)], True, 1),
+ up("heal_orbs", "Heilkugeln", "common", 3, ["defense", "utility"], "Gegner lassen mit 3 % je Stufe Heilkugeln fallen (15 HP).", [S("heal_orb_chance_pct", 3)], True, 1),
+ up("wide_blast", "Breite Wirkung", "common", 4, ["area"], "+12 % Flächenradius je Stufe (Waffen, Explosionen, Aura).", [S("area_pct", 12)], True, 1),
+ up("thorns", "Dornenpanzer", "common", 4, ["defense", "thorns"], "Reflektiert 40 % des erlittenen Nahkampfschadens je Stufe.", [S("thorns_pct", 40)], True, 1),
+ up("big_shots", "Schwere Geschosse", "common", 3, ["projectile"], "+25 % Geschossgröße je Stufe (trifft leichter).", [S("projectile_size_pct", 25)], True, 1),
+ up("fast_shots", "Schnelle Geschosse", "common", 3, ["projectile"], "+15 % Geschosstempo und +5 % Schaden je Stufe.", [S("projectile_speed_pct", 15), S("damage_pct", 5)], True, 1),
+ up("dodge", "Ausweichen", "common", 5, ["defense"], "4 % Chance je Stufe, einem Treffer zu entgehen.", [S("dodge_chance_pct", 4)], True, 1),
+ up("armor_plating", "Panzerplatten", "common", 4, ["defense"], "-1 Schaden je Treffer und Stufe (mindestens 1).", [S("flat_damage_reduction", 1)], True, 1),
+ up("lucky_charm", "Glücksklee", "common", 4, ["utility"], "+1 Glück je Stufe: seltenere Karten, Items und Krits.", [S("luck", 1)], True, 1),
+ up("bounty_hunter", "Kopfgeldjäger", "common", 4, ["damage"], "+12 % Schaden gegen Elites und Bosse je Stufe.", [S("elite_damage_pct", 12)], True, 1),
  # --- ungewöhnlich (14)
  up("brutal_crits", "Brutale Treffer", "uncommon", 4, ["crit"], "+20 % Krit-Schaden je Stufe (Basis 150 %).", [S("crit_mult_add_pct", 20)], True, 1),
  up("double_shot", "Mehrfachangriff", "uncommon", 3, ["projectile"], "+1 zusätzlicher Angriff je Stufe (60 % Schaden, leichte Streuung).", [S("extra_attacks", 1)], True, 1),
  up("piercing", "Durchschlag", "uncommon", 3, ["pierce", "projectile"], "Geschosse durchbohren +1 Gegner je Stufe.", [S("pierce_add", 1)], True, 1),
- up("heavy_hitter", "Schwergewicht", "uncommon", 3, ["damage"], "+25 % Schaden, -10 % Angriffstempo je Stufe.", [S("damage_pct", 25), S("attack_speed_pct", -10)], True, 2),
+ up("heavy_hitter", "Schwergewicht", "uncommon", 3, ["damage"], "+25 % Schaden, -10 % Angriffstempo je Stufe.", [S("damage_pct", 25), S("attack_speed_pct", -10)], True, 1),
  up("regeneration", "Regeneration", "uncommon", 4, ["defense"], "+0,6 HP pro Sekunde je Stufe.", [S("regen_per_s", 0.6)], True, 1),
- up("reroll", "Neuwurf", "uncommon", 3, ["utility"], "+1 Neuwurf der Upgrade-Auswahl je Stufe (pro Run).", [S("rerolls", 1)], True, 2),
- up("banish", "Verbannung", "uncommon", 3, ["utility"], "+1 Verbannen je Stufe: entfernt ein Upgrade aus dem Pool dieses Runs.", [S("banishes", 1)], True, 2),
- up("stillness", "Meditation", "uncommon", 3, ["stillness", "damage"], "Nach 1 s Stillstand +12 % Schaden je Stufe.", [S("damage_pct_standing", 12)], False, 2, "unlock_up_stillness"),
- up("ignite", "Entzünden", "uncommon", 4, ["fire", "elemental"], "12 % Chance je Stufe zu entzünden (3 s, 30 % Schaden/s).", [S("ignite_chance_pct", 12)], True, 2),
- up("chill", "Kälte", "uncommon", 4, ["frost", "elemental"], "Treffer verlangsamen um 8 % je Stufe (max. 32 %).", [S("chill_slow_pct", 8)], True, 2),
- up("toxin", "Toxin", "uncommon", 4, ["poison", "elemental"], "Treffer vergiften (15 % Schaden/s je Stufe, 3 s, stapelt 4x).", [S("poison_pct_per_s", 15)], True, 2),
- up("shock", "Schock", "uncommon", 3, ["lightning", "elemental"], "15 % Chance je Stufe auf einen Blitz (60 % Schaden) auf einen nahen Gegner.", [S("shock_chance_pct", 15)], True, 2),
+ up("reroll", "Neuwurf", "uncommon", 3, ["utility"], "+1 Neu würfeln je Stufe (sofort).", [S("rerolls", 1)], True, 1),
+ up("banish", "Verbannung", "uncommon", 3, ["utility"], "+1 Verbannen je Stufe (sofort).", [S("banishes", 1)], True, 1),
+ up("stillness", "Meditation", "uncommon", 3, ["stillness", "damage"], "+15 % Schaden im Stand je Stufe.", [S("standing_damage_pct", 15)], True, 1),
+ up("ignite", "Entzünden", "uncommon", 4, ["fire", "elemental"], "10 % Chance je Stufe zu entzünden (3 s, 30 % Schaden/s).", [S("ignite_chance_pct", 10)], True, 1),
+ up("chill", "Kälte", "uncommon", 4, ["frost", "elemental"], "Treffer verlangsamen um 8 % je Stufe für 2 s (max. 60 %).", [S("chill_slow_pct", 8)], True, 1),
+ up("toxin", "Toxin", "uncommon", 4, ["poison", "elemental"], "Treffer vergiften (12 % Schaden/s je Stufe, 3 s, stapelt bis 4x).", [S("poison_pct_per_s", 12)], True, 1),
+ up("shock", "Schock", "uncommon", 3, ["lightning", "elemental"], "12 % Chance je Stufe auf einen Blitz (60 % Schaden), der auf 2 nahe Gegner springt.", [S("shock_chance_pct", 12)], True, 1),
  up("minion_horde", "Gefolgschaft", "uncommon", 3, ["summon"], "+1 Begleiter je Stufe (ohne Beschwörer: Irrlicht mit 50 % Schaden).", [S("minions_add", 1)], False, 3, "unlock_up_minion_horde"),
  up("orbiting_blades", "Kreisende Klingen", "uncommon", 4, ["area", "melee"], "Eine zusätzliche Klinge je Stufe umkreist dich (6 Schaden).", [S("orbit_blades", 1)], False, 3, "unlock_up_orbiting_blades"),
  # --- selten (9)
- up("ricochet", "Rückprall", "rare", 3, ["bounce", "projectile"], "Geschosse springen +1-mal je Stufe auf einen nahen Gegner (70 % Schaden).", [S("bounce_add", 1)], True, 2),
- up("executioner", "Henker", "rare", 3, ["damage"], "+30 % Schaden gegen Gegner unter 30 % HP je Stufe.", [S("damage_pct_vs_low_hp", 30)], False, 2, "unlock_up_executioner"),
- up("lifesteal", "Aderlass", "rare", 3, ["defense", "damage"], "Heilt 2 % des verursachten Schadens je Stufe.", [S("lifesteal_pct", 2)], False, 2, "unlock_up_lifesteal"),
- up("shield_burst", "Notschild", "rare", 3, ["defense"], "Schild (40 HP) alle 20 s, -2 s je Stufe.", [dict(special="periodic_shield", hp=40, interval_s=20, interval_per_level_s=-2)], False, 2, "unlock_up_shield_burst"),
- up("last_stand", "Letztes Gefecht", "rare", 3, ["defense", "damage"], "Unter 30 % HP: +30 % Schaden und +20 % Tempo je Stufe.", [dict(special="low_hp_bonus", hp_threshold_pct=30, damage_pct=30, speed_pct=20)], False, 2, "unlock_up_last_stand"),
- up("overcharge", "Überladung", "rare", 3, ["damage"], "Alle 15 s (-2 s je Stufe) trifft der nächste Angriff mit 300 % Schaden.", [dict(special="overcharge", interval_s=15, interval_per_level_s=-2, damage_pct=300)], False, 2, "unlock_up_overcharge"),
- up("explosive_rounds", "Sprengmunition", "rare", 3, ["area", "projectile"], "Treffer lösen eine kleine Explosion aus (Radius 50, 40 % Schaden je Stufe).", [dict(special="explosive_hits", radius_px=50, damage_pct_per_level=40)], False, 2, "unlock_up_explosive_rounds"),
- up("aura_of_pain", "Aura des Schmerzes", "rare", 4, ["area", "melee"], "Gegner im Umkreis von 100 px erleiden 4 Schaden/s je Stufe.", [dict(special="damage_aura", radius_px=100, dps_per_level=4)], True, 2),
- up("elemental_mastery", "Elementarmeister", "rare", 3, ["elemental"], "+20 % Schaden aller Elementareffekte (Brand, Frost, Gift, Schock) je Stufe.", [S("elemental_damage_pct", 20)], True, 2),
+ up("ricochet", "Rückprall", "rare", 3, ["bounce", "projectile"], "Geschosse springen +1-mal je Stufe auf einen nahen Gegner.", [S("bounce_add", 1)], True, 1),
+ up("executioner", "Henker", "rare", 3, ["damage"], "+30 % Schaden gegen Gegner unter 30 % HP je Stufe.", [S("execute_damage_pct", 30)], True, 1),
+ up("lifesteal", "Aderlass", "rare", 3, ["defense", "damage"], "Heilt 2 % des verursachten Schadens je Stufe.", [S("lifesteal_pct", 2)], True, 1),
+ up("shield_burst", "Notschild", "rare", 3, ["defense"], "Alle 12 s ein Schild, der 25 Schaden je Stufe abfängt.", [S("shield_flat", 25)], True, 1),
+ up("last_stand", "Letztes Gefecht", "rare", 3, ["defense", "damage"], "Unter 35 % HP: +30 % Schaden und +15 % Tempo je Stufe.", [S("low_hp_damage_pct", 30)], True, 1),
+ up("overcharge", "Überladung", "rare", 3, ["damage"], "Alle 6 s trifft der nächste Schuss mit +200 % Schaden je Stufe.", [S("overcharge_pct", 200)], True, 1),
+ up("explosive_rounds", "Sprengmunition", "rare", 3, ["area", "projectile"], "Treffer explodieren (Radius 50, 30 % Schaden je Stufe).", [S("explosive_hit_pct", 30)], True, 1),
+ up("aura_of_pain", "Brennnesselkranz", "rare", 4, ["area", "melee"], "Gegner im Umkreis von 100 px erleiden 6 Schaden/s je Stufe.", [S("aura_dps", 6)], True, 1),
+ up("elemental_mastery", "Elementarmeister", "rare", 3, ["elemental"], "+25 % Schaden von Brand, Gift und Blitz je Stufe.", [S("elemental_damage_pct", 25)], True, 1),
  # --- episch (6)
- up("second_wind", "Zweiter Atem", "epic", 2, ["defense"], "Stufe 1: einmal pro Run mit 40 % HP wiederbeleben. Stufe 2: 60 % HP und 2 s unverwundbar.", [dict(special="revive", hp_pct=[40, 60], i_frames_s=[0, 2])], False, 3, "unlock_up_second_wind"),
+ up("second_wind", "Zweiter Atem", "epic", 2, ["defense"], "Einmal wiederbeleben je Stufe (mit 50 % HP, 2 s unverwundbar).", [S("revives", 1)], True, 1),
  up("gravity_well", "Schwerkraftbrunnen", "epic", 2, ["control", "area"], "Alle 12 s zieht ein Sog alle Gegner im Radius 200 zusammen (Stufe 2: Radius 280, alle 9 s).", [dict(special="gravity_pull", radius_px=[200, 280], interval_s=[12, 9])], False, 3, "unlock_up_gravity_well"),
- up("bloodlust", "Blutrausch", "epic", 3, ["speed"], "Jeder Kill: +2 % Angriffstempo für 5 s, stapelt bis 20 % / 30 % / 40 %.", [dict(special="kill_haste", per_kill_pct=2, duration_s=5, max_pct=[20, 30, 40])], False, 3, "unlock_up_bloodlust"),
+ up("bloodlust", "Blutrausch", "epic", 3, ["speed"], "Jeder Kill: +2 % Angriffstempo für 5 s, stapelt bis +20 % je Stufe.", [S("kill_haste_max_pct", 20)], True, 1),
  up("time_warp", "Zeitdehnung", "epic", 2, ["control", "stillness"], "Im Stand sind alle Gegner im Radius 250 um 12 % / 20 % langsamer.", [dict(special="standing_slow", radius_px=250, slow_pct=[12, 20])], False, 3, "unlock_up_time_warp"),
- up("shrapnel", "Splitterhagel", "epic", 3, ["area", "projectile"], "Sterbende Gegner lösen mit 20 % Chance 6 Splitter aus (50 % Schaden), +10 % je Stufe.", [dict(special="death_shrapnel", chance_pct=[20, 30, 40], pieces=6, damage_pct=50)], False, 3, "unlock_up_shrapnel"),
- up("titan_heart", "Titanenherz", "epic", 3, ["defense"], "+30 % Max-HP je Stufe. +1 % Schaden je 10 Max-HP.", [S("max_hp_pct", 30), dict(special="damage_per_hp", damage_pct_per_10_hp=1)], False, 3, "unlock_up_titan_heart"),
+ up("shrapnel", "Splitterhagel", "epic", 3, ["area", "projectile"], "Sterbende Gegner verschießen mit 20 % Chance je Stufe 6 Splitter (50 % Schaden).", [S("shrapnel_chance_pct", 20)], True, 1),
+ up("titan_heart", "Titanenherz", "epic", 3, ["defense"], "+30 % Max-HP und +10 % Schaden je Stufe.", [S("max_hp_pct", 30), S("damage_pct", 10)], True, 1),
  # --- legendär (3)
- up("glass_cannon", "Glaskanone", "legendary", 1, ["damage"], "+100 % Schaden, -40 % Max-HP.", [dict(stat="damage_pct", value=100), dict(stat="max_hp_pct", value=-40)], False, 3, "unlock_up_glass_cannon"),
- up("reaper_pact", "Pakt der Sense", "legendary", 1, ["damage", "defense"], "Jeder Kill heilt 1 HP. Alle 25 Kills ein Todesschlag (Radius 250, 500 % Schaden).", [dict(special="reaper_pact", heal_per_kill=1, strike_every_kills=25, radius_px=250, damage_pct=500)], False, 3, "unlock_up_reaper_pact"),
- up("elemental_storm", "Elementarsturm", "legendary", 1, ["elemental"], "Alle Elementareffekte (Brand, Frost, Gift, Schock) können auf jeden Treffer wirken, +50 % Elementarschaden.", [dict(special="all_elements", elemental_damage_pct=50)], False, 3, "unlock_up_elemental_storm"),
+ up("glass_cannon", "Glaskanone", "legendary", 1, ["damage"], "+100 % Schaden, -40 % Max-HP.", [S("damage_pct", 100), S("max_hp_pct", -40)], True, 1),
+ up("reaper_pact", "Pakt der Sense", "legendary", 1, ["damage", "defense"], "Jeder Kill heilt 1 HP, 25 % Chance auf eine Explosion beim Kill.", [S("heal_per_kill", 1), S("explode_on_kill_pct", 25)], True, 1),
+ up("elemental_storm", "Elementarsturm", "legendary", 1, ["elemental"], "Je 15 % Chance auf Brand und Blitz, Gift und Kälte bei jedem Treffer, +50 % Elementarschaden.", [S("ignite_chance_pct", 15), S("shock_chance_pct", 15), S("poison_pct_per_s", 10), S("chill_slow_pct", 10), S("elemental_damage_pct", 50)], True, 1),
 ]
 
 # ---------------------------------------------------------------------------- Mobs, Elite, Bosse, Biome
 def mob(id, name, beh, hp, speed, dmg, cost, xp, min_t, biomes, text, phase, **extra):
     return dict(id=id, name=name, behavior=beh, hp=hp, speed=speed, damage=dmg, cost=cost, xp=xp, min_time_s=min_t,
                 biome_weights=biomes, text=text, impl_phase=phase, **extra)
-ALL = dict(forest=1, desert=1, ice=1, lava=1, plaza=1)
+# Paket F (28.10.2026): Gartenplagen und verpestetes Gemüse, je Beet eigene Gewichte. min_time_s zählt ab Beginn des Beets.
 MOBS = [
- mob("slimeling", "Schleimling", "chaser", 12, 78, 5, 1, 1, 0, ALL, "Läuft geradeaus auf dich zu. Der Standardgegner.", 1, radius=12),
- mob("batswarm", "Fledermaus", "swarm", 5, 150, 3, 0.5, 0.5, 60, {b: 0.5 for b in ALL}, "Kommt in Gruppen zu 4, flattert unregelmäßig, sehr schnell.", 1, radius=9, group_size=4),
- mob("rootguard", "Wurzelwächter", "chaser_tank", 55, 48, 10, 4, 4, 90, dict(forest=1, plaza=0.3, desert=0.2, ice=0.2, lava=0.2), "Langsam und zäh, kaum Rückstoß.", 1, radius=18, knockback_resist=0.8),
- mob("sporeshooter", "Sporenschütze", "ranged_lobbed", 16, 56, 4, 3, 3, 120, dict(forest=1, plaza=0.3, desert=0.2, ice=0.2, lava=0.2), "Hält 260 px Abstand und wirft Sporen, die eine Giftpfütze (4 Schaden/s, 3 s) hinterlassen.", 1, radius=12, keep_distance_px=260, shot_interval_s=2.4),
- mob("sandspitter", "Sandspeier", "ranged_direct", 14, 69, 7, 2, 2, 100, dict(desert=1, plaza=0.3, forest=0.2, ice=0.2, lava=0.2), "Hält 300 px Abstand und schießt gerade Sandgeschosse (Tempo 260).", 2, radius=12, keep_distance_px=300, shot_interval_s=1.8, projectile_speed=260),
- mob("dunescorpion", "Dünenskorpion", "charger", 30, 62, 12, 3, 3, 150, dict(desert=1, plaza=0.3, forest=0.2, ice=0.2, lava=0.2), "Markiert 0,8 s eine Linie, stürmt dann 0,6 s mit Tempo 260 los und ist 1,2 s erschöpft.", 2, radius=14, telegraph_s=0.8, charge_s=0.6, charge_speed=260, recovery_s=1.2),
- mob("frostwolf", "Frostwolf", "chaser_pack", 20, 131, 7, 2, 2, 180, dict(ice=1, plaza=0.3, forest=0.2, desert=0.2, lava=0.2), "Schneller Läufer, kommt im Rudel zu 3.", 2, radius=13, group_size=3),
- mob("icegolem", "Eisgolem", "chaser_tank", 90, 40, 14, 7, 7, 240, dict(ice=1, plaza=0.2, forest=0.1, desert=0.1, lava=0.1), "Sehr zäh und langsam. Zerplatzt beim Tod in 8 Eissplitter (6 Schaden).", 2, radius=22, on_death=dict(type="shards", count=8, damage=6), knockback_resist=0.9),
- mob("emberimp", "Glutimp", "ranged_lobbed", 18, 72, 9, 3, 3, 210, dict(lava=1, plaza=0.3, forest=0.2, desert=0.2, ice=0.2), "Hält 280 px Abstand und wirft Feuerbälle (Radius 50), die 3 s Feuer am Boden hinterlassen.", 3, radius=12, keep_distance_px=280, shot_interval_s=2.2, aoe_radius=50),
- mob("lavabug", "Lavakäfer", "exploder", 10, 119, 18, 2, 2, 270, dict(lava=1, plaza=0.3, forest=0.2, desert=0.2, ice=0.2), "Rennt auf dich zu und explodiert bei Berührung (Radius 70, 18 Schaden), auch beim Tod (50 %).", 3, radius=11, explosion_radius=70, death_explosion_pct=50),
+ mob("slug", "Nacktschnecke", "chaser", 12, 80, 5, 1, 1, 0, dict(seedbed=1, veggiebed=0.5, compost=0.3), "Kriecht stur auf dich zu. Die häufigste Plage.", 1, radius=12),
+ mob("aphid", "Blattlaus", "swarm", 4, 160, 3, 0.4, 0.4, 20, dict(seedbed=0.8, veggiebed=0.6, compost=0.4), "Kommt in Schwärmen zu 5, wuselt schnell und unregelmäßig.", 1, radius=8, group_size=5),
+ mob("snail", "Gartenschnecke", "chaser_tank", 50, 52, 10, 4, 4, 60, dict(seedbed=0.6, veggiebed=0.4, compost=0.3), "Langsam, aber das Haus hält viel aus.", 1, radius=17),
+ mob("mold", "Schimmelpilz", "ranged_lobbed", 16, 60, 4, 3, 3, 90, dict(seedbed=0.5, veggiebed=0.3, compost=0.5), "Hält 260 px Abstand und wirft Sporen, die eine Schimmelpfütze (4 Schaden/s, 3 s) hinterlassen.", 1, radius=12, keep_distance_px=260, shot_interval_s=2.4),
+ mob("potato_beetle", "Kartoffelkäfer", "chaser", 18, 130, 7, 2, 2, 0, dict(veggiebed=1, compost=0.4), "Flinker Käfer, kommt im Trupp zu 3.", 1, radius=12, group_size=3),
+ mob("toxic_carrot", "Giftmöhre", "charger", 30, 70, 12, 3, 3, 30, dict(veggiebed=1, compost=0.5), "Zielt 0,8 s (Warnlinie), stürmt dann 0,6 s mit Tempo 340 los und ist 1 s benommen.", 1, radius=13, telegraph_s=0.8, charge_s=0.6, charge_speed=340, recovery_s=1.0),
+ mob("spray_cucumber", "Spritzgurke", "ranged_direct", 14, 70, 7, 2, 2, 60, dict(veggiebed=0.8, compost=0.6), "Hält 300 px Abstand und spritzt gerade Giftstrahlen (Tempo 280).", 1, radius=12, keep_distance_px=300, shot_interval_s=1.8, projectile_speed=280),
+ mob("pest_tomato", "Pestizid-Tomate", "exploder", 10, 140, 18, 2, 2, 0, dict(compost=1, veggiebed=0.2), "Rollt auf dich zu und platzt bei Berührung (Radius 70, 18 Schaden, 0,4 s Warnung).", 1, radius=11, explosion_radius=70),
+ mob("vole", "Wühlmaus", "chaser_tank", 90, 58, 14, 7, 7, 60, dict(compost=0.6, veggiebed=0.2), "Zäh und bissig, frisst sich durch alles.", 1, radius=20),
+ mob("spray_shroom", "Sprühpilz", "ranged_lobbed", 18, 64, 7, 3, 3, 30, dict(compost=0.8), "Hält 280 px Abstand und sprüht Giftwolken (Radius 50, 3 s).", 1, radius=12, keep_distance_px=280, shot_interval_s=2.2),
 ]
 ELITE_AFFIXES = [
  dict(id="armored", name="Gepanzert", text="-30 % erlittener Schaden."),
@@ -252,42 +256,47 @@ SHRINES = [
 ]
 SHRINE_RULES = ("Pro Lauf liegen die Schreine mit festem Seed in den Zonen (jede Zone mindestens einen, nicht in der Lichtung). Aktiviert wird durch Stillstehen im Radius "
                 "(passt zu Stop-and-Shoot: du schießt dabei weiter). Jeder Schrein ist einmal nutzbar. Die Schwierigkeit zeigt das HUD als Prozentwert.")
-SWARM = dict(start_s=1200, entity="floodwisp", name="Flutgeist", hp=6, speed=75, damage=6, flying=True, ignores_obstacles=True,
+SWARM = dict(start_s=300, entity="floodwisp", name="Flutgeist", hp=6, speed=75, damage=6, flying=True, ignores_obstacles=True,
              burst_every_s=3, burst_size_base=40, burst_growth_pct_per_min=10, speed_gain_pct_per_min=8,
              score_mult_start=1, score_mult_gain_per_45s=1, score_mult_cap=8, hp_damage_scaling="wie normale Gegner (hp_mult, damage_mult), setzt sich unbegrenzt fort",
-             text="Ab 20:00 beginnt die Schwarmflut: fliegende Flutgeister in Schüben, die nie aufhört und immer schneller wird. Sie ist der Endlos-Modus für den Highscore.")
+             text="Seit Paket F ersetzt die Plagenflut am Ende jedes Beets (stages.json, flood) die Schwarmflut; diese Werte sind für spätere Flutgeister vorgemerkt.")
 BOSSES = [
- dict(id="ildra", name="Ildra, die Dornenkönigin", spawn_wave=10, spawn_time_s=300, hp=2500, speed=45, damage=14, biome="forest", impl_phase=1,
-      phases=[dict(at_hp_pct=100, pattern="Rotierender Dornenring (8 Geschosse), alle 4 s"), dict(at_hp_pct=60, pattern="Wurzelgriff: verlangsamt dich 40 % in einem Kreis, ruft 3 Wurzelwächter"), dict(at_hp_pct=30, pattern="Dornenring doppelt so schnell, Spore-Regen")],
-      reward="boss_chest_epic", first_kill_challenge="boss_ildra"),
- dict(id="skarra", name="Skarra, die Sandkönigin", spawn_wave=15, spawn_time_s=450, hp=5000, speed=60, damage=17, biome="desert", impl_phase=2,
-      phases=[dict(at_hp_pct=100, pattern="Stachelfächer (5 Sandstacheln, alle 3 s) und Sturmangriff nach Warnlinie (Tempo 300)"), dict(at_hp_pct=60, pattern="Eingraben: verschwindet, bricht nach 1,5 s Warnkreis (Radius 120) unter dir hervor, ruft Dünenskorpione"), dict(at_hp_pct=30, pattern="Sandwirbel über Teilen des Bildes (halbtransparent, Gegner und Geschosse bleiben sichtbar), Stachelfächer doppelt so schnell")],
-      reward="boss_chest_epic", first_kill_challenge="boss_skarra"),
- dict(id="kalthorn", name="Kalthorn, der Eiswurm", spawn_wave=20, spawn_time_s=600, hp=9000, speed=70, damage=20, biome="ice", impl_phase=2,
-      phases=[dict(at_hp_pct=100, pattern="Frostbahn: Linie markieren, dann Sturm (Tempo 320)"), dict(at_hp_pct=60, pattern="Eisnova (Radius 260), ruft Frostwolf-Rudel"), dict(at_hp_pct=30, pattern="Eisnova alle 5 s, Boden wird rutschig")],
-      reward="boss_chest_epic", first_kill_challenge="boss_kalthorn"),
- dict(id="ignarok", name="Ignarok, der Glutkoloss", spawn_wave=30, spawn_time_s=900, hp=24000, speed=40, damage=28, biome="lava", impl_phase=3,
-      phases=[dict(at_hp_pct=100, pattern="Meteorregen (6 Einschläge, 1,2 s Vorwarnung)"), dict(at_hp_pct=60, pattern="Stampfen: Schockwelle (Radius 300), Lavapfützen"), dict(at_hp_pct=30, pattern="Meteore doppelt, ruft Lavakäfer")],
-      reward="boss_chest_legendary", first_kill_challenge="boss_ignarok"),
- dict(id="reaper", name="Der Schnitter", summon="altar", altar_unlock_s=600, spawn_time_s=None, hp_base=30000, hp_scaled=True, speed=55, damage=40, biome=None, impl_phase=3,
-      enrage_after_s=90, enrage_damage_pct_per_20s=10,
-      phases=[dict(at_hp_pct=100, pattern="Sensenwirbel: rotierender Kegel mit 1 s Warnfläche, alle 5 s"), dict(at_hp_pct=66, pattern="Seelenregen: 8 Einschläge mit Warnkreis (Radius 90) in Wellen, ruft Flutgeister"), dict(at_hp_pct=33, pattern="Zeitriss: du bist 3 s lang 30 % langsamer, er stürmt dreimal; danach 25 % mehr Tempo")],
+ dict(id="snail_queen", name="Schleimrun, die Schneckenkönigin", spawn_wave=7, spawn_time_s=210, hp=2400, speed=50, damage=14, biome="seedbed", impl_phase=1, summon_mob="snail",
+      phases=[dict(at_hp_pct=100, pattern="Schleimring (8 Tropfen), alle 4 s"), dict(at_hp_pct=60, pattern="Schleimspur: verlangsamt dich 40 % in einem Kreis, ruft 3 Gartenschnecken"), dict(at_hp_pct=30, pattern="Schleimring doppelt so schnell, Sporenregen")],
+      reward="boss_chest_epic", first_kill_challenge="boss_snail_queen"),
+ dict(id="beetle_king", name="Knollgrimm, der Käferkönig", spawn_wave=7, spawn_time_s=210, hp=6000, speed=60, damage=18, biome="veggiebed", impl_phase=1, summon_mob="potato_beetle",
+      phases=[dict(at_hp_pct=100, pattern="Stachelfächer (5 Geschosse, alle 3 s) und Sturmangriff nach Warnlinie (Tempo 380)"), dict(at_hp_pct=60, pattern="ruft 4 Kartoffelkäfer, Fächer mit 7 Geschossen"), dict(at_hp_pct=30, pattern="stürmt zweimal hintereinander, Fächer doppelt so schnell")],
+      reward="boss_chest_epic", first_kill_challenge="boss_beetle_king"),
+ dict(id="reaper", name="Der Schnitter", spawn_wave=7, spawn_time_s=210, hp=14000, speed=60, damage=24, biome="compost", impl_phase=1, summon_mob="pest_tomato",
+      phases=[dict(at_hp_pct=100, pattern="Sensenring (12 Geschosse), alle 3,5 s"), dict(at_hp_pct=66, pattern="Seelenregen: 6 Einschläge mit Warnkreis (Radius 80), ruft Pestizid-Tomaten"), dict(at_hp_pct=33, pattern="Sensenring alle 2 s, stürmt nach Warnlinie")],
       reward="victory", first_kill_challenge="boss_reaper"),
 ]
+# Paket F: drei Beete statt vier Biome. Jedes Beet ist eine eigene Karte (arena_tiles), die Startfläche bleibt frei.
 BIOMES = [
- dict(id="plaza", name="Lichtung (Start)", effect="Keine, enthält den Boss-Altar (ab 10:00 aktivierbar, ruft den Schnitter)", rect_tiles=[85, 85, 30, 30], text="Neutrale Startzone in der Mitte.", objects=[dict(type="boss_altar", pos_tiles=[100, 100], unlock_s=600)]),
- dict(id="forest", name="Wald", effect="Bäume blockieren Geschosse (Deckung für beide Seiten)", rect_tiles=[0, 0, 100, 100], obstacles=dict(type="tree", count=780, seed=11), impl_phase=1),
- dict(id="desert", name="Wüste", effect="Du bist 15 % langsamer", rect_tiles=[100, 0, 100, 100], obstacles=dict(type="rock", count=280, seed=12), player_speed_pct=-15, impl_phase=2),
- dict(id="ice", name="Eis", effect="Rutschen: träge Beschleunigung und Bremsen", rect_tiles=[0, 100, 100, 100], obstacles=dict(type="ice_block", count=330, seed=13), friction=0.15, impl_phase=2),
- dict(id="lava", name="Lava", effect="4 Schaden pro Sekunde in Lavapfützen, dafür +25 % XP in der Zone", rect_tiles=[100, 100, 100, 100], obstacles=dict(type="lava_pool", count=200, seed=14), dot_per_s=4, xp_bonus_pct=25, impl_phase=3),
+ dict(id="seedbed", name="Saatbeet", effect="Hohe Stauden blockieren Geschosse (Deckung für beide Seiten)", rect_tiles=[0, 0, 120, 120], obstacles=dict(type="stalk", count=520, seed=11), impl_phase=1),
+ dict(id="veggiebed", name="Gemüsebeet", effect="Kohlköpfe versperren den Weg, Geschosse fliegen darüber", rect_tiles=[0, 0, 120, 120], obstacles=dict(type="cabbage", count=380, seed=12), impl_phase=1),
+ dict(id="compost", name="Komposthaufen", effect="Giftige Komposthügel versperren den Weg", rect_tiles=[0, 0, 120, 120], obstacles=dict(type="heap", count=300, seed=13), impl_phase=1),
 ]
 PALETTES = {
- "plaza":  dict(ground="#b9e08f", detail="#9fcf72", hazard=None),
- "forest": dict(ground="#a6dd82", detail="#83c564", hazard=None, tree="#5aa05a", trunk="#8a6a4a"),
- "desert": dict(ground="#f6dfa8", detail="#e8c47a", hazard="#e0b862", rock="#c9a46a"),
- "ice":    dict(ground="#d6ecff", detail="#b4d6f5", hazard="#ffffff", block="#bfe0ff"),
- "lava":   dict(ground="#ffc9b0", detail="#ff9f86", hazard="#ff6b6b", bubble="#ffd45e"),
+ "seedbed":   dict(ground="#b98a62", detail="#a37552", hazard=None, stalk="#7ccf6a", soil="#8f6446", sprout="#9be27f"),
+ "veggiebed": dict(ground="#a8d887", detail="#8fc46f", hazard=None, cabbage="#b7e39a", soil="#9a6d4c", sprout="#ffb35c"),
+ "compost":   dict(ground="#8c7a6a", detail="#77665a", hazard="#b6e05a", heap="#6f5b49", soil="#5f4c3d", sprout="#c8f06a"),
 }
+# Ablauf eines Laufs: drei Beete à 5:00. Der Boss kommt bei 3:30 des Beets; ist er besiegt, öffnet sich das Gartentor
+# zum nächsten Beet (der Build bleibt). Läuft die Zeit ab, beginnt die Plagenflut: endlos, immer dichter und härter.
+# Nach dem Schnitter im dritten Beet ist der Lauf gewonnen. Gegnerwerte: Grundwert x Beet-Faktor x Zeitfaktor im Beet.
+STAGES = [
+ dict(id="seedbed", index=1, name="Saatbeet", biome="seedbed", duration_s=300, boss="snail_queen", hp_mult=1.0, damage_mult=1.0, budget_mult=1.0,
+      tagline="Die Keimlinge brauchen dich!"),
+ dict(id="veggiebed", index=2, name="Gemüsebeet", biome="veggiebed", duration_s=300, boss="beetle_king", hp_mult=2.6, damage_mult=1.7, budget_mult=1.35,
+      tagline="Das Gemüse ist vergiftet. Halte durch!"),
+ dict(id="compost", index=3, name="Komposthaufen", biome="compost", duration_s=300, boss="reaper", hp_mult=6.0, damage_mult=2.6, budget_mult=1.7,
+      tagline="Der Schnitter wartet im Kompost."),
+]
+FLOOD = dict(name="Plagenflut", warning_s=10, budget_growth_per_10s=0.4, hp_growth_per_10s=0.15, damage_growth_per_10s=0.08,
+             text="Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Das Gartentor bleibt offen, sobald der Boss besiegt ist.")
+GATE = dict(radius_px=40, text="Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Hineinlaufen bringt dich ins nächste Beet (volle Heilung).")
+
 STYLE = dict(
  name="Freundlich, pastell", ink="#4a3358",
  player=dict(hair="#ffb04a", skin="#ffe0c8", body="#6ec6ff"),
@@ -311,34 +320,35 @@ UU = lambda i: dict(type="unlock_upgrade", id=i)
 chal("unlock_pyro", "Erreiche Minute 5 mit beliebigem Charakter.", RS("minutes_survived", 5), UC("pyro"))
 chal("unlock_rogue", "Räume eine Welle ab Welle 5, ohne Schaden zu nehmen.", RS("flawless_wave", 5), UC("rogue"))
 chal("unlock_guardian", "Erleide insgesamt 5000 Schaden.", PS("damage_taken_total", 5000), UC("guardian"))
-chal("unlock_cryo", "Besiege 300 Gegner im Eisbiom.", PS("kills_in_biome", 300, biome="ice"), UC("cryo"))
+chal("unlock_cryo", "Besiege 300 Gegner im Komposthaufen.", PS("kills_in_biome", 300, biome="compost"), UC("cryo"))
 chal("unlock_summoner", "Erreiche Level 15 in einem Run.", RS("level_reached", 15), UC("summoner"))
-chal("unlock_storm", "Erreiche Minute 8.", RS("minutes_survived", 8), UC("storm"))
+chal("unlock_storm", "Erreiche das zweite Beet.", RS("stage_reached", 2), UC("storm"))
 chal("unlock_bomber", "Besiege insgesamt 2000 Gegner.", PS("kills_total", 2000), UC("bomber"))
 chal("unlock_venom", "Verursache insgesamt 10000 Giftschaden.", PS("poison_damage_total", 10000), UC("venom"))
-chal("unlock_sniper", "Besiege alle vier Biom-Bosse (Ildra, Skarra, Kalthorn, Ignarok).", PS("distinct_bosses_defeated", 4), UC("sniper"))
+chal("unlock_sniper", "Besiege alle drei Beet-Bosse (Schleimrun, Knollgrimm, den Schnitter).", PS("distinct_bosses_defeated", 3), UC("sniper"))
 UP_UNLOCKS = {
- "unlock_up_stillness": ("Schließe 10 Runs ab.", PS("runs_total", 10), "stillness"),
+ "unlock_up_stillness": ("Schließe 10 Runs ab.", PS("runs_total", 10), "Ausdauernd"),
  "unlock_up_minion_horde": ("Schalte 3 Charaktere frei.", PS("characters_unlocked", 3), "minion_horde"),
  "unlock_up_orbiting_blades": ("Erreiche Level 20 in einem Run.", RS("level_reached", 20), "orbiting_blades"),
- "unlock_up_executioner": ("Besiege 25 Elite-Gegner.", PS("elite_kills_total", 25), "executioner"),
- "unlock_up_lifesteal": ("Besiege insgesamt 1000 Gegner.", PS("kills_total", 1000), "lifesteal"),
- "unlock_up_shield_burst": ("Räume eine Welle ab Welle 8, ohne Schaden zu nehmen.", RS("flawless_wave", 8), "shield_burst"),
- "unlock_up_last_stand": ("Verbringe insgesamt 60 s mit unter 20 % HP.", PS("low_hp_seconds_total", 60), "last_stand"),
- "unlock_up_overcharge": ("Lande insgesamt 3000 kritische Treffer.", PS("crits_total", 3000), "overcharge"),
- "unlock_up_explosive_rounds": ("Besiege insgesamt 3000 Gegner.", PS("kills_total", 3000), "explosive_rounds"),
- "unlock_up_second_wind": ("Besiege den ersten Boss.", PS("boss_kills_total", 1), "second_wind"),
- "unlock_up_gravity_well": ("Erreiche Minute 10.", RS("minutes_survived", 10), "gravity_well"),
- "unlock_up_bloodlust": ("Besiege 800 Gegner in einem Run.", RS("kills_in_run", 800), "bloodlust"),
- "unlock_up_time_warp": ("Erreiche Minute 12.", RS("minutes_survived", 12), "time_warp"),
- "unlock_up_shrapnel": ("Besiege insgesamt 10000 Gegner.", PS("kills_total", 10000), "shrapnel"),
- "unlock_up_titan_heart": ("Erleide 1500 Schaden in einem Run.", RS("damage_taken_run", 1500), "titan_heart"),
- "unlock_up_glass_cannon": ("Erreiche Minute 15.", RS("minutes_survived", 15), "glass_cannon"),
- "unlock_up_reaper_pact": ("Besiege insgesamt 10 Bosse.", PS("boss_kills_total", 10), "reaper_pact"),
- "unlock_up_elemental_storm": ("Besitze Entzünden, Kälte, Toxin und Schock in einem Run.", dict(type="run_flag", flag="owns_all", ids=["ignite", "chill", "toxin", "shock"]), "elemental_storm"),
+ "unlock_up_executioner": ("Besiege 25 Elite-Gegner.", PS("elite_kills_total", 25), "Elitejäger"),
+ "unlock_up_lifesteal": ("Besiege insgesamt 1000 Gegner.", PS("kills_total", 1000), "Plagenschreck"),
+ "unlock_up_shield_burst": ("Räume eine Welle ab Welle 8, ohne Schaden zu nehmen.", RS("flawless_wave", 8), "Unberührt"),
+ "unlock_up_last_stand": ("Verbringe insgesamt 60 s mit unter 20 % HP.", PS("low_hp_seconds_total", 60), "Zähe Bohne"),
+ "unlock_up_overcharge": ("Lande insgesamt 3000 kritische Treffer.", PS("crits_total", 3000), "Volltreffer"),
+ "unlock_up_explosive_rounds": ("Besiege insgesamt 3000 Gegner.", PS("kills_total", 3000), "Gärtnermeister"),
+ "unlock_up_second_wind": ("Besiege den ersten Boss.", PS("boss_kills_total", 1), "Beetbefreier"),
+ "unlock_up_gravity_well": ("Erreiche das dritte Beet.", RS("stage_reached", 3), "gravity_well"),
+ "unlock_up_bloodlust": ("Besiege 800 Gegner in einem Run.", RS("kills_in_run", 800), "Blutrausch"),
+ "unlock_up_time_warp": ("Überlebe 2 Minuten Plagenflut.", RS("swarm_seconds", 120), "time_warp"),
+ "unlock_up_shrapnel": ("Besiege insgesamt 10000 Gegner.", PS("kills_total", 10000), "Erntehelfer"),
+ "unlock_up_titan_heart": ("Erleide 1500 Schaden in einem Run.", RS("damage_taken_run", 1500), "Dickhaut"),
+ "unlock_up_glass_cannon": ("Erreiche das zweite Beet in unter 4 Minuten.", RS("stage2_before_s", 240), "Eilig"),
+ "unlock_up_reaper_pact": ("Besiege insgesamt 10 Bosse.", PS("boss_kills_total", 10), "Bossbrecher"),
+ "unlock_up_elemental_storm": ("Besitze Entzünden, Kälte, Toxin und Schock in einem Run.", dict(type="run_flag", flag="owns_all", ids=["ignite", "chill", "toxin", "shock"]), "Elementar"),
 }
-for cid, (text, cond, upid) in UP_UNLOCKS.items():
-    chal(cid, text, cond, UU(upid))
+LOCKED_UPGRADES = {u["id"] for u in UPGRADES if not u["unlocked_at_start"]}
+for cid, (text, cond, target) in UP_UNLOCKS.items():
+    chal(cid, text, cond, UU(target) if target in LOCKED_UPGRADES else dict(type="title", id=target))
 SKIN_NAMES = {"ranger": ("Waldläufer", "Goldjäger"), "pyro": ("Glutrot", "Weißglut"), "rogue": ("Mitternacht", "Schattenfürst"),
               "guardian": ("Stahlgrau", "Goldplatte"), "cryo": ("Gletscher", "Polarlicht"), "summoner": ("Nekrogrün", "Seelenlicht"),
               "storm": ("Gewitterblau", "Himmelsgold"), "bomber": ("Zunderorange", "Funkenweiß"), "venom": ("Giftgrün", "Schierlingsviolett"),
@@ -353,14 +363,12 @@ for c in CHARACTERS:
         cid = f"skin_{sid}"
         chal(cid, f"Erreiche Minute {minute} mit {c['name']}.", RS("minutes_survived", minute, character=c["id"]), dict(type="unlock_skin", id=sid))
         SKINS.append(dict(id=sid, character=c["id"], name=SKIN_NAMES[c["id"]][i], tint=SKIN_TINTS[c["id"]][i], unlock_challenge=cid))
-chal("boss_ildra", "Besiege Ildra.", PS("boss_defeated", 1, boss="ildra"), dict(type="title", id="Dornenbrecher"))
-chal("boss_skarra", "Besiege Skarra.", PS("boss_defeated", 1, boss="skarra"), dict(type="title", id="Sandbezwinger"))
-chal("boss_kalthorn", "Besiege Kalthorn.", PS("boss_defeated", 1, boss="kalthorn"), dict(type="title", id="Eisbrecher"))
-chal("boss_ignarok", "Besiege Ignarok.", PS("boss_defeated", 1, boss="ignarok"), dict(type="title", id="Glutlöscher"))
-chal("reach_swarm", "Erreiche 20:00 (Beginn der Schwarmflut).", RS("minutes_survived", 20), dict(type="unlock_mode", id="eternal_night"))
+chal("boss_snail_queen", "Besiege Schleimrun.", PS("boss_defeated", 1, boss="snail_queen"), dict(type="title", id="Schneckenschreck"))
+chal("boss_beetle_king", "Besiege Knollgrimm.", PS("boss_defeated", 1, boss="beetle_king"), dict(type="title", id="Käferknacker"))
+chal("reach_swarm", "Überlebe 30 s Plagenflut.", RS("swarm_seconds", 30), dict(type="unlock_mode", id="eternal_night"))
 chal("boss_reaper", "Besiege den Schnitter.", PS("boss_defeated", 1, boss="reaper"), dict(type="title", id="Sensenmeister"))
 chal("shrines_5", "Aktiviere 5 Schreine in einem Run.", RS("shrines_activated", 5), dict(type="title", id="Wagemutig"))
-chal("swarm_5min", "Überlebe 5 Minuten der Schwarmflut.", RS("swarm_seconds", 300), dict(type="title", id="Flutreiter"))
+chal("swarm_5min", "Überlebe 3 Minuten Plagenflut.", RS("swarm_seconds", 180), dict(type="title", id="Flutreiter"))
 
 # ---------------------------------------------------------------------------- Pruefung
 def validate():
@@ -371,7 +379,18 @@ def validate():
     if len(WORKSHOP) != 12 or any(w["max_level"] < 1 or w["base_cost"] <= 0 for w in WORKSHOP): errs.append("Werkstatt: 12 Einträge mit gültigen Werten erwartet")
     if len(SHRINES) != 4: errs.append("Schreine: 4 Arten erwartet")
     if "reaper" not in ids(BOSSES): errs.append("Endboss fehlt")
-    if not all(str(k) in ("10", "15", "20", "30") and v in ids(BOSSES) for k, v in BALANCE["boss_waves"].items()): errs.append("boss_waves verweist auf unbekannten Boss")
+    if BALANCE["boss_waves"]: errs.append("boss_waves: Bosse stehen seit Paket F in stages.json")
+    if len(STAGES) != 3: errs.append("Beete: 3 erwartet")
+    for st in STAGES:
+        if st["boss"] not in ids(BOSSES): errs.append(f"Beet {st['id']}: Boss unbekannt")
+        if st["biome"] not in ids(BIOMES): errs.append(f"Beet {st['id']}: Biom unbekannt")
+    if set(BALANCE["card_tier_mult"]) != set(BALANCE["rarity_weights"]): errs.append("card_tier_mult: jede Seltenheit braucht einen Faktor")
+    for k in STAT_LABELS:
+        if "{v}" not in STAT_LABELS[k]: errs.append(f"Stat-Text {k}: Platzhalter {{v}} fehlt")
+    for L, what in ((UPGRADES, "per_level"), (ITEMS, "value")):
+        for x in L:
+            for eff in x["effects"]:
+                if "stat" in eff and eff["stat"] not in STAT_LABELS and x.get("impl_phase", 1) == 1: errs.append(f"{x['id']}: kein Text für Stat {eff['stat']}")
     if len(CHARACTERS) != 10: errs.append(f"Charaktere: {len(CHARACTERS)} statt 10")
     if set(PALETTES) != set(ids(BIOMES)): errs.append("Paletten: jedes Biom braucht eine")
     if set(VFX) != set(ids(CHARACTERS)): errs.append("VFX: jeder Charakter braucht eine Beschreibung")
@@ -398,8 +417,6 @@ def validate():
     biomes = set(ids(BIOMES))
     for m in MOBS:
         if set(m["biome_weights"]) - biomes: errs.append(f"Mob {m['id']}: unbekanntes Biom")
-    for u in UPGRADES:
-        if u["rarity"] in ("epic", "legendary") and u["unlocked_at_start"]: errs.append(f"{u['id']}: epische/legendäre Upgrades müssen gesperrt starten")
     item_ids = ids(ITEMS)
     if len(set(item_ids)) != len(item_ids): errs.append("doppelte IDs in items")
     if set(i["rarity"] for i in ITEMS) - set(BALANCE["rarity_weights"]): errs.append("Items: unbekannte Seltenheit")
@@ -450,7 +467,45 @@ ITEMS = [
  item("greenhouse", "Gewächshaus", "epic", "+30 % XP, +40 % Aufsammelradius.", xp_gain_pct=30, pickup_radius_pct=40),
  item("gardeners_spade", "Spaten der Gärtnerin", "epic", "+1 zusätzlicher Schuss, Geschosse durchbohren +1 Gegner.", extra_attacks=1, pierce_add=1),
  item("first_seed", "Die erste Saat", "legendary", "+30 % Schaden, +20 % Angriffstempo, +10 % Krit-Chance.", damage_pct=30, attack_speed_pct=20, crit_chance_pct=10),
+ # Paket F: Items mit Auslösern und Bedingungen (Megabonk-Prinzip: kleine Zahlen, große Kombinationen)
+ item("copper_wire", "Kupferdraht", "uncommon", "8 % Chance: Blitz springt auf 2 nahe Gegner.", shock_chance_pct=8),
+ item("burning_glass", "Brennglas", "uncommon", "8 % Chance, Gegner zu entzünden.", ignite_chance_pct=8),
+ item("nettle_brew", "Brennnesseljauche", "uncommon", "Treffer vergiften (8 % Schaden/s, stapelt).", poison_pct_per_s=8),
+ item("frost_fleece", "Frostvlies", "uncommon", "Treffer verlangsamen um 6 %.", chill_slow_pct=6),
+ item("bird_bath", "Vogelbad", "uncommon", "+5 % Ausweichen.", dodge_chance_pct=5),
+ item("hedgehog_house", "Igelhaus", "uncommon", "Wirft 50 % des Nahkampfschadens zurück, +1 Rüstung.", thorns_pct=50, flat_damage_reduction=1),
+ item("ladybug", "Marienkäfer", "rare", "+2 % Lebensraub, +3 % Krit-Chance.", lifesteal_pct=2, crit_chance_pct=3),
+ item("bumblebee", "Hummel", "rare", "Blutrausch: jeder Kill +2 % Angriffstempo (5 s), bis +15 %.", kill_haste_max_pct=15),
+ item("weathervane", "Wetterhahn", "rare", "Geschosse prallen 1-mal ab.", bounce_add=1),
+ item("pitchfork", "Mistgabel", "rare", "+40 % Schaden gegen Gegner unter 30 % HP.", execute_damage_pct=40),
+ item("sun_hat", "Sonnenhut", "uncommon", "+30 % Schaden bei wenig HP (unter 35 %).", low_hp_damage_pct=30),
+ item("rain_gauge", "Regenmesser", "rare", "Alle 12 s ein Schild (30 HP).", shield_flat=30),
+ item("garden_gnome", "Gartenzwerg", "epic", "Einmal wiederbeleben (50 % HP).", revives=1),
+ item("bell_jar", "Glasglocke", "epic", "+45 % Schaden, -20 % Max-HP. Hohes Risiko.", damage_pct=45, max_hp_pct=-20),
+ item("thunder_cloud", "Gewitterwolke", "epic", "+15 % Blitzchance, +30 % Elementarschaden.", shock_chance_pct=15, elemental_damage_pct=30),
+ item("compost_heart", "Komposthaufen-Herz", "legendary", "Splitter bei 30 % der Kills, +2 HP pro Kill, +20 % Flächenradius.", shrapnel_chance_pct=30, heal_per_kill=2, area_pct=20),
 ]
+# Kartentexte je Stat (Paket F): {v} wird durch den Wert der Karte ersetzt (mit Vorzeichen, deutsch formatiert).
+STAT_LABELS = {
+ "damage_pct": "{v} % Schaden", "attack_speed_pct": "{v} % Angriffstempo", "range_pct": "{v} % Reichweite",
+ "crit_chance_pct": "{v} % Krit-Chance", "crit_mult_add_pct": "{v} % Krit-Schaden", "max_hp_flat": "{v} Max-HP",
+ "max_hp_pct": "{v} % Max-HP", "damage_taken_pct": "{v} % erlittener Schaden", "move_speed_pct": "{v} % Lauftempo",
+ "pickup_radius_pct": "{v} % Aufsammelradius", "extra_attacks": "{v} zusätzliche Schüsse", "pierce_add": "{v} Durchschlag",
+ "regen_per_s": "{v} HP pro Sekunde", "xp_gain_pct": "{v} % XP", "gold_gain_pct": "{v} % Samenkörner", "luck": "{v} Glück",
+ "cooldown_pct": "{v} % Abklingzeit", "elite_damage_pct": "{v} % Schaden gegen Elites und Bosse",
+ "standing_damage_pct": "{v} % Schaden im Stand", "thorns_flat": "{v} Dornenschaden bei Berührung", "heal_per_kill": "{v} HP pro Kill",
+ "i_frames_pct": "{v} % Schutzzeit", "explode_on_kill_pct": "{v} % Chance: Kills explodieren",
+ "heal_orb_chance_pct": "{v} % Chance auf Heilkugeln", "area_pct": "{v} % Flächenradius", "thorns_pct": "{v} % Schaden zurückwerfen",
+ "projectile_size_pct": "{v} % Geschossgröße", "projectile_speed_pct": "{v} % Geschosstempo", "dodge_chance_pct": "{v} % Ausweichen",
+ "flat_damage_reduction": "{v} Rüstung", "rerolls": "{v} Neu würfeln", "banishes": "{v} Verbannen",
+ "ignite_chance_pct": "{v} % Brandchance", "chill_slow_pct": "{v} % Verlangsamung bei Treffer", "poison_pct_per_s": "{v} % Gift pro Sekunde",
+ "shock_chance_pct": "{v} % Blitzchance", "bounce_add": "{v} Rückprall", "execute_damage_pct": "{v} % Schaden gegen Angeschlagene",
+ "lifesteal_pct": "{v} % Lebensraub", "shield_flat": "{v} Schild alle 12 s", "low_hp_damage_pct": "{v} % Schaden bei wenig HP",
+ "overcharge_pct": "{v} % Überladung alle 6 s", "explosive_hit_pct": "{v} % Explosionsschaden bei Treffer", "aura_dps": "{v} Aura-Schaden/s",
+ "elemental_damage_pct": "{v} % Elementarschaden", "revives": "{v} Wiederbelebung", "kill_haste_max_pct": "{v} % Blutrausch-Tempo",
+ "shrapnel_chance_pct": "{v} % Splitterchance",
+}
+
 ECONOMY = dict(
     currency=dict(id="seeds", name="Samenkörner", normal_drop_pct=35, normal_value=1, elite_value=10, boss_value=40),
     chests=dict(count=90, price_start=15, price_growth_pct=40, item_min_rarity={"map": "common", "elite": "rare", "boss": "epic"}),
@@ -507,7 +562,8 @@ def write_json():
     files = {"balance.json": BALANCE, "characters.json": [dict(c, vfx=VFX[c["id"]]) for c in CHARACTERS], "upgrades.json": UPGRADES, "mobs.json": MOBS,
              "elite.json": dict(ELITE, affixes=ELITE_AFFIXES, mini_boss=MINI_BOSS), "shrines.json": dict(shrines=SHRINES, rules=SHRINE_RULES), "shop.json": dict(currency=CURRENCY, workshop_rules=WORKSHOP_RULES, workshop=WORKSHOP, run_packs=RUN_PACKS, cosmetics=COSMETICS), "swarm.json": SWARM, "bosses.json": BOSSES, "biomes.json": [dict(b, palette=PALETTES[b["id"]]) for b in BIOMES], "style.json": STYLE,
              "challenges.json": CHALLENGES, "skins.json": SKINS, "modes.json": MODES, "items.json": dict(items=ITEMS, economy=ECONOMY),
-             "weapons.json": dict(WEAPON_RULES, weapons=WEAPONS)}
+             "weapons.json": dict(WEAPON_RULES, weapons=WEAPONS),
+             "stages.json": dict(stages=STAGES, flood=FLOOD, gate=GATE, stat_labels=STAT_LABELS)}
     for n, d in files.items():
         (DATA / n).write_text(json.dumps(d, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
@@ -517,15 +573,13 @@ def md():
     P("# CONTENT: festes Inhaltskonzept\n")
     P("Alle Zahlen sind **Startwerte aus einer Modellrechnung**, nicht aus gespielten Runs. Sie werden später mit einer Headless-Simulation (Bot-Läufe) justiert. Diese Datei wird von `tools/build_content.py` erzeugt, die Quelle der Wahrheit sind die JSON-Dateien in `data/`. IDs nie ohne Rückfrage ändern.\n")
     P("## Lauf und Schwierigkeit\n")
-    P("""- **Eine Arena, keine Portale, keine Stufenwechsel.** Die Arena wächst über die Zeit: neue Mob-Arten, Biom-Bosse, später die Schwarmflut. Das Vorbild beim Schwierigkeitsaufbau ist Megabonk (ohne dessen Portale und Stufen).
-- Welle alle **30 s**, ohne Pause. Level-ups pausieren das Spiel.
-- **Schwierigkeit = Zeit x Entscheidungen.** Zeit: Budget je Welle `w` = `10 + 5,5*w + 0,22*w²`, Gegner-HP `x (1 + 0,10*m + 0,012*m²)`, Schaden `x (1 + 0,05*m + 0,004*m²)`, Tempo `x (1 + 0,01*m)` bis 1,2 (m = Minuten). Entscheidungen: Schreine erhöhen einen Schwierigkeitsfaktor `D` dauerhaft. `D` wirkt auf Gegnerzahl, Spawnrate und Gegnerschaden. Dafür steigen XP und Punkte um `1 + 0,8*(D-1)`. Die Schwierigkeit steht als Prozentwert im HUD. Höchstens 350 Gegner gleichzeitig.
-- **Mehrfach-Skalierung wie bei Megabonk:** Gleiche Quellen addieren sich, verschiedene multiplizieren sich (Schaden x Krit x Angriffstempo). So entsteht die steile Kurve, in der Builds den Unterschied machen.
-- **Bossplan:** Mini-Boss mit eigener Lebensleiste bei **2:00** und **12:30**. Biom-Bosse: **5:00** Ildra (Wald), **7:30** Skarra (Wüste), **10:00** Kalthorn (Eis), **15:00** Ignarok (Lava), jeder in seiner Zone. Elite alle 5 Wellen (2:30, 5:00 ...). Der Fluchstein verdoppelt Bossauftritte.
-- **Endboss per Altar:** Ab **10:00** kann der Boss-Altar in der Lichtung aktiviert werden. Er ruft **Den Schnitter** (HP `30000 x HP-Faktor zur Beschwörungszeit`, nach 90 s Wutphase). Früher rufen heißt weniger Upgrades, aber schwächerer Boss, später heißt stärker und stärkerer Boss. Sieg beendet den Lauf (+20000 Punkte), danach optional weiterspielen.
-- **Schwarmflut ab 20:00** (wenn der Schnitter nicht schon besiegt ist): fliegende Flutgeister in Schüben alle 3 s, Schubgröße +10 % pro Minute, Tempo +8 % pro Minute, Punktemultiplikator von x1 bis x8 (+1 je 45 s). Die Skalierung endet nie: Es bleibt möglich, wird aber immer schwerer.
-- **Machbarkeitsregeln:** glatte Kurve ohne Sprünge, jeder gefährliche Angriff hat eine Vorwarnung, jeder Boss hat ein klares Muster, nichts ist unverwundbar außer kurzen Phasen.
-- **Zielkurve (Ziel, nicht gemessen):** Einsteiger sterben bei 3 bis 5 min, Geübte bei 8 bis 12, Experten bei 14 bis 18, 20:00 erreicht kaum jemand.
+    P("""- **Drei Beete, je 5:00 (Paket F, 28.10.2026).** Saatbeet, Gemüsebeet, Komposthaufen. Jedes Beet ist eine eigene Karte; Level, Upgrades, Waffen und Items bleiben beim Wechsel erhalten. Ein Lauf dauert höchstens etwa 15 Minuten.
+- **Boss bei 3:30 jedes Beets.** Ist er besiegt, öffnet sich das **Gartentor** zum nächsten Beet (volle Heilung). Der Schnitter im dritten Beet beendet den Lauf mit einem Sieg.
+- **Plagenflut:** Läuft die Zeit eines Beets ab, wird es endlos: alle 10 s +40 % Gegner, +15 % HP, +8 % Schaden. Wer den Boss besiegt hat, kann jederzeit durchs Tor.
+- Welle alle **30 s** innerhalb des Beets, ohne Pause. Level-ups pausieren das Spiel.
+- **Gegnerwerte:** Grundwert x Beet-Faktor (1 / 2,6 / 6 bei HP) x Zeitfaktor im Beet `(1 + 0,10*m + 0,012*m²)`, m = Minuten im Beet.
+- **Mehrfach-Skalierung wie bei Megabonk:** Gleiche Quellen addieren sich, verschiedene multiplizieren sich (Schaden x Krit x Angriffstempo). Jede Level-up-Karte hat eine eigene Seltenheit, die ihren Wert vervielfacht (gewöhnlich x1 bis legendär x3).
+- **Machbarkeitsregeln:** glatte Kurve ohne Sprünge, jeder gefährliche Angriff hat eine Vorwarnung, jeder Boss hat ein klares Muster.
 """)
     rows, hpc = balance_rows()
     P(f"### Modellrechnung (Ø {hpc:.1f} HP je Budgetpunkt, alles wird getötet)\n")
@@ -559,7 +613,7 @@ def md():
     P("## Mob-Typen (10)\n")
     P("| ID | Name | Verhalten | HP | Tempo | Schaden | Kosten | XP | ab Sek. | Biom | Beschreibung | Phase |\n|---|---|---|---|---|---|---|---|---|---|---|---|")
     for m in MOBS:
-        main = max(m["biome_weights"], key=m["biome_weights"].get) if m["biome_weights"].get("forest", 1) != 1 or m["id"] not in ("slimeling", "batswarm") else "alle"
+        main = max(m["biome_weights"], key=m["biome_weights"].get)
         P(f"| `{m['id']}` | {m['name']} | {m['behavior']} | {m['hp']} | {m['speed']} | {m['damage']} | {m['cost']} | {m['xp']} | {m['min_time_s']} | {main} | {m['text']} | {m['impl_phase']} |")
     P("\nSpawn: Position bestimmt das Biom, dort gewichtet `biome_weights` die Mob-Auswahl (nur Mobs mit `min_time_s` erreicht). Gruppen (`group_size`) kosten ihr Budget einmal je Gegner.\n")
     P("### Elite-Gegner\n")
@@ -570,19 +624,22 @@ def md():
     for sh in SHRINES:
         P(f"| **{sh['name']}** (`{sh['id']}`) | {sh['count']} | {sh['channel_s']} s im Radius {sh['radius_px']} px | +{sh['difficulty_add'] * 100:g} % | {sh['effect']} | {sh['reward']} | {sh['impl_phase']} |")
     P("\n" + SHRINE_RULES + "\n")
-    P("### Schwarmflut (ab 20:00)\n")
-    P(f"{SWARM['text']} Flutgeist: HP {SWARM['hp']}, Tempo {SWARM['speed']}, Schaden {SWARM['damage']}, fliegt und ignoriert Hindernisse. Schub alle {SWARM['burst_every_s']} s mit {SWARM['burst_size_base']} Gegnern (+{SWARM['burst_growth_pct_per_min']} % je Minute), Tempo +{SWARM['speed_gain_pct_per_min']} % je Minute. Punktemultiplikator x{SWARM['score_mult_start']}, +{SWARM['score_mult_gain_per_45s']} je 45 s, höchstens x{SWARM['score_mult_cap']}. HP und Schaden skalieren weiter wie bei normalen Gegnern.\n")
+    P("### Beete und Plagenflut\n")
+    P("| Beet | Dauer | Boss | HP x | Schaden x | Gegnermenge x |\n|---|---|---|---|---|---|")
+    for st in STAGES:
+        P(f"| {st['index']}. {st['name']} | {st['duration_s'] // 60}:00 | {next(b['name'] for b in BOSSES if b['id'] == st['boss'])} | {st['hp_mult']:g} | {st['damage_mult']:g} | {st['budget_mult']:g} |")
+    P("\n" + FLOOD["text"] + " " + GATE["text"] + "\n")
     P("### Bosse\n")
     for b in BOSSES:
-        tm = f"{b['spawn_time_s'] // 60}:{b['spawn_time_s'] % 60:02d}" if b.get("spawn_time_s") else f"per Altar ab {b['altar_unlock_s'] // 60}:{b['altar_unlock_s'] % 60:02d}"
+        tm = f"{b['spawn_time_s'] // 60}:{b['spawn_time_s'] % 60:02d} im Beet"
         hp = f"HP {b['hp']}, " if b.get("hp") else (f"HP {b['hp_base']} x HP-Faktor, Wutphase nach {b['enrage_after_s']} s, " if b.get("hp_base") else "")
         P(f"- **{b['name']}** (`{b['id']}`, {tm}, Phase {b['impl_phase']}): " + hp + "; ".join(f"ab {p['at_hp_pct']} % HP: {p['pattern']}" for p in b["phases"]) + ".")
-    P(f"\n## Arena und Biome ({BALANCE['arena_tiles'][0]} x {BALANCE['arena_tiles'][1]} Felder à 32 px)\n")
+    P(f"\n## Beete ({BALANCE['arena_tiles'][0]} x {BALANCE['arena_tiles'][1]} Felder à 32 px)\n")
     P("| ID | Name | Bereich (x, y, Breite, Höhe in Feldern) | Effekt | Phase |\n|---|---|---|---|---|")
     for b in BIOMES:
         P(f"| `{b['id']}` | {b['name']} | {b['rect_tiles']} | {b['effect']} | {b.get('impl_phase', 1)} |")
-    P("\nLayout (seit 28.10.2026 große Karte): Lichtung in der Mitte (30 x 30, überlagert die Quadranten), Wald oben links, Wüste oben rechts, Eis unten links, Lava unten rechts. Hindernisse sind pro Biom mit festem Seed verteilt.\n")
-    P("Biom-Farben (Pastell): " + "; ".join(f"{b['name']}: Boden {PALETTES[b['id']]['ground']}, Details {PALETTES[b['id']]['detail']}" for b in BIOMES) + ". Gefahren (Lava, Sand, Eisglanz) heben sich über die Farbe `hazard` ab.\n")
+    P("\nJedes Beet ist eine eigene Karte; die Startfläche in der Mitte bleibt frei. Hindernisse sind pro Beet mit festem Seed verteilt.\n")
+    P("Biom-Farben (Pastell): " + "; ".join(f"{b['name']}: Boden {PALETTES[b['id']]['ground']}, Details {PALETTES[b['id']]['detail']}" for b in BIOMES) + ".\n")
     P(f"## Items ({len(ITEMS)}, aus Saatkisten)\n")
     P(ECONOMY["text"] + "\n")
     P("| ID | Name | Seltenheit | Wirkung |\n|---|---|---|---|")
@@ -625,6 +682,6 @@ if __name__ == "__main__":
         print("FEHLER:"); [print(" -", e) for e in errs]; sys.exit(1)
     write_json(); DOCS.mkdir(exist_ok=True); (DOCS / "CONTENT.md").write_text(md(), encoding="utf-8")
     ph = lambda L: {p: sum(1 for x in L if x["impl_phase"] == p) for p in (1, 2, 3)}
-    print("OK: 10 Charaktere, 50 Upgrades (18/14/9/6/3), 10 Mobs,", len(BOSSES), "Bosse, 5 Biome,", len(CHALLENGES), "Challenges,", len(SKINS), "Skins")
+    print("OK: 10 Charaktere, 50 Upgrades (18/14/9/6/3), 10 Mobs,", len(BOSSES), "Bosse,", len(BIOMES), "Beete,", len(CHALLENGES), "Challenges,", len(SKINS), "Skins")
     print("Phasen  Charaktere:", ph(CHARACTERS), " Upgrades:", ph(UPGRADES), " Mobs:", ph(MOBS))
     print("Start freigeschaltet: Upgrades", sum(u["unlocked_at_start"] for u in UPGRADES), "von 50")

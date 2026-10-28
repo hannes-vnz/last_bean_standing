@@ -6,10 +6,13 @@ from .sim import PlayerInput, World
 
 
 def heuristic_input(w: World, player_id: int = 0) -> PlayerInput:
-    """Flee when crowded, collect XP when the coast is clear, otherwise stand and shoot. Always takes card 0."""
+    """Walk into an open gate, flee when crowded, collect XP when the coast is clear, otherwise stand and shoot.
+    Always takes card 0."""
     p = next(p for p in w.players if p.player_id == player_id)
     if p.offer:
         return PlayerInput(player_id, choice=0)
+    if w.gate is not None:  # boss beaten: on to the next garden bed
+        return PlayerInput(player_id, _dir(w.gate[0] - p.x, 4), _dir(w.gate[1] - p.y, 4))
     d2 = [((e.x - p.x) ** 2 + (e.y - p.y) ** 2, e) for e in w.enemies]
     crowded = sum(1 for d, _ in d2 if d < 250**2) >= 6
     if crowded and p.ability_cooldown <= 0:

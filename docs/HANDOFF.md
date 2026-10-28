@@ -18,19 +18,16 @@ M0 bis M6b, Paket A (Feuern im Laufen, Magnet, Fenns Fähigkeiten, Pause), A2 (H
 schnellere Progression (Variante C), Paket B (Karte 200 x 200, Minikarte, Boss-Pfeil), Story „Die große Ernte“,
 Paket C (Samenkörner, 90 Saatkisten, Vasen, Heilkugeln, 30 Items, Neu würfeln/Verbannen).
 
-## In Arbeit: Paket C2 Mehrere Waffen (Branch `c2-weapons`, Commit „WIP Paket C2“)
-Fertig: `tools/build_content.py` (6 Waffen, `weapons.json`), Loader/Schema (`ExtraWeapon`), `src/lastbean/sim/weapons.py`
-(fan, nova, aura, orbit, lobbed; deterministisches `cos_sin`), Welt-Integration (Waffenkarten `weapon:<id>` im Level-up-Pool,
-4 Plätze inkl. Startwaffe, `_use_weapons`, `_area_damage`, `_weapon_hit`, Kürbisbomben, Snapshot `orbiters/auras/bombs`).
-Offen:
-1. Renderer: Kartenanzeige für `weapon:`-Karten (Name/Text aus `content.weapons`, `per_level` bei Stufenaufstieg) – aktuell KeyError in `_draw_offer`.
-2. Renderer: Bienen (orbiters), Pollenwolke (auras), Kürbisbomben mit Landewarnung, Nova-/Bomben-Ring über `WeaponPulse` in `effects.py`.
-3. Pausenmenü: Waffen und Items im Build anzeigen.
-4. Tests anpassen: `test_several_levels_at_once_queue_offers`, `test_run_to_five_minutes` (gewählte Karten können Waffen sein: `sum(upgrades) + sum(Waffenstufen) == level - 1`), `test_touch_loop`. Neue Tests für jede Waffenart, Slot-Grenze, Stufen, Determinismus.
-5. Balance messen (`python tools/balance.py --seeds 12`), Bench (`tools/bench.py --render`), README/ROADMAP aktualisieren, mergen, pushen.
+## Zuletzt erledigt (28.10.2026, zweiter Chat)
+- Paket C2 (6 Waffen, 4 Plätze, Stufen), Paket T (Interpolation, schnellere Gedränge-Berechnung, Gegner-Recycling,
+  Tipp-Fix hochkant, Tempo x1,25), Paket F (drei Beete, Gartenplagen, 3 Bosse, Gartentor, Plagenflut, Sieg,
+  Kartenseltenheit, Glücksrad, komplexe Boni, Icons, Bodenkacheln). Details in `docs/ROADMAP.md`.
+- Push klappt erst, seit Hannes GitHub neu verbunden hat; Merge nach `main` braucht seine Freigabe in der Sitzung.
+- Bestenlisten-Server: Plausibilitätsprüfung der Flutzeit geändert (300 statt 1200 s) in `server/app.py` und
+  `worker/src/index.js`; der Worker muss neu deployt werden (`wrangler deploy`), sonst lehnt er Flut-Läufe ab.
 
 ## Danach laut Roadmap
-Gier-Schreine auf der Karte, Paket D (Grafik: Boden-Details, Animationen, Geschoss-Sprites, Pixelschrift),
+Bildrate auf echten Geräten prüfen, Balance mit Testspielern, Gier-Schreine, Paket D (Animationen, Geschoss-Sprites, Pixelschrift),
 Paket E (Export/Import im Menü, Einstellungen, Hinweise beim ersten Lauf, Balance mit Testspielern).
 
 ## Offene Fragen an Hannes

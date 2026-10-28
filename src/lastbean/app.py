@@ -357,6 +357,8 @@ async def run(
     screen = Screen(renderer, game.profile["settings"]["zoom"])
     effects = Effects(*effect_palette(renderer))
     effects.item_info = {i.id: (i.name, i.text) for i in content.items}
+    effects.item_rarity = {i.id: i.rarity for i in content.items}
+    effects.taglines = {st.index: st.tagline for st in content.stages}
     audio = Audio()
     touch = TouchState()
 
@@ -465,6 +467,12 @@ async def run(
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                elif (
+                    game.state == "play"
+                    and effects.reel is not None
+                    and event.type in (pygame.FINGERDOWN, pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN)
+                ):
+                    effects.skip_reel()  # chest draw: a tap or key skips the spin, a second one closes it
                 elif event.type == pygame.WINDOWFOCUSLOST and game.state == "play" and not game.world.paused:
                     game.state = "pause"  # switching tabs or apps must not cost the run
                     touch.reset()
@@ -578,6 +586,8 @@ async def run(
                         renderer.selected = 0
                     elif game.config is not game.normal:
                         frame_events += world.step([PlayerInput(0, choice=0)])  # stress test picks automatically
+                elif effects.reel is not None:  # chest draw on screen: the run waits until it is done
+                    acc = 0.0
                 elif effects.hitstop > 0:  # hit-stop: the picture holds for a few frames, the run just waits
                     effects.hitstop -= 1
                     acc = 0.0

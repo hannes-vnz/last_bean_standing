@@ -6,6 +6,8 @@ Scope so far:
 - M4: all phase-1 mob behaviours (enemies.py), enemy projectiles and hazards, elites with
   affixes and chests every few waves, biome boss with phases and a boss chest.
 - Paket C2: extra weapons from level-up cards (weapons.py), up to `weapon_slots` incl. the start weapon.
+- Paket F: a run is three garden beds (stages). Each bed has its own map, a boss at 3:30 and, when its
+  time runs out, the endless "Plagenflut". The boss opens a gate to the next bed; the last boss wins the run.
 
 Determinism: only + - * / and sqrt (correctly rounded in IEEE 754), no trigonometry,
 all randomness from `self.rng`, all iteration over lists in insertion order.
@@ -19,7 +21,7 @@ import struct
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
-from .arena import Obstacle, ObstacleMap, obstacles_from_content
+from .arena import Obstacle, ObstacleMap, obstacles_for_biome
 from .economy import Economy, ItemDef, MapChest, Pot, pick_weighted, roll_item, scatter
 from .enemies import BEHAVIORS, BOSS_BEHAVIORS, COMPASS_16, apply_affixes, damage_enemy, tick_affixes
 from .entities import (
@@ -48,22 +50,29 @@ from .events import (
     EnemyKilled,
     EnemySpawned,
     Event,
+    FloodStarted,
+    FloodWarning,
+    GateOpened,
     HazardActivated,
     ItemGained,
     LevelUp,
     PickupCollected,
     PlayerDied,
+    PlayerDodged,
     PlayerHit,
+    PlayerRevived,
     PotBroken,
     ProjectileBlocked,
     RunEnded,
     RunStarted,
     SeedsCollected,
     ShotFired,
+    StageStarted,
     UpgradeChosen,
     UpgradeOffered,
     WaveStarted,
     WeaponPulse,
+    Zap,
 )
 from .rng import Rng
 from .score import RunResult, ScoreRules, compute_score
@@ -71,30 +80,58 @@ from .spatial import SpatialHash
 from .tuning import (
     ARROW_STORM_DAMAGE,
     ARROW_STORM_SHOTS,
+    AURA_RADIUS,
     BOSS_MIN_SPAWN_DISTANCE,
+    BOUNCE_DAMAGE,
+    BOUNCE_RANGE,
+    BURN_S,
+    BURN_SHARE,
     CHEST_PICKUP_RADIUS,
+    CHILL_S,
+    DODGE_I_FRAMES_S,
+    DOT_PULSE_TICKS,
     ENEMY_SHOT_RADIUS,
+    EXECUTE_SHARE,
+    EXPLOSIVE_HIT_RADIUS,
     EXTRA_ATTACK_DAMAGE,
+    GATE_DELAY_S,
+    GATE_OFFSET,
     KILL_EXPLOSION_DAMAGE,
     KILL_EXPLOSION_RADIUS,
+    KILL_HASTE_PCT,
+    KILL_HASTE_S,
+    LOW_HP_SHARE,
     MAGNET_DROP_PCT,
     MAGNET_ORB_SPEED,
     ORB_SPEED,
+    OVERCHARGE_INTERVAL_S,
     PICKUP_RADIUS,
     PLAYER_RADIUS,
+    POISON_MAX_STACKS,
+    POISON_S,
     POT_RADIUS,
     PROJECTILE_RADIUS,
     RECYCLE_DISTANCE,
     RECYCLE_EVERY_TICKS,
+    REVIVE_HP_SHARE,
+    REVIVE_I_FRAMES_S,
     SEPARATE_EVERY_TICKS,
+    SHIELD_INTERVAL_S,
+    SHOCK_DAMAGE,
+    SHOCK_JUMPS,
+    SHOCK_RANGE,
+    SHRAPNEL_DAMAGE,
+    SHRAPNEL_PIECES,
+    SHRAPNEL_RANGE,
+    SHRAPNEL_SPEED,
     SPREAD_COS,
     SPREAD_SIN,
     SWARM_SPREAD,
     VOLATILE_DELAY_S,
     VOLATILE_RADIUS,
 )
-from .upgrades import RARITIES, UpgradeDef, derive_stats, modifier_sums, roll_offer
-from .waves import BiomeArea, Scaling, biome_areas_from_content, biome_at
+from .upgrades import INSTANT_STATS, RARITIES, UpgradeDef, derive_stats, modifier_sums, roll_offer, roll_tier
+from .waves import Scaling
 from .weapons import WEAPON_PREFIX, Bomb, WeaponDef, WeaponState, fan_directions, orbit_positions, rotate
 
 TICK_HZ = 60
@@ -125,14 +162,42 @@ class PlayerInput:
 
 
 @dataclass(frozen=True, slots=True)
+class StageConfig:
+    """One garden bed (stages.json): its map, enemy mix (via `biome`), boss and multipliers."""
+
+    id: str = "arena"
+    index: int = 1
+    name: str = "Arena"
+    biome: str = ""
+    obstacles: tuple[Obstacle, ...] = ()
+    boss: str | None = None
+    duration_s: float = 300.0
+    hp_mult: float = 1.0
+    damage_mult: float = 1.0
+    budget_mult: float = 1.0
+    tagline: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class FloodRules:
+    """The endless "Plagenflut" after a bed's time is up; growth compounds every 10 s."""
+
+    warning_s: float = 10.0
+    budget_growth: float = 0.4
+    hp_growth: float = 0.15
+    damage_growth: float = 0.08
+
+
+@dataclass(frozen=True, slots=True)
 class WorldConfig:
     character: CharacterStats
     mobs: tuple[MobStats, ...]
     upgrades: tuple[UpgradeDef, ...]
     scaling: Scaling
-    biomes: tuple[BiomeArea, ...] = ()
-    obstacles: tuple[Obstacle, ...] = ()
-    bosses: tuple[BossStats, ...] = ()
+    stages: tuple[StageConfig, ...] = (StageConfig(),)
+    flood: FloodRules = FloodRules()
+    gate_radius: float = 40.0
+    bosses: tuple[BossStats, ...] = ()  # every boss the stages may call
     boss_chests: tuple[tuple[str, str], ...] = ()  # (boss id, min rarity of its chest)
     items: tuple[ItemDef, ...] = ()
     weapons: tuple[WeaponDef, ...] = ()
@@ -140,6 +205,7 @@ class WorldConfig:
     economy: Economy | None = None
     elite: EliteRules | None = None
     rarity_weights: dict[str, float] = field(default_factory=dict)
+    card_tier_mult: dict[str, float] = field(default_factory=dict)  # value of a card by its rolled rarity
     level_up_choices: int = 3
     luck_shift: float = 0.0
     arena_w: float = 60 * 32.0
@@ -171,7 +237,7 @@ class WorldConfig:
         bosses = tuple(
             BossStats.from_content(content, b.id)
             for b in content.bosses
-            if b.impl_phase <= max_phase and b.id in BOSS_BEHAVIORS and b.spawn_time_s is not None
+            if b.impl_phase <= max_phase and b.id in BOSS_BEHAVIORS
         )
         weapons = tuple(
             WeaponDef.from_content(w, content.weapon_max_level) for w in content.weapons if w.impl_phase <= max_phase
@@ -183,14 +249,36 @@ class WorldConfig:
             mobs=mobs,
             upgrades=upgrades,
             scaling=Scaling.from_content(content),
-            biomes=biome_areas_from_content(content),
-            obstacles=obstacles_from_content(content, max_phase),
+            stages=tuple(
+                StageConfig(
+                    st.id,
+                    st.index,
+                    st.name,
+                    st.biome,
+                    obstacles_for_biome(content, st.biome),
+                    st.boss,
+                    float(st.duration_s),
+                    st.hp_mult,
+                    st.damage_mult,
+                    st.budget_mult,
+                    st.tagline,
+                )
+                for st in sorted(content.stages, key=lambda st: st.index)
+            ),  # fmt: skip
+            flood=FloodRules(
+                float(content.flood["warning_s"]),
+                float(content.flood["budget_growth_per_10s"]),
+                float(content.flood["hp_growth_per_10s"]),
+                float(content.flood["damage_growth_per_10s"]),
+            ),
+            gate_radius=float(content.gate["radius_px"]),
             bosses=bosses,
             boss_chests=tuple((b.id, BOSS_CHEST_RARITY.get(content.boss(b.id).reward, "epic")) for b in bosses),
             elite=EliteRules.from_content(content),
             items=tuple(ItemDef.from_content(i) for i in content.items),
             economy=Economy.from_content(content) if content.economy else None,
             rarity_weights={k: float(v) for k, v in bal.rarity_weights.items()},
+            card_tier_mult={k: float(v) for k, v in bal.raw.get("card_tier_mult", {}).items()},
             level_up_choices=bal.level_up_choices,
             luck_shift=float(bal.raw["luck_shift_per_point"]),
             arena_w=float(bal.arena_tiles[0] * bal.tile_px),
@@ -218,7 +306,7 @@ class PlayerView(NamedTuple):
     level: int
     xp: float
     xp_needed: float
-    offer: tuple[tuple[str, int], ...]  # (upgrade id, current level)
+    offer: tuple[tuple[str, int, str], ...]  # (card id, current level, rolled rarity of the card)
     upgrades: tuple[tuple[str, int], ...]
     offer_source: str
     slowed: bool
@@ -228,6 +316,8 @@ class PlayerView(NamedTuple):
     rerolls: int = 0
     banishes: int = 0
     weapons: tuple[tuple[str, int], ...] = ()  # extra weapons (id, level) in pick order
+    shield: float = 0.0
+    revives_left: int = 0
 
 
 class EnemyView(NamedTuple):
@@ -240,6 +330,8 @@ class EnemyView(NamedTuple):
     elite: bool
     boss: bool
     shield_frac: float
+    aim: tuple[float, float] | None = None  # dashers while aiming: direction of the coming dash (warning line)
+    status: str = ""  # "poison", "burn" or "chill" for a tint
 
 
 class ProjectileView(NamedTuple):
@@ -312,6 +404,15 @@ class Snapshot:
     pickups: tuple[tuple[str, float, float], ...] = ()
     pots: tuple[tuple[float, float], ...] = ()
     chest_price: int = 0
+    stage: int = 1  # 1-based number of the garden bed
+    stage_name: str = ""
+    biome: str = ""
+    stage_time_s: float = 0.0
+    stage_duration_s: float = 300.0
+    flood: bool = False
+    gate: tuple[float, float] | None = None
+    victory: bool = False
+    obstacles: tuple = ()  # the bed's obstacles (static per bed, the renderer rebuilds its map when they change)
     orbiters: tuple[tuple[str, float, float], ...] = ()  # (weapon, x, y), e.g. bees
     auras: tuple[tuple[str, float, float, float], ...] = ()  # (weapon, x, y, radius)
     bombs: tuple[BombView, ...] = ()
@@ -335,6 +436,11 @@ class World:
     pots: list[Pot] = field(default_factory=list)
     pickups: list[Pickup] = field(default_factory=list)
     bombs: list[Bomb] = field(default_factory=list)
+    stage: int = 0  # index into config.stages
+    stage_tick: int = 0
+    gate: tuple[float, float] | None = None
+    victory: bool = False
+    flood_ticks: int = 0
     rng: Rng = field(init=False)
 
     def __post_init__(self) -> None:
@@ -345,7 +451,7 @@ class World:
         self._budget = 0.0
         self._pending_mob: MobStats | None = None
         self._grid = SpatialHash(GRID_CELL)
-        self.obstacles = ObstacleMap(cfg.obstacles)
+        self._despawned: set[int] = set()
         self._upgrade_defs = {u.id: u for u in cfg.upgrades}
         self._item_defs = {i.id: i for i in cfg.items}
         self._weapon_defs = {w.id: w for w in cfg.weapons}
@@ -358,7 +464,8 @@ class World:
         self._mobs = {m.id: m for m in cfg.mobs}
         self.boss_stats = {b.id: b for b in cfg.bosses}
         self._boss_chest = dict(cfg.boss_chests)
-        self._bosses_due = sorted(cfg.bosses, key=lambda b: b.spawn_time_s)
+        self._boss_spawned = False
+        self._gate_ready_tick = 0
         self._max_radius = max([m.radius for m in cfg.mobs] + [b.radius for b in cfg.bosses] + [PLAYER_RADIUS])
         if cfg.elite:
             self._max_radius = max(self._max_radius, max((m.radius for m in cfg.mobs), default=0) * cfg.elite.size_mult)
@@ -372,18 +479,58 @@ class World:
             ]
         self._pending: list[Event] = [RunStarted(0, None, self.seed)]
         self.bosses_killed = 0
-        eco = cfg.economy
-        if eco is not None:
+        if cfg.economy is not None:
             for p in self.players:
-                p.rerolls, p.banishes = eco.rerolls, eco.banishes
-            if cfg.enemy_target is None:  # tests and benchmarks keep an empty map
-                # Own random stream for the layout: differs per run, never shifts the main stream.
-                layout = Rng(self.seed ^ 0x5EED5)
-                start = (cx, cy)
-                spots = scatter(layout, eco.chest_count + eco.pot_count, cfg.arena_w, cfg.arena_h, self.obstacles,
-                                start, 220.0)  # fmt: skip
-                self.chests = [MapChest(x, y, "map") for x, y in spots[: eco.chest_count]]
-                self.pots = [Pot(x, y) for x, y in spots[eco.chest_count :]]
+                p.rerolls, p.banishes = cfg.economy.rerolls, cfg.economy.banishes
+        self._setup_stage()
+        st = self.stage_cfg
+        self._pending.append(StageStarted(0, None, st.index, st.name))
+
+    def _setup_stage(self) -> None:
+        """Map of the current bed: obstacles, and chests and pots from their own random stream per bed
+        (differs per run and bed, never shifts the main stream)."""
+        cfg, eco = self.config, self.config.economy
+        self.obstacles = ObstacleMap(self.stage_cfg.obstacles)
+        self.chests, self.pots = [], []
+        if eco is not None and cfg.enemy_target is None:  # tests and benchmarks keep an empty map
+            layout = Rng(self.seed ^ 0x5EED5 ^ (self.stage * 0x9E3779B1))
+            start = (cfg.arena_w / 2, cfg.arena_h / 2)
+            spots = scatter(layout, eco.chest_count + eco.pot_count, cfg.arena_w, cfg.arena_h, self.obstacles,
+                            start, 220.0)  # fmt: skip
+            self.chests = [MapChest(x, y, "map") for x, y in spots[: eco.chest_count]]
+            self.pots = [Pot(x, y) for x, y in spots[eco.chest_count :]]
+
+    @property
+    def stage_cfg(self) -> StageConfig:
+        return self.config.stages[self.stage]
+
+    @property
+    def stage_time_s(self) -> float:
+        return self.stage_tick / TICK_HZ
+
+    @property
+    def flood_s(self) -> float:
+        """Seconds of Plagenflut in the current bed (0 before its time runs out)."""
+        return max(0.0, self.stage_time_s - self.stage_cfg.duration_s)
+
+    def _flood_factor(self, growth: float) -> float:
+        """(1 + growth) per started 10 s of flood, compounded, blended linearly inside a step (no pow())."""
+        steps, frac = divmod(self.flood_s / 10.0, 1.0)
+        f = 1.0
+        for _ in range(int(steps)):
+            f *= 1.0 + growth
+        return f * (1.0 + growth * frac)
+
+    def mob_stats(self, mob_id: str) -> MobStats | None:
+        return self._mobs.get(mob_id)
+
+    @property
+    def player_radius(self) -> float:
+        return PLAYER_RADIUS
+
+    def despawn(self, e: Enemy) -> None:
+        """Remove an enemy without a kill (e.g. a pest tomato that burst on its own)."""
+        self._despawned.add(e.eid)
 
     @property
     def time_s(self) -> float:
@@ -428,24 +575,67 @@ class World:
         self._shoot(events)
         self._use_weapons(events)
         self._move_projectiles(events)
+        self._tick_statuses(events)
+        self._aura(events)
         self._move_enemy_shots(events)
         self._update_hazards(events)
         self._contact_damage(events)
         self._collect_pickups(events)
+        if self.gate is not None and self.tick >= self._gate_ready_tick and self._enter_gate(events):
+            return events
 
         self.tick += 1
-        # Wave n starts at n * wave_interval_s: 0:00-0:30 is wave 0, boss wave 10 = 5:00 (decided, M0).
-        wave = self.tick // (self.config.wave_interval_s * TICK_HZ)
+        self.stage_tick += 1
+        st = self.stage_cfg
+        if self.stage_tick > st.duration_s * TICK_HZ:
+            self.flood_ticks += 1
+        elif self.stage_tick == int((st.duration_s - self.config.flood.warning_s) * TICK_HZ):
+            events.append(FloodWarning(self.tick, None, st.index))
+        elif self.stage_tick == int(st.duration_s * TICK_HZ):
+            events.append(FloodStarted(self.tick, None, st.index))
+        # Wave n of a bed starts at n * wave_interval_s after the bed began (0:00-0:30 is wave 0).
+        wave = self.stage_tick // (self.config.wave_interval_s * TICK_HZ)
         if wave != self.wave:
             self.wave = wave
             events.append(WaveStarted(self.tick, None, wave))
             elite = self.config.elite
             if elite and self.config.enemy_target is None and wave % elite.every_n_waves == 0:
                 self._spawn_elite(events)
-        if not any(p.alive for p in self.players):
+        if self.victory:
+            self.over = True
+            events.append(RunEnded(self.tick, None, self.time_s, True))
+        elif not any(p.alive for p in self.players):
             self.over = True
             events.append(RunEnded(self.tick, None, self.time_s))
         return events
+
+    def _enter_gate(self, events: list[Event]) -> bool:
+        """A living player in the gate takes everyone to the next bed. Returns True when that happened."""
+        gx, gy = self.gate
+        r2 = (self.config.gate_radius + PLAYER_RADIUS) ** 2
+        if not any(p.alive and (p.x - gx) ** 2 + (p.y - gy) ** 2 <= r2 for p in self.players):
+            return False
+        # Whatever still lies around is collected on the way (XP, seeds, healing).
+        alive = [p for p in self.players if p.alive]
+        for o in self.orbs:
+            self._collect_orb(alive[0], o, events)
+        self.stage += 1
+        self.stage_tick = self.wave = 0
+        self.gate = None
+        self._boss_spawned = False
+        self._budget, self._pending_mob = 0.0, None
+        self.enemies, self.projectiles, self.enemy_shots, self.hazards = [], [], [], []
+        self.orbs, self.pickups, self.bombs = [], [], []
+        cx, cy = self.config.arena_w / 2, self.config.arena_h / 2
+        for p in self.players:
+            p.x, p.y = cx + (p.player_id - (self.config.player_count - 1) / 2) * 32.0, cy
+            if p.alive:
+                p.hp = p.stats.max_hp
+        self._setup_stage()
+        self._rebuild_grid()
+        st = self.stage_cfg
+        events.append(StageStarted(self.tick, None, st.index, st.name))
+        return True
 
     # ------------------------------------------------------------------ players
 
@@ -456,46 +646,58 @@ class World:
                 continue
             if inp.reroll and p.rerolls > 0:
                 p.rerolls -= 1
-                p.offer = ()
+                p.offer, p.offer_tiers = (), ()
                 self._offer(p, events)
                 continue
             if inp.banish is not None and 0 <= inp.banish < len(p.offer) and p.banishes > 0:
                 p.banishes -= 1
                 p.banished.add(p.offer[inp.banish])
-                p.offer = ()
+                p.offer, p.offer_tiers = (), ()
                 self._offer(p, events)
                 continue
             if inp.choice is None or not 0 <= inp.choice < len(p.offer):
                 continue
             uid = p.offer[inp.choice]
+            tier = p.offer_tiers[inp.choice] if len(p.offer_tiers) == len(p.offer) else "common"
+            mult = self.config.card_tier_mult.get(tier, 1.0)
             if uid.startswith(WEAPON_PREFIX):
-                level = self._add_weapon(p, uid[len(WEAPON_PREFIX) :])
+                level = self._add_weapon(p, uid[len(WEAPON_PREFIX) :], mult)
             else:
                 p.upgrades[uid] = level = p.upgrades.get(uid, 0) + 1
+                p.upgrade_power[uid] = p.upgrade_power.get(uid, 0.0) + mult
+                for stat, per_level in self._upgrade_defs[uid].effects:
+                    if stat == "rerolls":
+                        p.rerolls += max(1, int(per_level * mult))
+                    elif stat == "banishes":
+                        p.banishes += max(1, int(per_level * mult))
                 self._recompute(p)
             if p.offer_source == "chest":
                 p.pending_chests.pop(0)
             else:
                 p.pending_levels -= 1
-            p.offer, p.offer_source = (), ""
-            events.append(UpgradeChosen(self.tick, p.player_id, uid, level))
+            p.offer, p.offer_tiers, p.offer_source = (), (), ""
+            events.append(UpgradeChosen(self.tick, p.player_id, uid, level, tier))
             self._offer(p, events)
 
     def _recompute(self, p: Player) -> None:
         """Stats from character, upgrades and items. Max-HP gains also heal by the same amount."""
         old_max = p.stats.max_hp
-        mods = modifier_sums(p.upgrades, self._upgrade_defs, p.items, self._item_defs)
+        power = {uid: p.upgrade_power.get(uid, float(level)) for uid, level in p.upgrades.items()}
+        mods = modifier_sums(power, self._upgrade_defs, p.items, self._item_defs)
+        mods = {k: v for k, v in mods.items() if k not in INSTANT_STATS}
         p.stats = derive_stats(self.config.character, mods)
         p.hp = min(p.stats.max_hp, p.hp + max(0.0, p.stats.max_hp - old_max))
 
-    def _add_weapon(self, p: Player, wid: str) -> int:
-        """Pick a weapon card: a new weapon takes a free slot, a known one gains a level."""
+    def _add_weapon(self, p: Player, wid: str, mult: float = 1.0) -> int:
+        """Pick a weapon card: a new weapon takes a free slot, a known one gains a level.
+        A rarer card also adds damage: + (card_tier_mult - 1) x 100 %."""
         st = next((st for st in p.weapons if st.weapon == wid), None)
         if st is None:
             st = WeaponState(wid)
             p.weapons.append(st)
         else:
             st.level += 1
+        st.power += mult - 1.0
         return st.level
 
     def card_levels(self, p: Player) -> dict[str, int]:
@@ -549,6 +751,9 @@ class World:
             )
             if p.offer:
                 p.offer_source = source
+                p.offer_tiers = tuple(
+                    roll_tier(self.rng, cfg.rarity_weights, p.stats.luck, cfg.luck_shift) for _ in p.offer
+                )
                 events.append(UpgradeOffered(self.tick, p.player_id, p.offer))
             elif source == "level":
                 p.pending_levels = 0  # everything maxed: nothing left to choose
@@ -565,6 +770,8 @@ class World:
             mx = _sign(inp.move_x) if inp else 0
             my = _sign(inp.move_y) if inp else 0
             speed = p.stats.speed * (1.0 - p.slow_pct / 100.0)
+            if self._low_hp(p):  # "Letztes Gefecht": faster when nearly beaten
+                speed *= 1.0 + p.stats.low_hp_damage_pct / 200.0
             k = speed * INV_SQRT2 if (mx and my) else speed
             p.vx, p.vy = mx * k, my * k
             p.standing = not (mx or my)
@@ -575,6 +782,35 @@ class World:
                 p.i_frames = max(0.0, p.i_frames - DT)
             if p.stats.regen_per_s:
                 p.hp = min(p.stats.max_hp, p.hp + p.stats.regen_per_s * DT)
+            self._tick_player_buffs(p)
+
+    def _tick_player_buffs(self, p: Player) -> None:
+        s = p.stats
+        if p.haste_t > 0:
+            p.haste_t -= DT
+            if p.haste_t <= 0:
+                p.haste_pct = 0.0
+        if s.overcharge_pct and p.overcharge_t > 0:
+            p.overcharge_t -= DT
+        if s.shield:  # "Notschild": refills every SHIELD_INTERVAL_S
+            p.shield_t -= DT
+            if p.shield_t <= 0:
+                p.shield, p.shield_t = s.shield, SHIELD_INTERVAL_S
+
+    def _low_hp(self, p: Player) -> bool:
+        return p.stats.low_hp_damage_pct > 0 and p.hp < p.stats.max_hp * LOW_HP_SHARE
+
+    def damage_mult(self, p: Player) -> float:
+        """Conditional damage bonuses of a player right now (standing still, low HP)."""
+        s, m = p.stats, 1.0
+        if p.standing:  # items like "Tiefe Wurzeln" reward standing still
+            m *= s.standing_damage_mult
+        if self._low_hp(p):
+            m *= 1.0 + s.low_hp_damage_pct / 100.0
+        return m
+
+    def attack_rate(self, p: Player) -> float:
+        return p.stats.attack_rate * (1.0 + p.haste_pct / 100.0)
 
     def _use_abilities(self, inputs: dict[int, PlayerInput], events: list[Event]) -> None:
         ch = self.config.character
@@ -603,12 +839,29 @@ class World:
         """Damage a player. Hits respect and start i-frames; damage over time does not."""
         if not p.alive or (use_i_frames and p.i_frames > 0):
             return
-        dmg = damage * p.stats.damage_taken_mult
+        s = p.stats
+        if use_i_frames and s.dodge_chance_pct and self.rng.random() * 100.0 < s.dodge_chance_pct:
+            p.i_frames = DODGE_I_FRAMES_S
+            events.append(PlayerDodged(self.tick, p.player_id, p.x, p.y))
+            return
+        dmg = damage * s.damage_taken_mult
+        if use_i_frames and s.armor:
+            dmg = max(1.0, dmg - s.armor)
+        if p.shield > 0:
+            absorbed = min(p.shield, dmg)
+            p.shield -= absorbed
+            dmg -= absorbed
         p.hp = max(0.0, p.hp - dmg)
         p.damage_taken += dmg
         if use_i_frames:
-            p.i_frames = self.config.character.i_frames_s * p.stats.i_frames_mult
+            p.i_frames = self.config.character.i_frames_s * s.i_frames_mult
             events.append(PlayerHit(self.tick, p.player_id, dmg, p.hp))
+        if p.hp <= 0 and p.revives_used < s.revives:  # "Zweiter Atem", "Gartenzwerg"
+            p.revives_used += 1
+            p.hp = s.max_hp * REVIVE_HP_SHARE
+            p.i_frames = REVIVE_I_FRAMES_S
+            events.append(PlayerRevived(self.tick, p.player_id, p.x, p.y))
+            return
         if p.hp <= 0:
             p.alive = False
             p.offer, p.pending_levels, p.pending_chests = (), 0, []
@@ -639,14 +892,16 @@ class World:
             return
 
         wave_ticks = cfg.wave_interval_s * TICK_HZ
-        per_wave = cfg.scaling.wave_budget(self.wave, self.difficulty, cfg.player_count)
+        per_wave = cfg.scaling.wave_budget(self.wave, self.difficulty, cfg.player_count) * self.stage_cfg.budget_mult
+        if self.flood_s > 0:
+            per_wave *= self._flood_factor(cfg.flood.budget_growth)
         # Unspent budget is capped at one wave, so a full arena does not cause a burst later.
         self._budget = min(self._budget + per_wave / wave_ticks, per_wave)
         for _ in range(MAX_SPAWNS_PER_TICK):
             if len(self.enemies) >= cfg.max_alive_enemies:
                 return
             x, y = self._spawn_point(alive)
-            mob = self._pending_mob or self._pick_mob(biome_at(cfg.biomes, x, y))
+            mob = self._pending_mob or self._pick_mob(self.stage_cfg.biome)
             if mob is None:
                 return
             if len(self.enemies) + mob.group_size > cfg.max_alive_enemies:
@@ -665,7 +920,7 @@ class World:
                     self._spawn_enemy(mob, x + ox, y + oy, events)
 
     def _pick_mob(self, biome: str | None) -> MobStats | None:
-        t = self.time_s
+        t = self.stage_time_s
         options = [(m, dict(m.biome_weights).get(biome, 0.0)) for m in self.config.mobs if m.min_time_s <= t]
         options = [(m, w) for m, w in options if w > 0]
         if not options:
@@ -689,15 +944,18 @@ class World:
         return min(max(x, r), cfg.arena_w - r), min(max(y, r), cfg.arena_h - r)
 
     def _spawn_enemy(self, m: MobStats, x: float, y: float, events: list[Event]) -> Enemy:
-        sc, minutes = self.config.scaling, self.time_s / 60.0
+        sc, minutes, st = self.config.scaling, self.stage_time_s / 60.0, self.stage_cfg
         x, y = self._clamp(*self.obstacles.push_out(x, y, m.radius), m.radius)
-        hp = m.hp * sc.hp_mult(minutes)
-        dmg = m.damage * sc.damage_mult(minutes) * self.difficulty
+        hp = m.hp * sc.hp_mult(minutes) * st.hp_mult
+        dmg = m.damage * sc.damage_mult(minutes) * self.difficulty * st.damage_mult
+        if self.flood_s > 0:
+            hp *= self._flood_factor(self.config.flood.hp_growth)
+            dmg *= self._flood_factor(self.config.flood.damage_growth)
         speed = m.speed * sc.speed_mult(minutes)
         e = Enemy(self._next_eid, m.id, x, y, hp, hp, speed, dmg, m.radius, m.xp, m.behavior)
         e.keep_distance, e.shot_interval, e.timer = m.keep_distance, m.shot_interval, m.shot_interval
         self.enemies.append(e)
-        events.append(EnemySpawned(self.tick, None, self._next_eid, m.id, biome_at(self.config.biomes, x, y)))
+        events.append(EnemySpawned(self.tick, None, self._next_eid, m.id, self.stage_cfg.biome))
         self._next_eid += 1
         return e
 
@@ -707,7 +965,7 @@ class World:
         if not alive or rules is None:
             return
         x, y = self._spawn_point(alive)
-        mob = self._pick_mob(biome_at(self.config.biomes, x, y))
+        mob = self._pick_mob(self.stage_cfg.biome)
         if mob is None:
             return
         e = self._spawn_enemy(mob, x, y, events)
@@ -718,38 +976,38 @@ class World:
         e.radius *= rules.size_mult
         pool = list(rules.affix_ids)
         affixes = []
-        for _ in range(min(rules.affix_count(self.time_s / 60.0), len(pool))):
+        for _ in range(min(rules.affix_count(self.time_s / 60.0), len(pool))):  # affixes grow over the whole run
             affixes.append(pool.pop(self.rng.randint(0, len(pool) - 1)))
         e.affixes = tuple(affixes)
         apply_affixes(e)
         events.append(EliteSpawned(self.tick, None, e.eid, e.kind, e.affixes))
 
     def _spawn_bosses(self, events: list[Event]) -> None:
-        while self._bosses_due and self.time_s >= self._bosses_due[0].spawn_time_s:
-            b = self._bosses_due.pop(0)
-            p, _ = self._nearest_player(self.config.arena_w / 2, self.config.arena_h / 2)
-            if p is None:
-                return
-            x, y = self._boss_spawn_point(b, p)
-            e = Enemy(self._next_eid, b.id, x, y, b.hp, b.hp, b.speed, b.damage, b.radius, 0.0, "boss", boss=b.id)
-            self.enemies.append(e)
-            self._next_eid += 1
-            events.append(BossSpawned(self.tick, None, e.eid, b.id))
+        """The bed's boss arrives at its spawn time (counted from the start of the bed), near the player."""
+        st = self.stage_cfg
+        b = self.boss_stats.get(st.boss) if st.boss else None
+        if self._boss_spawned or b is None or self.stage_time_s < b.spawn_time_s:
+            return
+        p, _ = self._nearest_player(self.config.arena_w / 2, self.config.arena_h / 2)
+        if p is None:
+            return
+        self._boss_spawned = True
+        x, y = self._boss_spawn_point(b, p)
+        hp = b.hp * self.difficulty
+        e = Enemy(self._next_eid, b.id, x, y, hp, hp, b.speed, b.damage * self.difficulty, b.radius, 0.0, "boss",
+                  boss=b.id)  # fmt: skip
+        self.enemies.append(e)
+        self._next_eid += 1
+        events.append(BossSpawned(self.tick, None, e.eid, b.id))
 
     def _boss_spawn_point(self, b: BossStats, p: Player) -> tuple[float, float]:
-        """Near the player, preferably in the boss's own biome (the map is too big to make the player walk there).
-
-        Tries the normal spawn ring first, then rings farther out, then gives up on the biome."""
+        """On the spawn ring around the player, but not closer than BOSS_MIN_SPAWN_DISTANCE."""
         lo, hi = self.config.spawn_distance
         lo = max(lo, BOSS_MIN_SPAWN_DISTANCE)
-        for ring in range(4):
-            for _ in range(40):
-                dx, dy = self._random_direction()
-                dist = self.rng.uniform(lo, hi) * (1.0 + 0.5 * ring)
-                x, y = self._clamp(p.x + dx * dist, p.y + dy * dist, b.radius)
-                if b.biome is None or biome_at(self.config.biomes, x, y) == b.biome:
-                    return self._clamp(*self.obstacles.push_out(x, y, b.radius), b.radius)
-        return self._spawn_point([p])
+        dx, dy = self._random_direction()
+        dist = self.rng.uniform(lo, max(lo, hi))
+        x, y = self._clamp(p.x + dx * dist, p.y + dy * dist, b.radius)
+        return self._clamp(*self.obstacles.push_out(x, y, b.radius), b.radius)
 
     def summon_around(self, boss: Enemy, mob_id: str, count: int, events: list[Event]) -> None:
         mob = self._mobs.get(mob_id)
@@ -800,6 +1058,9 @@ class World:
         obstacles = self.obstacles
         for e in self.enemies:
             e.x, e.y = self._clamp(*obstacles.push_out(e.x, e.y, e.radius), e.radius)
+        if self._despawned:
+            self.enemies = [e for e in self.enemies if e.eid not in self._despawned]
+            self._despawned.clear()
 
     def _separate(self) -> None:
         """Push overlapping enemies apart so they form a crowd instead of a single dot.
@@ -865,6 +1126,12 @@ class World:
                 p.kills += 1
                 if p.stats.heal_per_kill and p.alive:
                     p.hp = min(p.stats.max_hp, p.hp + p.stats.heal_per_kill)
+                if p.stats.kill_haste_max_pct:  # "Blutrausch"
+                    p.haste_pct = min(p.stats.kill_haste_max_pct, p.haste_pct + KILL_HASTE_PCT)
+                    p.haste_t = KILL_HASTE_S
+                if p.stats.heal_orb_chance_pct and self.rng.random() * 100.0 < p.stats.heal_orb_chance_pct:
+                    heal = self.config.economy.heal_orb_hp if self.config.economy else 15.0
+                    self.orbs.append(XpOrb(e.x - 6.0, e.y, heal, kind="heal"))
         if e.elite:
             self._drop_chest(e.x, e.y, "elite", events)
             if "volatile" in e.affixes:
@@ -873,7 +1140,15 @@ class World:
         if e.boss:
             self.bosses_killed += 1
             events.append(BossKilled(self.tick, killer, e.eid, e.boss, self.time_s))
-            self._drop_chest(e.x, e.y, "boss", events)
+            if self.stage + 1 >= len(self.config.stages):
+                self.victory = True  # the last bed's boss: the run is won
+            else:
+                self._drop_chest(e.x, e.y, "boss", events)
+                gx, gy = self._clamp(*self.obstacles.push_out(e.x, e.y + GATE_OFFSET, self.config.gate_radius),
+                                     self.config.gate_radius)  # fmt: skip
+                self.gate = (gx, gy)
+                self._gate_ready_tick = self.tick + int(GATE_DELAY_S * TICK_HZ)
+                events.append(GateOpened(self.tick, None, gx, gy))
 
     def _drop_chest(self, x: float, y: float, kind: str, events: list[Event]) -> None:
         """Elite and boss chests are free and hold at least a rare or epic item (items.json economy)."""
@@ -882,9 +1157,11 @@ class World:
 
     def _explode(self, e: Enemy, killer: int | None, damage: float, killed: set[int], events: list[Event]) -> None:
         """Item "Samenbombe": a kill bursts and hurts enemies around it (no chain reaction)."""
-        r2 = KILL_EXPLOSION_RADIUS**2
-        events.append(HazardActivated(self.tick, killer, "seed_burst", e.x, e.y, KILL_EXPLOSION_RADIUS))
-        for o in self._grid.query(e.x, e.y, KILL_EXPLOSION_RADIUS + self._max_radius):
+        owner = next((p for p in self.players if p.player_id == killer), None)
+        radius = KILL_EXPLOSION_RADIUS * (owner.stats.area_mult if owner else 1.0)
+        r2 = radius**2
+        events.append(HazardActivated(self.tick, killer, "seed_burst", e.x, e.y, radius))
+        for o in self._grid.query(e.x, e.y, radius + self._max_radius):
             if o.eid == e.eid or o.eid in killed or (o.x - e.x) ** 2 + (o.y - e.y) ** 2 > r2:
                 continue
             damage_enemy(o, damage)
@@ -908,16 +1185,18 @@ class World:
             if target is None:
                 p.shot_cooldown = 0.0
                 continue
-            p.shot_cooldown += 1.0 / s.attack_rate
+            p.shot_cooldown += 1.0 / self.attack_rate(p)
             d = math.sqrt(best) or 1.0
             dx, dy = (target.x - p.x) / d, (target.y - p.y) / d
-            life = max(1, int(s.range / ch.projectile_speed * TICK_HZ + 0.5))
-            damage = s.damage
+            life = max(1, int(s.range / (ch.projectile_speed * s.projectile_speed_mult) * TICK_HZ + 0.5))
+            damage = s.damage * self.damage_mult(p)
             if s.far_damage_pct and d > s.far_threshold:  # e.g. Fenn's passive "Weitblick"
                 damage *= 1.0 + s.far_damage_pct / 100.0
-            if p.standing:  # items like "Tiefe Wurzeln" reward standing still
-                damage *= s.standing_damage_mult
-            self._fire(p, dx, dy, damage, life, events)
+            if s.overcharge_pct and p.overcharge_t <= 0:  # "Überladung": one big shot every few seconds
+                p.overcharge_t = OVERCHARGE_INTERVAL_S
+                self._fire(p, dx, dy, damage * (1.0 + s.overcharge_pct / 100.0), life, events, big=True)
+            else:
+                self._fire(p, dx, dy, damage, life, events)
             # Extra attacks fan out alternately left and right of the main shot.
             lx, ly, rx, ry = dx, dy, dx, dy
             for k in range(s.extra_attacks):
@@ -944,13 +1223,15 @@ class World:
         return None, 0.0
 
     def _fire(self, p: Player, dx: float, dy: float, damage: float, life: int, events: list[Event],
-              speed: float | None = None, pierce: int | None = None, weapon: str = "") -> None:  # fmt: skip
+              speed: float | None = None, pierce: int | None = None, weapon: str = "",
+              big: bool = False) -> None:  # fmt: skip
         s = p.stats
-        speed = self.config.character.projectile_speed if speed is None else speed
+        speed = (self.config.character.projectile_speed if speed is None else speed) * s.projectile_speed_mult
         dmg, crit = self._roll_crit(p, damage)
         hits = (s.pierce if pierce is None else pierce) + 1
-        self.projectiles.append(Projectile(p.player_id, p.x, p.y, dx * speed, dy * speed, dmg, crit, life, hits,
-                                           weapon=weapon))  # fmt: skip
+        radius = PROJECTILE_RADIUS * s.projectile_size_mult * (2.0 if big else 1.0)
+        self.projectiles.append(Projectile(p.player_id, p.x, p.y, dx * speed, dy * speed, dmg, crit or big, life, hits,
+                                           weapon=weapon, radius=radius, bounces_left=s.bounces))  # fmt: skip
         events.append(ShotFired(self.tick, p.player_id, p.x, p.y, dx, dy, weapon))
 
     def _roll_crit(self, p: Player, damage: float) -> tuple[float, bool]:
@@ -960,7 +1241,6 @@ class World:
 
     def _move_projectiles(self, events: list[Event]) -> None:
         g = self._grid
-        reach = PROJECTILE_RADIUS + self._max_radius
         survivors: list[Projectile] = []
         killed: set[int] = set()
         owners = {p.player_id: p for p in self.players}
@@ -971,16 +1251,18 @@ class World:
             if self.obstacles.blocks_point(pr.x, pr.y, PROJECTILE_RADIUS):
                 events.append(ProjectileBlocked(self.tick, pr.owner, pr.x, pr.y))
                 continue
-            for e in g.query(pr.x, pr.y, reach):
+            for e in g.query(pr.x, pr.y, pr.radius + self._max_radius):
                 if e.eid in pr.hit_ids or e.eid in killed:
                     continue
-                r = e.radius + PROJECTILE_RADIUS
+                r = e.radius + pr.radius
                 if (e.x - pr.x) ** 2 + (e.y - pr.y) ** 2 > r * r:
                     continue
                 pr.hit_ids.add(e.eid)
-                self._weapon_hit(owners.get(pr.owner), pr.owner, e, pr.damage, pr.crit, killed, events)
+                self._weapon_hit(owners.get(pr.owner), pr.owner, e, pr.damage, pr.crit, killed, events, pr.procs)
                 pr.hits_left -= 1
                 if pr.hits_left <= 0:
+                    if pr.bounces_left > 0 and self._bounce(pr, e, killed):
+                        continue
                     break
             if pr.ticks_left > 0 and pr.hits_left > 0:
                 survivors.append(pr)
@@ -989,22 +1271,149 @@ class World:
             self.enemies = [e for e in self.enemies if e.eid not in killed]
             self._rebuild_grid()
 
+    def _bounce(self, pr: Projectile, last: Enemy, killed: set[int]) -> bool:
+        """ "Rückprall": turn towards the nearest enemy not hit yet. Returns False when there is none."""
+        best, best_d2 = None, BOUNCE_RANGE * BOUNCE_RANGE
+        for o in self._grid.query(last.x, last.y, BOUNCE_RANGE):
+            if o.eid in pr.hit_ids or o.eid in killed:
+                continue
+            d2 = (o.x - pr.x) ** 2 + (o.y - pr.y) ** 2
+            if d2 < best_d2:
+                best, best_d2 = o, d2
+        if best is None:
+            return False
+        speed = math.sqrt(pr.vx * pr.vx + pr.vy * pr.vy)
+        d = math.sqrt(best_d2) or 1.0
+        pr.vx, pr.vy = (best.x - pr.x) / d * speed, (best.y - pr.y) / d * speed
+        pr.bounces_left -= 1
+        pr.hits_left = 1
+        pr.damage *= BOUNCE_DAMAGE
+        pr.ticks_left = max(pr.ticks_left, int(BOUNCE_RANGE / max(speed, 1.0) * TICK_HZ) + 1)
+        return True
+
     def _weapon_hit(self, owner: Player | None, owner_id: int, e: Enemy, dmg: float, crit: bool, killed: set[int],
-                    events: list[Event]) -> None:  # fmt: skip
-        """One hit of any player weapon: elite bonus, armour and shield, kill, "Samenbombe" explosion."""
-        if owner is not None and (e.elite or e.boss):
-            dmg *= owner.stats.elite_damage_mult
+                    events: list[Event], procs: bool = True) -> None:  # fmt: skip
+        """One hit of any player weapon: bonuses, armour and shield, on-hit effects, kill and on-kill effects.
+
+        `procs` is False for damage that on-hit effects caused themselves (explosions, lightning, poison),
+        so effects never chain into each other."""
+        s = owner.stats if owner is not None else None
+        if s is not None:
+            if e.elite or e.boss:
+                dmg *= s.elite_damage_mult
+            if s.execute_damage_pct and e.hp < e.max_hp * EXECUTE_SHARE:  # "Henker"
+                dmg *= 1.0 + s.execute_damage_pct / 100.0
         lost = damage_enemy(e, dmg)
         events.append(EnemyHit(self.tick, owner_id, e.eid, e.x, e.y, lost, crit))
-        if e.hp <= 0:
+        if s is not None and procs:
+            if s.lifesteal_pct and owner.alive:
+                owner.hp = min(s.max_hp, owner.hp + lost * s.lifesteal_pct / 100.0)
+            self._on_hit_effects(owner, e, dmg, killed, events)
+        if e.hp <= 0 and e.eid not in killed:
             killed.add(e.eid)
             self._kill(e, owner_id, events)
-            if (
-                owner is not None
-                and owner.stats.explode_on_kill_pct
-                and (self.rng.random() * 100.0 < owner.stats.explode_on_kill_pct)
-            ):
-                self._explode(e, owner_id, dmg * KILL_EXPLOSION_DAMAGE, killed, events)
+            if s is None:
+                return
+            if s.explode_on_kill_pct and self.rng.random() * 100.0 < s.explode_on_kill_pct:
+                self._explode(e, owner_id, dmg * KILL_EXPLOSION_DAMAGE * s.area_mult, killed, events)
+            if procs and s.shrapnel_chance_pct and self.rng.random() * 100.0 < s.shrapnel_chance_pct:
+                self._shrapnel(owner, e, dmg * SHRAPNEL_DAMAGE, events)
+
+    def _on_hit_effects(self, p: Player, e: Enemy, dmg: float, killed: set[int], events: list[Event]) -> None:
+        """Status effects and chance effects of one hit. Each roll only happens when the stat exists,
+        so a build without them draws exactly the same random numbers as before."""
+        s, elem = p.stats, p.stats.elemental_mult
+        if e.hp > 0:
+            if s.ignite_chance_pct and self.rng.random() * 100.0 < s.ignite_chance_pct:
+                e.burn_dps, e.burn_t, e.dot_owner = max(e.burn_dps, dmg * BURN_SHARE * elem), BURN_S, p.player_id
+            if s.poison_pct_per_s:
+                add = dmg * s.poison_pct_per_s / 100.0 * elem
+                e.poison_dps = min(e.poison_dps + add, add * POISON_MAX_STACKS) if e.poison_t > 0 else add
+                e.poison_t, e.dot_owner = POISON_S, p.player_id
+            if s.chill_slow_pct:
+                e.chill_pct, e.chill_t = max(e.chill_pct if e.chill_t > 0 else 0.0, s.chill_slow_pct), CHILL_S
+        if s.shock_chance_pct and self.rng.random() * 100.0 < s.shock_chance_pct:
+            self._shock(p, e, dmg * SHOCK_DAMAGE * elem, killed, events)
+        if s.explosive_hit_pct:
+            radius = EXPLOSIVE_HIT_RADIUS * s.area_mult
+            events.append(HazardActivated(self.tick, p.player_id, "seed_burst", e.x, e.y, radius))
+            for o in self._grid.query(e.x, e.y, radius + self._max_radius):
+                r = radius + o.radius
+                if o.eid != e.eid and o.eid not in killed and o.hp > 0 and (o.x - e.x) ** 2 + (o.y - e.y) ** 2 <= r * r:
+                    self._weapon_hit(p, p.player_id, o, dmg * s.explosive_hit_pct / 100.0, False, killed, events,
+                                     procs=False)  # fmt: skip
+
+    def _shock(self, p: Player, e: Enemy, dmg: float, killed: set[int], events: list[Event]) -> None:
+        """A lightning bolt jumps from the hit enemy to the nearest others (SHOCK_JUMPS of them)."""
+        points = [(e.x, e.y)]
+        hit = {e.eid}
+        x, y = e.x, e.y
+        for _ in range(SHOCK_JUMPS):
+            best, best_d2 = None, SHOCK_RANGE * SHOCK_RANGE
+            for o in self._grid.query(x, y, SHOCK_RANGE):
+                if o.eid in hit or o.eid in killed or o.hp <= 0:
+                    continue
+                d2 = (o.x - x) ** 2 + (o.y - y) ** 2
+                if d2 < best_d2:
+                    best, best_d2 = o, d2
+            if best is None:
+                break
+            hit.add(best.eid)
+            points.append((best.x, best.y))
+            x, y = best.x, best.y
+            self._weapon_hit(p, p.player_id, best, dmg, False, killed, events, procs=False)
+        if len(points) > 1:
+            events.append(Zap(self.tick, p.player_id, tuple(points)))
+
+    def _shrapnel(self, p: Player, e: Enemy, dmg: float, events: list[Event]) -> None:
+        """ "Splitterhagel": splinters fly from the fallen enemy in all directions (no further effects)."""
+        life = max(1, int(SHRAPNEL_RANGE / SHRAPNEL_SPEED * TICK_HZ))
+        step = len(COMPASS_16) // SHRAPNEL_PIECES
+        for k in range(SHRAPNEL_PIECES):
+            dx, dy = COMPASS_16[(k * step) % len(COMPASS_16)]
+            self.projectiles.append(Projectile(p.player_id, e.x, e.y, dx * SHRAPNEL_SPEED, dy * SHRAPNEL_SPEED, dmg,
+                                               False, life, 1, {e.eid}, "shrapnel", procs=False))  # fmt: skip
+
+    def _tick_statuses(self, events: list[Event]) -> None:
+        """Poison and burn hurt in half-second pulses (one number instead of sixty), chill wears off."""
+        killed: set[int] = set()
+        owners = {p.player_id: p for p in self.players}
+        for e in self.enemies:
+            if e.chill_t > 0:
+                e.chill_t -= DT
+            if e.poison_t <= 0 and e.burn_t <= 0:
+                continue
+            e.poison_t -= DT
+            e.burn_t -= DT
+            if (self.tick + e.eid) % DOT_PULSE_TICKS:
+                continue
+            dps = (e.poison_dps if e.poison_t > 0 else 0.0) + (e.burn_dps if e.burn_t > 0 else 0.0)
+            if dps > 0 and e.eid not in killed:
+                self._weapon_hit(owners.get(e.dot_owner), e.dot_owner, e, dps * DOT_PULSE_TICKS * DT, False, killed,
+                                 events, procs=False)  # fmt: skip
+        if killed:
+            self.enemies = [e for e in self.enemies if e.eid not in killed]
+            self._rebuild_grid()
+
+    def _aura(self, events: list[Event]) -> None:
+        """ "Brennnesselkranz": damage around the player in half-second pulses."""
+        killed: set[int] = set()
+        for p in self.players:
+            if not p.alive or not p.stats.aura_dps:
+                continue
+            p.aura_t -= DT
+            if p.aura_t > 0:
+                continue
+            p.aura_t = DOT_PULSE_TICKS * DT
+            dmg = p.stats.aura_dps * DOT_PULSE_TICKS * DT * p.stats.damage / self._base_stats.damage
+            radius = AURA_RADIUS * p.stats.area_mult
+            for e in self._grid.query(p.x, p.y, radius + self._max_radius):
+                r = radius + e.radius
+                if e.eid not in killed and e.hp > 0 and (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r * r:
+                    self._weapon_hit(p, p.player_id, e, dmg, False, killed, events, procs=False)
+        if killed:
+            self.enemies = [e for e in self.enemies if e.eid not in killed]
+            self._rebuild_grid()
 
     # ------------------------------------------------------------------ extra weapons (Paket C2)
 
@@ -1015,12 +1424,14 @@ class World:
             if not p.alive or not p.weapons:
                 continue
             s = p.stats
-            damage_mult = s.damage / base.damage * (s.standing_damage_mult if p.standing else 1.0)
-            rate_mult = s.attack_rate / base.attack_rate
+            damage_mult = s.damage / base.damage * self.damage_mult(p)
+            rate_mult = self.attack_rate(p) / base.attack_rate
             for st in p.weapons:
                 w = self._weapon_defs[st.weapon]
                 v = w.at(st.level)
-                v["damage"] *= damage_mult
+                v["damage"] *= damage_mult * (1.0 + st.power)
+                if "radius" in v and w.kind != "orbit":
+                    v["radius"] *= s.area_mult
                 if w.kind == "orbit":
                     self._weapon_orbit(p, st, v, rate_mult, killed, events)
                     continue
@@ -1203,8 +1614,9 @@ class World:
                     self._hurt(p, e.damage, events)
                     if "vampiric" in e.affixes:
                         e.hp = min(e.max_hp, e.hp + (before - p.hp))
-                    if p.stats.thorns and e.hp > 0:  # item "Brennnessel"
-                        damage_enemy(e, p.stats.thorns)
+                    reflect = p.stats.thorns + (before - p.hp) * p.stats.thorns_pct / 100.0
+                    if reflect > 0 and e.hp > 0:  # "Brennnessel", "Dornenpanzer"
+                        damage_enemy(e, reflect)
                         if e.hp <= 0:
                             thorn_kills.add(e.eid)
                             self._kill(e, p.player_id, events)
@@ -1254,19 +1666,22 @@ class World:
             step = (MAGNET_ORB_SPEED if magnet is not None else ORB_SPEED) * DT
             d = math.sqrt(best)
             if d <= PLAYER_RADIUS + step:
-                if o.kind == "seeds":
-                    amount = int(round(o.value * owner.stats.gold_mult))
-                    owner.seeds += amount
-                    events.append(SeedsCollected(self.tick, owner.player_id, amount))
-                elif o.kind == "heal":
-                    owner.hp = min(owner.stats.max_hp, owner.hp + o.value)
-                else:
-                    self._gain_xp(owner, o.value * owner.stats.xp_mult, events)
+                self._collect_orb(owner, o, events)
                 continue
             o.x += (owner.x - o.x) / d * step
             o.y += (owner.y - o.y) / d * step
             remaining.append(o)
         self.orbs = remaining
+
+    def _collect_orb(self, owner: Player, o: XpOrb, events: list[Event]) -> None:
+        if o.kind == "seeds":
+            amount = int(round(o.value * owner.stats.gold_mult))
+            owner.seeds += amount
+            events.append(SeedsCollected(self.tick, owner.player_id, amount))
+        elif o.kind == "heal":
+            owner.hp = min(owner.stats.max_hp, owner.hp + o.value)
+        else:
+            self._gain_xp(owner, o.value * owner.stats.xp_mult, events)
 
     def _open_chests(self, alive: list[Player], events: list[Event]) -> None:
         """Touch a chest to open it. Map chests cost seeds (price grows per opened chest); others are free."""
@@ -1330,21 +1745,24 @@ class World:
         seconds = int(self.time_s)
         if self.config.score is None:
             raise ValueError("WorldConfig.score is missing (use WorldConfig.from_content)")
-        score = compute_score(self.config.score, seconds, p.kills, p.level, self.bosses_killed, self.difficulty)
+        flood = self.flood_ticks // TICK_HZ
+        score = compute_score(self.config.score, seconds, p.kills, p.level, self.bosses_killed, self.difficulty,
+                              self.victory, flood)  # fmt: skip
         return RunResult(
             character=self.config.character.id,
             seed=self.seed,
             seconds=seconds,
-            wave=self.wave,
+            wave=seconds // self.config.wave_interval_s,  # over the whole run (the server checks it against the time)
             kills=p.kills,
             level=p.level,
             bosses=self.bosses_killed,
             difficulty=self.difficulty,
-            victory=False,
-            swarm_seconds=0,
+            victory=self.victory,
+            swarm_seconds=flood,
             swarm_mult=1.0,
             damage_taken=p.damage_taken,
             score=score,
+            stage=self.stage_cfg.index,
         )
 
     # ------------------------------------------------------------------ views
@@ -1376,7 +1794,10 @@ class World:
                     p.level,
                     p.xp,
                     sc.xp_needed(p.level),
-                    tuple((uid, self.card_levels(p).get(uid, 0)) for uid in p.offer),
+                    tuple(
+                        (uid, self.card_levels(p).get(uid, 0), tier)
+                        for uid, tier in zip(p.offer, p.offer_tiers or ("common",) * len(p.offer), strict=True)
+                    ),
                     tuple(p.upgrades.items()),
                     p.offer_source,
                     p.slow_pct > 0,
@@ -1388,6 +1809,8 @@ class World:
                     p.rerolls,
                     p.banishes,
                     tuple((st.weapon, st.level) for st in p.weapons),
+                    p.shield,
+                    max(0, p.stats.revives - p.revives_used),
                 )
                 for p in self.players
             ),
@@ -1402,6 +1825,8 @@ class World:
                     e.elite,
                     e.boss is not None,
                     e.shield / e.shield_max if e.shield_max else 0.0,
+                    (e.cdx, e.cdy) if e.charge_state == 1 else None,
+                    "burn" if e.burn_t > 0 else "poison" if e.poison_t > 0 else "chill" if e.chill_t > 0 else "",
                 )
                 for e in self.enemies
             ),  # fmt: skip
@@ -1414,6 +1839,15 @@ class World:
             chest_price=self.config.economy.chest_price(self.chests_opened) if self.config.economy else 0,
             pickups=tuple((k.kind, k.x, k.y) for k in self.pickups),
             boss_bar=BossBar(boss.boss, boss.hp / boss.max_hp, boss.phase) if boss else None,
+            stage=self.stage_cfg.index,
+            stage_name=self.stage_cfg.name,
+            biome=self.stage_cfg.biome,
+            stage_time_s=self.stage_time_s,
+            stage_duration_s=self.stage_cfg.duration_s,
+            flood=self.flood_s > 0,
+            gate=self.gate,
+            victory=self.victory,
+            obstacles=self.stage_cfg.obstacles,
             **self._weapon_views(),
         )
 
@@ -1446,6 +1880,8 @@ class World:
         h.update(struct.pack("<qqq?qdd", self.seed, self.tick, self.wave, self.over, self._next_eid, self._budget,
                              self.difficulty))  # fmt: skip
         h.update(struct.pack("<4I", *self.rng.getstate()))
+        h.update(repr((self.stage, self.stage_tick, self.gate, self.victory, self.flood_ticks, self._boss_spawned,
+                       self._gate_ready_tick)).encode())  # fmt: skip
         h.update((self._pending_mob.id if self._pending_mob else "").encode())
         for p in self.players:
             h.update(
@@ -1457,6 +1893,8 @@ class World:
             h.update(repr((sorted(p.upgrades.items()), p.offer, p.pending_chests)).encode())
         for e in self.enemies:
             h.update(struct.pack("<i6d", e.eid, e.x, e.y, e.hp, e.shield, e.timer, e.speed))
+            h.update(struct.pack("<i9d", e.charge_state, e.charge_t, e.cdx, e.cdy, e.poison_dps, e.poison_t,
+                                 e.burn_dps, e.burn_t, e.chill_pct, e.chill_t))  # fmt: skip
             h.update(repr((e.affixes, e.phase, e.timers, e.volley)).encode())
         for pr in self.projectiles:
             h.update(struct.pack("<i4d2i", pr.owner, pr.x, pr.y, pr.vx, pr.vy, pr.ticks_left, pr.hits_left))
@@ -1476,10 +1914,13 @@ class World:
         for k in self.pickups:
             h.update(k.kind.encode() + struct.pack("<2d", k.x, k.y))
         h.update(struct.pack(f"<{len(self.players)}d", *(p.ability_cooldown for p in self.players)))
+        for p in self.players:
+            h.update(repr((sorted(p.upgrade_power.items()), p.offer_tiers, p.haste_pct, p.haste_t, p.overcharge_t,
+                           p.shield, p.shield_t, p.revives_used, p.aura_t)).encode())  # fmt: skip
         h.update(repr([o.magnet_to for o in self.orbs]).encode())
         for p in self.players:
             for st in p.weapons:
-                h.update(st.weapon.encode() + struct.pack("<i3d", st.level, st.cooldown, st.ux, st.uy))
+                h.update(st.weapon.encode() + struct.pack("<i4d", st.level, st.cooldown, st.ux, st.uy, st.power))
                 h.update(repr(list(st.hit_ready.items())).encode())
         for b in self.bombs:
             h.update(b.weapon.encode() + struct.pack("<i7d?", b.owner, b.x, b.y, b.tx, b.ty, b.delay, b.radius,

@@ -4,8 +4,18 @@ from pathlib import Path
 import pytest
 
 from lastbean.bots import heuristic_input
-from lastbean.sim import TICK_HZ, BossSpawned, ChestOpened, EliteSpawned, EnemySpawned, WaveStarted, World
-from lastbean.sim.waves import biome_at
+from lastbean.sim import (
+    TICK_HZ,
+    BossKilled,
+    BossSpawned,
+    ChestOpened,
+    EliteSpawned,
+    EnemySpawned,
+    FloodStarted,
+    StageStarted,
+    WaveStarted,
+    World,
+)
 
 
 def test_budget_formula_matches_content_model(make_config):
@@ -25,7 +35,7 @@ def test_scaling_curves(make_config):
     assert sc.hp_mult(0) == 1.0 and round(sc.hp_mult(5), 1) == 1.8 and round(sc.hp_mult(10), 1) == 3.2
     assert round(sc.damage_mult(10), 1) == 1.9
     assert sc.speed_mult(5) == pytest.approx(1.05) and sc.speed_mult(60) == 1.2
-    assert sc.xp_needed(1) == pytest.approx(3 + 1.5 + 0.15)  # faster progression (variant C, 28.10.2026)
+    assert sc.xp_needed(1) == pytest.approx(2 + 1.2 + 0.12)  # fast levels (Paket F)
 
 
 def spawned_costs(world: World, ticks: int) -> float:
@@ -41,8 +51,9 @@ def spawned_costs(world: World, ticks: int) -> float:
 def test_wave_budget_is_spent_over_each_wave(make_config):
     w = World(1, make_config(character={"attack_rate": 0.001}))
     sc, ticks = w.config.scaling, w.config.wave_interval_s * TICK_HZ
-    assert spawned_costs(w, ticks) == pytest.approx(sc.wave_budget(0), abs=1.0)
-    assert spawned_costs(w, ticks) == pytest.approx(sc.wave_budget(1), abs=1.0)
+    # a group (5 aphids) is bought as a whole, so up to one group's cost can move into the next wave
+    assert spawned_costs(w, ticks) == pytest.approx(sc.wave_budget(0), abs=2.5)
+    assert spawned_costs(w, ticks) == pytest.approx(sc.wave_budget(1), abs=2.5)
 
 
 def test_difficulty_raises_spawns(make_config):
@@ -57,45 +68,61 @@ def test_enemies_scale_with_time(make_config):
     w.step()
     first = w.enemies[0]
     w.enemies.clear()
-    w.tick = 10 * 60 * TICK_HZ  # jump to minute 10
+    w.tick = w.stage_tick = 4 * 60 * TICK_HZ  # jump to minute 4 of the first bed
     w.step()
     late = w.enemies[0]
     sc = w.config.scaling
-    assert late.max_hp == pytest.approx(first.max_hp * sc.hp_mult(10.0), rel=1e-3)
-    assert late.damage == pytest.approx(first.damage * sc.damage_mult(10.0), rel=1e-3)
+    assert late.max_hp == pytest.approx(first.max_hp * sc.hp_mult(4.0), rel=1e-3)
+    assert late.damage == pytest.approx(first.damage * sc.damage_mult(4.0), rel=1e-3)
+    w.enemies.clear()
+    w.stage, w.stage_tick = 1, 0  # second bed: its own multipliers on top
+    w.step()
+    st = w.config.stages[1]
+    assert w.enemies[0].max_hp == pytest.approx(first.max_hp * st.hp_mult, rel=1e-3)
 
 
-def test_mob_pool_respects_phase_and_behaviour(make_config):
-    phase1 = {"slimeling", "batswarm", "rootguard", "sporeshooter"}
-    assert {m.id for m in make_config().mobs} == phase1
-    # Later phases only add mobs whose behaviour already exists (tank and lobbing ranged mob).
-    assert {m.id for m in make_config(max_phase=3).mobs} == phase1 | {"icegolem", "emberimp"}
+def test_flood_grows_every_ten_seconds(make_config):
+    w = World(1, make_config(enemy_target=0))
+    f = w.config.flood
+    w.stage_tick = int(w.stage_cfg.duration_s * TICK_HZ)
+    assert w._flood_factor(f.hp_growth) == 1.0
+    w.stage_tick += 25 * TICK_HZ
+    assert w._flood_factor(f.hp_growth) == pytest.approx((1 + f.hp_growth) ** 2 * (1 + f.hp_growth * 0.5))
 
 
-def test_biome_lookup_prefers_clearing(make_config):
-    areas = make_config().biomes
-    t = 32
-    assert biome_at(areas, 100 * t, 100 * t) == "plaza"  # centre of the 200 x 200 map
-    assert biome_at(areas, 20 * t, 20 * t) == "forest"
-    assert biome_at(areas, 180 * t, 20 * t) == "desert"
-    assert biome_at(areas, 20 * t, 180 * t) == "ice"
-    assert biome_at(areas, 180 * t, 180 * t) == "lava"
+def test_every_pest_is_in_the_pool_and_beds_pick_their_own(content, make_config):
+    cfg = make_config()
+    assert {m.id for m in cfg.mobs} == {m.id for m in content.mobs}
+    w = World(1, cfg)
+    w.stage_tick = 120 * TICK_HZ
+    for i, st in enumerate(cfg.stages):
+        w.stage = i
+        picked = {w._pick_mob(st.biome).id for _ in range(300)}
+        assert all(dict(m.biome_weights).get(st.biome, 0) > 0 for m in cfg.mobs if m.id in picked)
+    assert "pest_tomato" not in {w._pick_mob("seedbed").id for _ in range(300)}
 
 
-def test_run_to_five_minutes(make_config):
-    """Acceptance M2/M4: a full run to 5:00 works with all phase-1 mobs, the elite at 2:30 and Ildra at 5:00.
-    The bot has infinite HP; real survival is measured in tools/balance.py."""
+def test_full_run_through_three_beds(make_config):
+    """Acceptance Paket F: bed 1 with its boss at 3:30, the gate, bed 2, bed 3; the bot has infinite HP.
+    Real survival is measured in tools/balance.py."""
     w = World(7, make_config(character={"hp": 10**9}))
     events = []
-    while w.time_s < 301 and not w.over:
+    while w.stage < 1 or w.stage_time_s < 60:
         events += w.step([heuristic_input(w)])
+        assert not w.over
     p = w.players[0]
+    assert [e.stage for e in events if isinstance(e, StageStarted)] == [1, 2]
+    bosses = [e.boss for e in events if isinstance(e, BossSpawned)]
+    assert bosses == ["snail_queen"]
+    first = next(e for e in events if isinstance(e, BossSpawned))
+    assert first.tick // TICK_HZ == 210
     waves = [e.wave for e in events if isinstance(e, WaveStarted)]
-    assert waves == list(range(1, 11)) and not w.over
+    assert waves[:5] == [1, 2, 3, 4, 5]
+    assert [e.tick // TICK_HZ for e in events if isinstance(e, EliteSpawned)][0] == 150
     kinds = {e.kind for e in events if isinstance(e, EnemySpawned)}
-    assert kinds == {"slimeling", "batswarm", "rootguard", "sporeshooter"}
-    assert [e.tick // TICK_HZ for e in events if isinstance(e, EliteSpawned)] == [150, 300]
-    assert [(e.boss, e.tick // TICK_HZ) for e in events if isinstance(e, BossSpawned)] == [("ildra", 300)]
+    assert {"slug", "aphid", "snail", "potato_beetle"} <= kinds
+    assert any(isinstance(e, BossKilled) for e in events)
+    assert not any(isinstance(e, FloodStarted) for e in events) or w.flood_ticks > 0
     # every level gave one card (upgrade or weapon level), chests give items
     assert p.kills > 50 and sum(p.upgrades.values()) + sum(st.level for st in p.weapons) == p.level - 1
     assert p.weapons and len(p.weapons) <= w.config.weapon_slots - 1

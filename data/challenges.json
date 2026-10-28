@@ -46,13 +46,13 @@
  },
  {
   "id": "unlock_cryo",
-  "text": "Besiege 300 Gegner im Eisbiom.",
+  "text": "Besiege 300 Gegner im Komposthaufen.",
   "condition": {
    "type": "profile_stat",
    "stat": "kills_in_biome",
    "op": ">=",
    "value": 300,
-   "biome": "ice"
+   "biome": "compost"
   },
   "reward": {
    "type": "unlock_character",
@@ -77,12 +77,12 @@
  },
  {
   "id": "unlock_storm",
-  "text": "Erreiche Minute 8.",
+  "text": "Erreiche das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 8
+   "value": 2
   },
   "reward": {
    "type": "unlock_character",
@@ -122,12 +122,12 @@
  },
  {
   "id": "unlock_sniper",
-  "text": "Besiege alle vier Biom-Bosse (Ildra, Skarra, Kalthorn, Ignarok).",
+  "text": "Besiege alle drei Beet-Bosse (Schleimrun, Knollgrimm, den Schnitter).",
   "condition": {
    "type": "profile_stat",
    "stat": "distinct_bosses_defeated",
    "op": ">=",
-   "value": 4
+   "value": 3
   },
   "reward": {
    "type": "unlock_character",
@@ -145,9 +145,9 @@
    "value": 10
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "stillness",
-   "stones": 40
+   "type": "title",
+   "id": "Ausdauernd",
+   "stones": 150
   }
  },
  {
@@ -190,9 +190,9 @@
    "value": 25
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "executioner",
-   "stones": 40
+   "type": "title",
+   "id": "Elitejäger",
+   "stones": 150
   }
  },
  {
@@ -205,9 +205,9 @@
    "value": 1000
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "lifesteal",
-   "stones": 40
+   "type": "title",
+   "id": "Plagenschreck",
+   "stones": 150
   }
  },
  {
@@ -220,9 +220,9 @@
    "value": 8
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "shield_burst",
-   "stones": 40
+   "type": "title",
+   "id": "Unberührt",
+   "stones": 150
   }
  },
  {
@@ -235,9 +235,9 @@
    "value": 60
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "last_stand",
-   "stones": 40
+   "type": "title",
+   "id": "Zähe Bohne",
+   "stones": 150
   }
  },
  {
@@ -250,9 +250,9 @@
    "value": 3000
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "overcharge",
-   "stones": 40
+   "type": "title",
+   "id": "Volltreffer",
+   "stones": 150
   }
  },
  {
@@ -265,9 +265,9 @@
    "value": 3000
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "explosive_rounds",
-   "stones": 40
+   "type": "title",
+   "id": "Gärtnermeister",
+   "stones": 150
   }
  },
  {
@@ -280,19 +280,19 @@
    "value": 1
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "second_wind",
-   "stones": 40
+   "type": "title",
+   "id": "Beetbefreier",
+   "stones": 150
   }
  },
  {
   "id": "unlock_up_gravity_well",
-  "text": "Erreiche Minute 10.",
+  "text": "Erreiche das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10
+   "value": 3
   },
   "reward": {
    "type": "unlock_upgrade",
@@ -310,19 +310,19 @@
    "value": 800
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "bloodlust",
-   "stones": 40
+   "type": "title",
+   "id": "Blutrausch",
+   "stones": 150
   }
  },
  {
   "id": "unlock_up_time_warp",
-  "text": "Erreiche Minute 12.",
+  "text": "Überlebe 2 Minuten Plagenflut.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "swarm_seconds",
    "op": ">=",
-   "value": 12
+   "value": 120
   },
   "reward": {
    "type": "unlock_upgrade",
@@ -340,9 +340,9 @@
    "value": 10000
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "shrapnel",
-   "stones": 40
+   "type": "title",
+   "id": "Erntehelfer",
+   "stones": 150
   }
  },
  {
@@ -355,24 +355,24 @@
    "value": 1500
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "titan_heart",
-   "stones": 40
+   "type": "title",
+   "id": "Dickhaut",
+   "stones": 150
   }
  },
  {
   "id": "unlock_up_glass_cannon",
-  "text": "Erreiche Minute 15.",
+  "text": "Erreiche das zweite Beet in unter 4 Minuten.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage2_before_s",
    "op": ">=",
-   "value": 15
+   "value": 240
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "glass_cannon",
-   "stones": 40
+   "type": "title",
+   "id": "Eilig",
+   "stones": 150
   }
  },
  {
@@ -385,9 +385,9 @@
    "value": 10
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "reaper_pact",
-   "stones": 40
+   "type": "title",
+   "id": "Bossbrecher",
+   "stones": 150
   }
  },
  {
@@ -404,9 +404,9 @@
    ]
   },
   "reward": {
-   "type": "unlock_upgrade",
-   "id": "elemental_storm",
-   "stones": 40
+   "type": "title",
+   "id": "Elementar",
+   "stones": 150
   }
  },
  {
@@ -730,77 +730,45 @@
   }
  },
  {
-  "id": "boss_ildra",
-  "text": "Besiege Ildra.",
+  "id": "boss_snail_queen",
+  "text": "Besiege Schleimrun.",
   "condition": {
    "type": "profile_stat",
    "stat": "boss_defeated",
    "op": ">=",
    "value": 1,
-   "boss": "ildra"
+   "boss": "snail_queen"
   },
   "reward": {
    "type": "title",
-   "id": "Dornenbrecher",
+   "id": "Schneckenschreck",
    "stones": 150
   }
  },
  {
-  "id": "boss_skarra",
-  "text": "Besiege Skarra.",
+  "id": "boss_beetle_king",
+  "text": "Besiege Knollgrimm.",
   "condition": {
    "type": "profile_stat",
    "stat": "boss_defeated",
    "op": ">=",
    "value": 1,
-   "boss": "skarra"
+   "boss": "beetle_king"
   },
   "reward": {
    "type": "title",
-   "id": "Sandbezwinger",
-   "stones": 150
-  }
- },
- {
-  "id": "boss_kalthorn",
-  "text": "Besiege Kalthorn.",
-  "condition": {
-   "type": "profile_stat",
-   "stat": "boss_defeated",
-   "op": ">=",
-   "value": 1,
-   "boss": "kalthorn"
-  },
-  "reward": {
-   "type": "title",
-   "id": "Eisbrecher",
-   "stones": 150
-  }
- },
- {
-  "id": "boss_ignarok",
-  "text": "Besiege Ignarok.",
-  "condition": {
-   "type": "profile_stat",
-   "stat": "boss_defeated",
-   "op": ">=",
-   "value": 1,
-   "boss": "ignarok"
-  },
-  "reward": {
-   "type": "title",
-   "id": "Glutlöscher",
+   "id": "Käferknacker",
    "stones": 150
   }
  },
  {
   "id": "reach_swarm",
-  "text": "Erreiche 20:00 (Beginn der Schwarmflut).",
+  "text": "Überlebe 30 s Plagenflut.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "swarm_seconds",
    "op": ">=",
-   "value": 20
+   "value": 30
   },
   "reward": {
    "type": "unlock_mode",
@@ -841,12 +809,12 @@
  },
  {
   "id": "swarm_5min",
-  "text": "Überlebe 5 Minuten der Schwarmflut.",
+  "text": "Überlebe 3 Minuten Plagenflut.",
   "condition": {
    "type": "run_stat",
    "stat": "swarm_seconds",
    "op": ">=",
-   "value": 300
+   "value": 180
   },
   "reward": {
    "type": "title",

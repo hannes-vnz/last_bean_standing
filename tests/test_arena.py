@@ -1,32 +1,44 @@
-import dataclasses
+from conftest import with_obstacles
 
 from lastbean.sim import TICK_HZ, Enemy, PlayerInput, ProjectileBlocked, ShotFired, World
-from lastbean.sim.arena import OBSTACLE_RADIUS, Obstacle, ObstacleMap, obstacles_from_content
-from lastbean.sim.waves import biome_at
+from lastbean.sim.arena import (
+    OBSTACLE_KINDS,
+    OBSTACLE_RADIUS,
+    START_CLEAR_TILES,
+    Obstacle,
+    ObstacleMap,
+    obstacles_for_biome,
+)
 
 
-def test_forest_trees_from_data(content, make_config):
-    trees = make_config().obstacles
-    forest = content.biome("forest").extra["obstacles"]
-    assert len(trees) == forest["count"] and {o.kind for o in trees} == {"tree"}
-    areas = make_config().biomes
-    assert all(biome_at(areas, o.x, o.y) == "forest" for o in trees)  # never in the clearing
-    assert obstacles_from_content(content, 1) == trees  # fixed seed: same layout every run
+def test_every_bed_has_its_obstacles_from_data(content, make_config):
+    cfg = make_config()
     tile = content.balance.tile_px
-    for i, a in enumerate(trees):
-        for b in trees[i + 1 :]:
-            assert max(abs(a.x - b.x), abs(a.y - b.y)) >= 2 * tile  # never adjacent, no walls of trees
+    cx, cy = cfg.arena_w / 2, cfg.arena_h / 2
+    for st in cfg.stages:
+        spec = content.biome(st.biome).extra["obstacles"]
+        obs = st.obstacles
+        assert len(obs) == spec["count"] and {o.kind for o in obs} == {spec["type"]} and spec["type"] in OBSTACLE_KINDS
+        assert obstacles_for_biome(content, st.biome) == obs  # fixed seed: same layout every run
+        half = START_CLEAR_TILES / 2 * tile
+        assert all(abs(o.x - cx) >= half or abs(o.y - cy) >= half for o in obs)  # the start stays free
+    stalks = cfg.stages[0].obstacles
+    for i, a in enumerate(stalks[:200]):
+        for b in stalks[i + 1 : 200]:
+            assert max(abs(a.x - b.x), abs(a.y - b.y)) >= 2 * tile  # never adjacent, no walls of plants
 
 
-def test_later_biomes_have_no_obstacles_yet(content):
-    assert {o.kind for o in obstacles_from_content(content, 3)} == {"tree"}  # rocks etc. need their phase
+def test_only_the_seedbed_plants_give_cover(make_config):
+    kinds = {st.id: st.obstacles[0] for st in make_config().stages}
+    assert kinds["seedbed"].blocks_projectiles and not kinds["veggiebed"].blocks_projectiles
+    assert all(o.solid for o in kinds.values())
 
 
 def one_tree_config(make_config, **overrides):
     """Real config but with a single tree 100 units right of the start, so tests see only this one."""
     cfg = make_config(**overrides)
     tree = Obstacle("tree", cfg.arena_w / 2 + 100, cfg.arena_h / 2, OBSTACLE_RADIUS, True, True)
-    return dataclasses.replace(cfg, obstacles=(tree,)), tree
+    return with_obstacles(cfg, (tree,)), tree
 
 
 def tree_world(make_config):

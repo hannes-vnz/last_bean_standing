@@ -33,10 +33,10 @@ def run(w, seconds, inputs=None):
     return [e for _ in range(int(seconds * TICK_HZ)) for e in w.step(inputs)]
 
 
-def test_thirty_items_all_supported(make_config):
+def test_all_items_supported(make_config):
     cfg = make_config()
-    assert len(cfg.items) == 30
-    assert Counter(i.rarity for i in cfg.items) == {"common": 12, "uncommon": 9, "rare": 5, "epic": 3, "legendary": 1}
+    assert len(cfg.items) == 46  # 30 from Paket C, 16 with triggers and conditions from Paket F
+    assert Counter(i.rarity for i in cfg.items) == {"common": 12, "uncommon": 16, "rare": 10, "epic": 6, "legendary": 2}
     base = derive_stats(cfg.character, {})
     defs = {i.id: i for i in cfg.items}
     for item in cfg.items:

@@ -68,6 +68,7 @@ class WeaponState:
 
     weapon: str
     level: int = 1
+    power: float = 0.0  # extra damage share from rarer weapon cards
     cooldown: float = 0.0
     ux: float = 1.0  # orbit: direction of the first orbiter (unit vector, rotated each tick)
     uy: float = 0.0

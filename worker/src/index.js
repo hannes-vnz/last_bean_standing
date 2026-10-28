@@ -73,7 +73,7 @@ export function plausibilityError(s, env) {
   if (s.score > maxPlausibleScore(s)) return "Punkte passen nicht zu Zeit, Kills und Level";
   if (s.kills > s.seconds * 40) return "zu viele Kills fuer die Spielzeit";
   if (Math.abs(s.wave - (Math.floor(s.seconds / 30) + 1)) > 2 && s.swarm_seconds === 0) return "Welle passt nicht zur Spielzeit";
-  if (s.swarm_seconds > Math.max(0, s.seconds - 1200 + 5)) return "Flutzeit passt nicht zur Spielzeit";
+  if (s.swarm_seconds > Math.max(0, s.seconds - 300 + 5)) return "Flutzeit passt nicht zur Spielzeit";
   if (s.bosses > 6 + Math.floor(s.seconds / 900)) return "zu viele Bosse";
   const allowed = (env.ALLOWED_VERSIONS || "").split(",").filter(Boolean);
   if (allowed.length && !allowed.includes(s.version)) return "Spielversion wird nicht mehr angenommen";

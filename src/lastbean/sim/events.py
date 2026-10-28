@@ -64,6 +64,7 @@ class PlayerDied(Event):
 @dataclass(frozen=True, slots=True)
 class RunEnded(Event):
     time_s: float
+    victory: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +81,7 @@ class UpgradeOffered(Event):
 class UpgradeChosen(Event):
     upgrade_id: str
     level: int
+    tier: str = "common"  # rarity rolled for the card (Paket F)
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,3 +200,46 @@ class WeaponPulse(Event):
     x: float
     y: float
     radius: float
+
+
+@dataclass(frozen=True, slots=True)
+class StageStarted(Event):
+    """A garden bed begins (also the first one at the start of the run)."""
+
+    stage: int  # 1-based
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
+class FloodWarning(Event):
+    stage: int
+
+
+@dataclass(frozen=True, slots=True)
+class FloodStarted(Event):
+    stage: int
+
+
+@dataclass(frozen=True, slots=True)
+class GateOpened(Event):
+    x: float
+    y: float
+
+
+@dataclass(frozen=True, slots=True)
+class Zap(Event):
+    """Lightning from the "Schock" effect: the points it jumped through."""
+
+    points: tuple[tuple[float, float], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PlayerDodged(Event):
+    x: float
+    y: float
+
+
+@dataclass(frozen=True, slots=True)
+class PlayerRevived(Event):
+    x: float
+    y: float

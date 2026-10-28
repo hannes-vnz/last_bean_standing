@@ -67,3 +67,61 @@ GRIP_SUMMONS = 3  # (text) "ruft 3 Wurzelwächter"
 SPORE_RAIN_INTERVAL_S = 1.5
 SPORE_RAIN_COUNT = 3
 SPORE_RAIN_SPREAD = 160.0
+
+# Paket F pests (mobs.json texts give the dash/explosion numbers; these are the rest)
+CHARGE_START_DISTANCE = 320.0  # chargers start aiming this close to the player
+EXPLODER_TRIGGER = 6.0  # pest tomatoes burst when this close to touching
+EXPLODER_FUSE_S = 0.4  # (text) "0,4 s Warnung"
+
+# Knollgrimm, der Käferkönig (bosses.json phase texts)
+BEETLE_FAN_INTERVAL_S = 3.0  # (text) "alle 3 s"
+BEETLE_FAN_DEG = 50.0
+BEETLE_DASH_INTERVAL_S = 5.0
+BEETLE_AIM_S = 0.8
+BEETLE_DASH_S = 0.7
+BEETLE_DASH_SPEED = 380.0  # (text) "Tempo 380"
+BEETLE_DAZE_S = 1.0
+BEETLE_SUMMONS = 4  # (text) "ruft 4 Kartoffelkäfer"
+
+# Der Schnitter (bosses.json phase texts)
+REAPER_RING_SHOTS = 12  # (text)
+REAPER_RING_INTERVAL_S = 3.5  # (text)
+REAPER_RAIN_INTERVAL_S = 4.0
+REAPER_RAIN_COUNT = 6  # (text)
+REAPER_RAIN_RADIUS = 80.0  # (text)
+REAPER_RAIN_SPREAD = 200.0
+REAPER_RAIN_DELAY_S = 1.0
+REAPER_DASH_INTERVAL_S = 4.0
+REAPER_SUMMONS = 4
+
+# Gartentor (Paket F)
+GATE_OFFSET = 140.0  # below the spot where the boss fell, so its chest and the gate do not overlap
+GATE_DELAY_S = 2.0  # the gate opens with an animation and lets you through after this
+
+# Paket F bonuses (texts in upgrades.json / items.json; the rest are assumptions)
+LOW_HP_SHARE = 0.35  # (text) "unter 35 % HP"
+EXECUTE_SHARE = 0.30  # (text) "unter 30 % HP"
+OVERCHARGE_INTERVAL_S = 6.0  # (text) "alle 6 s"
+SHIELD_INTERVAL_S = 12.0  # (text) "alle 12 s"
+KILL_HASTE_PCT = 2.0  # (text) "+2 % Angriffstempo"
+KILL_HASTE_S = 5.0  # (text) "für 5 s"
+BURN_SHARE = 0.30  # (text) "30 % Schaden/s"
+BURN_S = 3.0  # (text)
+POISON_S = 3.0  # (text)
+POISON_MAX_STACKS = 4  # (text) "stapelt bis 4x"
+CHILL_S = 2.0  # (text)
+SHOCK_DAMAGE = 0.6  # (text) "60 % Schaden"
+SHOCK_JUMPS = 2  # (text) "springt auf 2 nahe Gegner"
+SHOCK_RANGE = 160.0
+EXPLOSIVE_HIT_RADIUS = 50.0  # (text)
+AURA_RADIUS = 100.0  # (text)
+DOT_PULSE_TICKS = 30  # poison, burn and aura hurt every 0.5 s
+BOUNCE_RANGE = 250.0
+BOUNCE_DAMAGE = 0.8
+SHRAPNEL_PIECES = 6  # (text)
+SHRAPNEL_DAMAGE = 0.5  # (text)
+SHRAPNEL_SPEED = 420.0
+SHRAPNEL_RANGE = 160.0
+DODGE_I_FRAMES_S = 0.3
+REVIVE_HP_SHARE = 0.5  # (text)
+REVIVE_I_FRAMES_S = 2.0  # (text)

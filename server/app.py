@@ -121,7 +121,7 @@ def plausibility_error(s: ScoreIn) -> Optional[str]:
         return "zu viele Kills fuer die Spielzeit"
     if abs(s.wave - (s.seconds // 30 + 1)) > 2 and s.swarm_seconds == 0:
         return "Welle passt nicht zur Spielzeit"
-    if s.swarm_seconds > max(0, s.seconds - 1200 + 5):
+    if s.swarm_seconds > max(0, s.seconds - 300 + 5):  # flood starts at the end of the first bed (5:00)
         return "Flutzeit passt nicht zur Spielzeit"
     if s.bosses > 6 + (s.seconds // 900):
         return "zu viele Bosse"

@@ -26,25 +26,28 @@ def test_counts(content):
     rarity = Counter(u.rarity for u in content.upgrades)
     assert rarity == {"common": 18, "uncommon": 14, "rare": 9, "epic": 6, "legendary": 3}
     assert len(content.mobs) == 10
-    assert len(content.bosses) == 5
+    assert len(content.bosses) == 3
     assert len(content.shrines) == 4
-    assert len(content.biomes) == 5
-    assert len(content.challenges) == 55
+    assert len(content.biomes) == 3
+    assert len(content.stages) == 3
+    assert len(content.challenges) == 53
     assert len(content.skins) == 20
 
 
 def test_phase_one_vertical_slice(content):
     phase1 = lambda items: {x.id for x in items if x.impl_phase == 1}  # noqa: E731
     assert phase1(content.characters) == {"ranger"}
-    assert sum(u.impl_phase == 1 for u in content.upgrades) == 12
-    assert phase1(content.bosses) == {"ildra"}
+    assert sum(u.impl_phase == 1 for u in content.upgrades) == 46  # Paket F: every bonus that works is in
+    assert phase1(content.bosses) == {"snail_queen", "beetle_king", "reaper"}
+    bosses = [st.boss for st in sorted(content.stages, key=lambda st: st.index)]
+    assert bosses == ["snail_queen", "beetle_king", "reaper"]
 
 
 def test_typed_lookup(content):
     ranger = content.character("ranger")
     assert ranger.unlock_challenge is None and ranger.weapon.projectile_speed > 0
-    assert content.boss("reaper").summon == "altar"
-    assert content.balance.boss_waves[10] == "ildra"
+    assert content.boss("reaper").summon is None and content.boss("reaper").biome == "compost"
+    assert content.balance.boss_waves == {}
     with pytest.raises(KeyError):
         content.mob("does_not_exist")
 
@@ -73,7 +76,7 @@ def test_value_out_of_range(raw):
 
 def test_wrong_type(raw):
     msg = broken(raw, lambda d: d["mobs"][0].__setitem__("hp", "lots"))
-    assert "mobs[slimeling].hp: expected int, got str" in msg
+    assert "mobs[slug].hp: expected int, got str" in msg
 
 
 def test_bad_color(raw):
@@ -106,12 +109,12 @@ def test_unknown_reward_target(raw):
 
 def test_mob_with_unknown_biome(raw):
     msg = broken(raw, lambda d: d["mobs"][0]["biome_weights"].__setitem__("moon", 1))
-    assert "mob slimeling: unknown biome 'moon'" in msg
+    assert "mob slug: unknown biome 'moon'" in msg
 
 
-def test_boss_wave_mismatch(raw):
-    msg = broken(raw, lambda d: d["balance"]["boss_waves"].__setitem__("10", "skarra"))
-    assert "boss 'skarra' has spawn_wave 15, not 10" in msg
+def test_stage_with_unknown_boss(raw):
+    msg = broken(raw, lambda d: d["stages"]["stages"][0].__setitem__("boss", "ildra"))
+    assert "stage seedbed: unknown boss 'ildra'" in msg
 
 
 def test_duplicate_ids(raw):
@@ -119,12 +122,12 @@ def test_duplicate_ids(raw):
     assert "upgrades: duplicate id" in msg
 
 
-def test_epic_upgrades_start_locked(raw):
+def test_locked_upgrade_needs_its_challenge(raw):
     def mutate(d):
-        epic = next(u for u in d["upgrades"] if u["rarity"] == "epic")
-        epic["unlocked_at_start"], epic["unlock_challenge"] = True, None
+        locked = next(u for u in d["upgrades"] if not u["unlocked_at_start"])
+        locked["unlocked_at_start"] = True
 
-    assert "epic/legendary upgrades must start locked" in broken(raw, mutate)
+    assert "unlocked_at_start and unlock_challenge disagree" in broken(raw, mutate)
 
 
 def test_missing_file(tmp_path):

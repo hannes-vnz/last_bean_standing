@@ -24,3 +24,9 @@ def make_config(content):
         return cfg
 
     return make
+
+
+def with_obstacles(cfg: WorldConfig, obstacles: tuple) -> WorldConfig:
+    """The same config with the first garden bed's obstacles replaced (tests want an empty or tiny map)."""
+    first = dataclasses.replace(cfg.stages[0], obstacles=obstacles)
+    return dataclasses.replace(cfg, stages=(first, *cfg.stages[1:]))

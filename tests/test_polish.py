@@ -13,16 +13,16 @@ def headless(monkeypatch):
     pygame.display.set_mode((1, 1))
 
 
-def test_sprites_for_every_phase_one_entity(content):
+def test_sprites_for_every_mob_and_boss(content):
     from lastbean.render.sprites import SpriteBank
 
     bank = SpriteBank()
-    for name in ["ranger", "slimeling", "batswarm", "rootguard", "sporeshooter", "ildra"]:
+    for name in ["ranger", *(m.id for m in content.mobs), *(b.id for b in content.bosses)]:
         img = bank.get(name)
-        assert img is not None and img.get_width() >= 12, name
-    big = bank.get("slimeling", 1.35)
+        assert img is not None and img.get_width() >= 10, name
+    big = bank.get("mold", 1.35)
     assert big.get_width() == round(16 * 1.35)
-    white = bank.get("slimeling", flash=True)
+    white = bank.get("mold", flash=True)
     xs = [white.get_at((x, y)) for x in range(16) for y in range(16)]
     assert all(c[:3] == (255, 255, 255) for c in xs if c[3] > 0)  # flash is a white silhouette
     assert bank.get("does_not_exist") is None

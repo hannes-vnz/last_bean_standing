@@ -159,16 +159,16 @@
   "tags": [
    "utility"
   ],
-  "text": "+8 % XP je Stufe.",
+  "text": "+10 % XP je Stufe.",
   "effects": [
    {
-    "stat": "xp_pct",
-    "per_level": 8
+    "stat": "xp_gain_pct",
+    "per_level": 10
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "heal_orbs",
@@ -179,7 +179,7 @@
    "defense",
    "utility"
   ],
-  "text": "Gegner lassen mit 3 % je Stufe Heilkugeln fallen (5 HP).",
+  "text": "Gegner lassen mit 3 % je Stufe Heilkugeln fallen (15 HP).",
   "effects": [
    {
     "stat": "heal_orb_chance_pct",
@@ -188,7 +188,7 @@
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "wide_blast",
@@ -198,16 +198,16 @@
   "tags": [
    "area"
   ],
-  "text": "+10 % Flächenradius je Stufe.",
+  "text": "+12 % Flächenradius je Stufe (Waffen, Explosionen, Aura).",
   "effects": [
    {
     "stat": "area_pct",
-    "per_level": 10
+    "per_level": 12
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "thorns",
@@ -218,16 +218,16 @@
    "defense",
    "thorns"
   ],
-  "text": "Reflektiert 20 % des erlittenen Nahkampfschadens je Stufe.",
+  "text": "Reflektiert 40 % des erlittenen Nahkampfschadens je Stufe.",
   "effects": [
    {
     "stat": "thorns_pct",
-    "per_level": 20
+    "per_level": 40
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "big_shots",
@@ -237,16 +237,16 @@
   "tags": [
    "projectile"
   ],
-  "text": "+12 % Geschossgröße je Stufe (trifft leichter).",
+  "text": "+25 % Geschossgröße je Stufe (trifft leichter).",
   "effects": [
    {
     "stat": "projectile_size_pct",
-    "per_level": 12
+    "per_level": 25
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "fast_shots",
@@ -256,16 +256,20 @@
   "tags": [
    "projectile"
   ],
-  "text": "+12 % Geschossgeschwindigkeit je Stufe.",
+  "text": "+15 % Geschosstempo und +5 % Schaden je Stufe.",
   "effects": [
    {
     "stat": "projectile_speed_pct",
-    "per_level": 12
+    "per_level": 15
+   },
+   {
+    "stat": "damage_pct",
+    "per_level": 5
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "dodge",
@@ -275,16 +279,16 @@
   "tags": [
    "defense"
   ],
-  "text": "3 % Chance je Stufe, einem Treffer zu entgehen.",
+  "text": "4 % Chance je Stufe, einem Treffer zu entgehen.",
   "effects": [
    {
     "stat": "dodge_chance_pct",
-    "per_level": 3
+    "per_level": 4
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "armor_plating",
@@ -303,7 +307,7 @@
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "lucky_charm",
@@ -313,16 +317,16 @@
   "tags": [
    "utility"
   ],
-  "text": "+5 Glück je Stufe: seltenere Upgrades werden wahrscheinlicher.",
+  "text": "+1 Glück je Stufe: seltenere Karten, Items und Krits.",
   "effects": [
    {
     "stat": "luck",
-    "per_level": 5
+    "per_level": 1
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "bounty_hunter",
@@ -332,16 +336,16 @@
   "tags": [
    "damage"
   ],
-  "text": "+6 % Schaden gegen Elite und Bosse je Stufe.",
+  "text": "+12 % Schaden gegen Elites und Bosse je Stufe.",
   "effects": [
    {
-    "stat": "damage_pct_vs_elite_boss",
-    "per_level": 6
+    "stat": "elite_damage_pct",
+    "per_level": 12
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "brutal_crits",
@@ -422,7 +426,7 @@
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "regeneration",
@@ -451,7 +455,7 @@
   "tags": [
    "utility"
   ],
-  "text": "+1 Neuwurf der Upgrade-Auswahl je Stufe (pro Run).",
+  "text": "+1 Neu würfeln je Stufe (sofort).",
   "effects": [
    {
     "stat": "rerolls",
@@ -460,7 +464,7 @@
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "banish",
@@ -470,7 +474,7 @@
   "tags": [
    "utility"
   ],
-  "text": "+1 Verbannen je Stufe: entfernt ein Upgrade aus dem Pool dieses Runs.",
+  "text": "+1 Verbannen je Stufe (sofort).",
   "effects": [
    {
     "stat": "banishes",
@@ -479,7 +483,7 @@
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "stillness",
@@ -490,16 +494,16 @@
    "stillness",
    "damage"
   ],
-  "text": "Nach 1 s Stillstand +12 % Schaden je Stufe.",
+  "text": "+15 % Schaden im Stand je Stufe.",
   "effects": [
    {
-    "stat": "damage_pct_standing",
-    "per_level": 12
+    "stat": "standing_damage_pct",
+    "per_level": 15
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_stillness",
-  "impl_phase": 2
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "ignite",
@@ -510,16 +514,16 @@
    "fire",
    "elemental"
   ],
-  "text": "12 % Chance je Stufe zu entzünden (3 s, 30 % Schaden/s).",
+  "text": "10 % Chance je Stufe zu entzünden (3 s, 30 % Schaden/s).",
   "effects": [
    {
     "stat": "ignite_chance_pct",
-    "per_level": 12
+    "per_level": 10
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "chill",
@@ -530,7 +534,7 @@
    "frost",
    "elemental"
   ],
-  "text": "Treffer verlangsamen um 8 % je Stufe (max. 32 %).",
+  "text": "Treffer verlangsamen um 8 % je Stufe für 2 s (max. 60 %).",
   "effects": [
    {
     "stat": "chill_slow_pct",
@@ -539,7 +543,7 @@
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "toxin",
@@ -550,16 +554,16 @@
    "poison",
    "elemental"
   ],
-  "text": "Treffer vergiften (15 % Schaden/s je Stufe, 3 s, stapelt 4x).",
+  "text": "Treffer vergiften (12 % Schaden/s je Stufe, 3 s, stapelt bis 4x).",
   "effects": [
    {
     "stat": "poison_pct_per_s",
-    "per_level": 15
+    "per_level": 12
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "shock",
@@ -570,16 +574,16 @@
    "lightning",
    "elemental"
   ],
-  "text": "15 % Chance je Stufe auf einen Blitz (60 % Schaden) auf einen nahen Gegner.",
+  "text": "12 % Chance je Stufe auf einen Blitz (60 % Schaden), der auf 2 nahe Gegner springt.",
   "effects": [
    {
     "stat": "shock_chance_pct",
-    "per_level": 15
+    "per_level": 12
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "minion_horde",
@@ -629,7 +633,7 @@
    "bounce",
    "projectile"
   ],
-  "text": "Geschosse springen +1-mal je Stufe auf einen nahen Gegner (70 % Schaden).",
+  "text": "Geschosse springen +1-mal je Stufe auf einen nahen Gegner.",
   "effects": [
    {
     "stat": "bounce_add",
@@ -638,7 +642,7 @@
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "executioner",
@@ -651,13 +655,13 @@
   "text": "+30 % Schaden gegen Gegner unter 30 % HP je Stufe.",
   "effects": [
    {
-    "stat": "damage_pct_vs_low_hp",
+    "stat": "execute_damage_pct",
     "per_level": 30
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_executioner",
-  "impl_phase": 2
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "lifesteal",
@@ -675,9 +679,9 @@
     "per_level": 2
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_lifesteal",
-  "impl_phase": 2
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "shield_burst",
@@ -687,18 +691,16 @@
   "tags": [
    "defense"
   ],
-  "text": "Schild (40 HP) alle 20 s, -2 s je Stufe.",
+  "text": "Alle 12 s ein Schild, der 25 Schaden je Stufe abfängt.",
   "effects": [
    {
-    "special": "periodic_shield",
-    "hp": 40,
-    "interval_s": 20,
-    "interval_per_level_s": -2
+    "stat": "shield_flat",
+    "per_level": 25
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_shield_burst",
-  "impl_phase": 2
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "last_stand",
@@ -709,18 +711,16 @@
    "defense",
    "damage"
   ],
-  "text": "Unter 30 % HP: +30 % Schaden und +20 % Tempo je Stufe.",
+  "text": "Unter 35 % HP: +30 % Schaden und +15 % Tempo je Stufe.",
   "effects": [
    {
-    "special": "low_hp_bonus",
-    "hp_threshold_pct": 30,
-    "damage_pct": 30,
-    "speed_pct": 20
+    "stat": "low_hp_damage_pct",
+    "per_level": 30
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_last_stand",
-  "impl_phase": 2
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "overcharge",
@@ -730,18 +730,16 @@
   "tags": [
    "damage"
   ],
-  "text": "Alle 15 s (-2 s je Stufe) trifft der nächste Angriff mit 300 % Schaden.",
+  "text": "Alle 6 s trifft der nächste Schuss mit +200 % Schaden je Stufe.",
   "effects": [
    {
-    "special": "overcharge",
-    "interval_s": 15,
-    "interval_per_level_s": -2,
-    "damage_pct": 300
+    "stat": "overcharge_pct",
+    "per_level": 200
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_overcharge",
-  "impl_phase": 2
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "explosive_rounds",
@@ -752,38 +750,36 @@
    "area",
    "projectile"
   ],
-  "text": "Treffer lösen eine kleine Explosion aus (Radius 50, 40 % Schaden je Stufe).",
+  "text": "Treffer explodieren (Radius 50, 30 % Schaden je Stufe).",
   "effects": [
    {
-    "special": "explosive_hits",
-    "radius_px": 50,
-    "damage_pct_per_level": 40
+    "stat": "explosive_hit_pct",
+    "per_level": 30
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_explosive_rounds",
-  "impl_phase": 2
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "aura_of_pain",
-  "name": "Aura des Schmerzes",
+  "name": "Brennnesselkranz",
   "rarity": "rare",
   "max_level": 4,
   "tags": [
    "area",
    "melee"
   ],
-  "text": "Gegner im Umkreis von 100 px erleiden 4 Schaden/s je Stufe.",
+  "text": "Gegner im Umkreis von 100 px erleiden 6 Schaden/s je Stufe.",
   "effects": [
    {
-    "special": "damage_aura",
-    "radius_px": 100,
-    "dps_per_level": 4
+    "stat": "aura_dps",
+    "per_level": 6
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "elemental_mastery",
@@ -793,16 +789,16 @@
   "tags": [
    "elemental"
   ],
-  "text": "+20 % Schaden aller Elementareffekte (Brand, Frost, Gift, Schock) je Stufe.",
+  "text": "+25 % Schaden von Brand, Gift und Blitz je Stufe.",
   "effects": [
    {
     "stat": "elemental_damage_pct",
-    "per_level": 20
+    "per_level": 25
    }
   ],
   "unlocked_at_start": true,
   "unlock_challenge": null,
-  "impl_phase": 2
+  "impl_phase": 1
  },
  {
   "id": "second_wind",
@@ -812,23 +808,16 @@
   "tags": [
    "defense"
   ],
-  "text": "Stufe 1: einmal pro Run mit 40 % HP wiederbeleben. Stufe 2: 60 % HP und 2 s unverwundbar.",
+  "text": "Einmal wiederbeleben je Stufe (mit 50 % HP, 2 s unverwundbar).",
   "effects": [
    {
-    "special": "revive",
-    "hp_pct": [
-     40,
-     60
-    ],
-    "i_frames_s": [
-     0,
-     2
-    ]
+    "stat": "revives",
+    "per_level": 1
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_second_wind",
-  "impl_phase": 3
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "gravity_well",
@@ -865,22 +854,16 @@
   "tags": [
    "speed"
   ],
-  "text": "Jeder Kill: +2 % Angriffstempo für 5 s, stapelt bis 20 % / 30 % / 40 %.",
+  "text": "Jeder Kill: +2 % Angriffstempo für 5 s, stapelt bis +20 % je Stufe.",
   "effects": [
    {
-    "special": "kill_haste",
-    "per_kill_pct": 2,
-    "duration_s": 5,
-    "max_pct": [
-     20,
-     30,
-     40
-    ]
+    "stat": "kill_haste_max_pct",
+    "per_level": 20
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_bloodlust",
-  "impl_phase": 3
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "time_warp",
@@ -915,22 +898,16 @@
    "area",
    "projectile"
   ],
-  "text": "Sterbende Gegner lösen mit 20 % Chance 6 Splitter aus (50 % Schaden), +10 % je Stufe.",
+  "text": "Sterbende Gegner verschießen mit 20 % Chance je Stufe 6 Splitter (50 % Schaden).",
   "effects": [
    {
-    "special": "death_shrapnel",
-    "chance_pct": [
-     20,
-     30,
-     40
-    ],
-    "pieces": 6,
-    "damage_pct": 50
+    "stat": "shrapnel_chance_pct",
+    "per_level": 20
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_shrapnel",
-  "impl_phase": 3
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "titan_heart",
@@ -940,20 +917,20 @@
   "tags": [
    "defense"
   ],
-  "text": "+30 % Max-HP je Stufe. +1 % Schaden je 10 Max-HP.",
+  "text": "+30 % Max-HP und +10 % Schaden je Stufe.",
   "effects": [
    {
     "stat": "max_hp_pct",
     "per_level": 30
    },
    {
-    "special": "damage_per_hp",
-    "damage_pct_per_10_hp": 1
+    "stat": "damage_pct",
+    "per_level": 10
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_titan_heart",
-  "impl_phase": 3
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "glass_cannon",
@@ -967,16 +944,16 @@
   "effects": [
    {
     "stat": "damage_pct",
-    "value": 100
+    "per_level": 100
    },
    {
     "stat": "max_hp_pct",
-    "value": -40
+    "per_level": -40
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_glass_cannon",
-  "impl_phase": 3
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "reaper_pact",
@@ -987,19 +964,20 @@
    "damage",
    "defense"
   ],
-  "text": "Jeder Kill heilt 1 HP. Alle 25 Kills ein Todesschlag (Radius 250, 500 % Schaden).",
+  "text": "Jeder Kill heilt 1 HP, 25 % Chance auf eine Explosion beim Kill.",
   "effects": [
    {
-    "special": "reaper_pact",
-    "heal_per_kill": 1,
-    "strike_every_kills": 25,
-    "radius_px": 250,
-    "damage_pct": 500
+    "stat": "heal_per_kill",
+    "per_level": 1
+   },
+   {
+    "stat": "explode_on_kill_pct",
+    "per_level": 25
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_reaper_pact",
-  "impl_phase": 3
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  },
  {
   "id": "elemental_storm",
@@ -1009,15 +987,31 @@
   "tags": [
    "elemental"
   ],
-  "text": "Alle Elementareffekte (Brand, Frost, Gift, Schock) können auf jeden Treffer wirken, +50 % Elementarschaden.",
+  "text": "Je 15 % Chance auf Brand und Blitz, Gift und Kälte bei jedem Treffer, +50 % Elementarschaden.",
   "effects": [
    {
-    "special": "all_elements",
-    "elemental_damage_pct": 50
+    "stat": "ignite_chance_pct",
+    "per_level": 15
+   },
+   {
+    "stat": "shock_chance_pct",
+    "per_level": 15
+   },
+   {
+    "stat": "poison_pct_per_s",
+    "per_level": 10
+   },
+   {
+    "stat": "chill_slow_pct",
+    "per_level": 10
+   },
+   {
+    "stat": "elemental_damage_pct",
+    "per_level": 50
    }
   ],
-  "unlocked_at_start": false,
-  "unlock_challenge": "unlock_up_elemental_storm",
-  "impl_phase": 3
+  "unlocked_at_start": true,
+  "unlock_challenge": null,
+  "impl_phase": 1
  }
 ]

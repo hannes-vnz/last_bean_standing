@@ -178,8 +178,9 @@ def draw_results(
     _dim(r, 150)
     cx = r.w // 2
     top = _top(r, 290)
-    r.text("Die Bohne ist gefallen", (cx, top + 14), r.big_font, center=True)
-    panel = pygame.Rect(cx - min(140, r.w // 2 - 10), top + 38, min(280, r.w - 20), 168)
+    title = "Sieg! Die Saat ist gerettet" if result.get("victory") else "Die Bohne ist gefallen"
+    r.text(title, (cx, top + 14), r.big_font, center=True)
+    panel = pygame.Rect(cx - min(140, r.w // 2 - 10), top + 38, min(280, r.w - 20), 184)
     _panel(r, panel)
     r.dark_text(f"{result['score']} Punkte", (cx, panel.y + 12), center=True)
     if flags.get("new_best"):
@@ -188,11 +189,13 @@ def draw_results(
         r.dark_text("Neuer Rekord!", (cx, badge.y + 2), center=True)
     rows = [
         ("Zeit", _mmss(result["seconds"])),
-        ("Welle", str(result["wave"])),
+        ("Beet", f"{result.get('stage', 1)} / 3"),
         ("Kills", str(result["kills"])),
         ("Level", str(result["level"])),
         ("Bosse", str(result["bosses"])),
     ]
+    if result.get("swarm_seconds"):
+        rows.append(("Plagenflut", _mmss(result["swarm_seconds"])))
     for i, (label, value) in enumerate(rows):
         y = panel.y + 54 + i * 16
         r.dark_text(label, (panel.x + 30, y))

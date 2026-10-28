@@ -49,6 +49,39 @@ class Ring:
     color: tuple[int, int, int]
 
 
+@dataclass(slots=True)
+class Bolt:
+    points: tuple[tuple[float, float], ...]
+    life: int
+
+
+@dataclass(slots=True)
+class Reel:
+    """Chest opening ("lucky draw"): a strip of item icons spins, slows down and lands on the item."""
+
+    item_id: str
+    rarity: str
+    strip: list[str]  # item ids on the strip; the found item sits at index `land`
+    land: int
+    frame: int = 0
+
+    SPIN = 70  # frames until it stops
+    SHOW = 50  # frames the result stays
+
+    @property
+    def done(self) -> bool:
+        return self.frame >= self.SPIN + self.SHOW
+
+    @property
+    def landed(self) -> bool:
+        return self.frame >= self.SPIN
+
+    def position(self) -> float:
+        """Strip offset in icons: fast at first, easing out onto `land`."""
+        t = min(1.0, self.frame / self.SPIN)
+        return self.land * (1.0 - (1.0 - t) ** 3)
+
+
 class Effects:
     def __init__(self, colors: dict[str, tuple[int, int, int]], kind_colors: dict[str, tuple[int, int, int]]) -> None:
         self.rng = random.Random(0xB0B)
@@ -63,6 +96,11 @@ class Effects:
         self.banner: tuple[str, int] | None = None
         self.toast: tuple[str, int] | None = None  # small message, e.g. the item just found
         self.item_info: dict[str, tuple[str, str]] = {}  # item id -> (name, text), set by the app
+        self.item_rarity: dict[str, str] = {}  # item id -> rarity, set by the app (for the chest reel)
+        self.taglines: dict[int, str] = {}  # garden bed number -> tagline, set by the app
+        self.bolts: list[Bolt] = []
+        self.reel: Reel | None = None
+        self.subtitle: tuple[str, int] | None = None  # second banner line (tagline of a garden bed)
 
     def reset(self) -> None:
         self.particles.clear()
@@ -70,6 +108,8 @@ class Effects:
         self.rings.clear()
         self.flash.clear()
         self.trauma, self.hitstop, self.banner, self.toast = 0.0, 0, None, None
+        self.bolts.clear()
+        self.reel, self.subtitle = None, None
 
     # ------------------------------------------------------------------ events
 
@@ -122,8 +162,35 @@ class Effects:
                 name, text = self.item_info.get(e.item_id, (e.item_id, ""))
                 stack = f" x{e.count}" if e.count > 1 else ""
                 self.toast = (f"{name}{stack}: {text}", 180)
+                self.start_reel(e.item_id)
                 if players and e.player_id in players:
                     self.level_up(*players[e.player_id])
+            elif isinstance(e, ev.Zap):
+                self.bolts.append(Bolt(e.points, 8))
+                for x, y in e.points[1:]:
+                    self.burst(x, y, 4, c.get("shot_core", c["white"]), speed=70, life=10)
+            elif isinstance(e, ev.PlayerDodged):
+                self.texts.append(FloatingText(e.x, e.y - 30, "Ausgewichen!", c["white"], False, 40))
+            elif isinstance(e, ev.PlayerRevived):
+                self.banner = ("Zweiter Atem!", 120)
+                self.level_up(e.x, e.y)
+                self.trauma = min(1.0, self.trauma + 0.5)
+            elif isinstance(e, ev.StageStarted):
+                self.banner = (f"Beet {e.stage}: {e.name}", 170)
+                self.subtitle = (self.taglines.get(e.stage, ""), 170)
+            elif isinstance(e, ev.FloodWarning):
+                self.banner = ("Die Plagenflut kommt!", 150)
+            elif isinstance(e, ev.FloodStarted):
+                self.banner = ("PLAGENFLUT!", 150)
+                self.subtitle = ("Sie hört nicht auf. Ins Tor oder durchhalten!", 150)
+                self.trauma = min(1.0, self.trauma + 0.6)
+            elif isinstance(e, ev.GateOpened):
+                self.banner = ("Das Gartentor ist offen!", 150)
+                self.rings.append(Ring(e.x, e.y, 10, 6, 30, 30, c.get("gate", c["crit"])))
+                self.burst(e.x, e.y, 30, c.get("gate", c["crit"]), speed=160, life=30, size=2)
+            elif isinstance(e, ev.RunEnded) and e.victory:
+                self.banner = ("Die Saat ist gerettet!", 240)
+                self.trauma = 1.0
             elif isinstance(e, ev.ChestLocked):
                 if players and e.player_id in players:
                     x, y = players[e.player_id]
@@ -137,6 +204,23 @@ class Effects:
                     self.trauma = min(1.0, self.trauma + 0.15)
             elif isinstance(e, ev.PotBroken):
                 self.burst(e.x, e.y, 10, (226, 150, 120), speed=90, life=18, size=2)
+
+    def start_reel(self, item_id: str) -> None:
+        """Lucky draw: a strip of random item icons that lands on the found one."""
+        pool = list(self.item_rarity) or [item_id]
+        land = 18 + self.rng.randint(0, 4)
+        strip = [pool[self.rng.randrange(len(pool))] for _ in range(land + 4)]
+        strip[land] = item_id
+        self.reel = Reel(item_id, self.item_rarity.get(item_id, "common"), strip, land)
+
+    def skip_reel(self) -> None:
+        """A tap skips the spin; a second tap (or time) closes it."""
+        if self.reel is None:
+            return
+        if self.reel.landed:
+            self.reel = None
+        else:
+            self.reel.frame = Reel.SPIN
 
     def level_up(self, x: float, y: float) -> None:
         self.rings.append(Ring(x, y, 8, 5, 24, 24, self.colors["crit"]))
@@ -180,6 +264,18 @@ class Effects:
                 rings.append(g)
         self.rings = rings
         self.flash = {k: v - 1 for k, v in self.flash.items() if v > 1}
+        for b in self.bolts:
+            b.life -= 1
+        self.bolts = [b for b in self.bolts if b.life > 0]
+        if self.reel is not None:
+            self.reel.frame += 1
+            if self.reel.frame == Reel.SPIN:  # landing pop
+                self.trauma = min(1.0, self.trauma + 0.25)
+            if self.reel.done:
+                self.reel = None
+        if self.subtitle:
+            text, frames = self.subtitle
+            self.subtitle = (text, frames - 1) if frames > 1 else None
         self.trauma = max(0.0, self.trauma - 1.5 / 60)
         if self.banner:
             text, frames = self.banner
