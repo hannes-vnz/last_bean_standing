@@ -115,6 +115,7 @@ def test_screens_fit_and_have_buttons(renderer, size):
     for buttons, needed in [
         (screens.draw_menu(r, p, web=True), {"play", "board", "name"}),
         (screens.draw_name_entry(r, "Fenn", True, first_time=False), {"ok", "type", "cancel"}),
+        (screens.draw_name_entry(r, "Fenn", True, False, keyboard=True), {"ok", "cancel", "key:Q", "key:back"}),
         (screens.draw_results(r, result, flags, p, "Online-Rang #1"), {"again", "menu"}),
         (screens.draw_board(r, board, p, True), {"back", "period:all", "period:week", "period:month"}),
     ]:
@@ -174,3 +175,30 @@ def test_app_icon_and_manifest_for_the_home_screen():
     assert 'rel="manifest"' in page
     img = pygame.image.load(str(web / "icons" / "apple-touch-icon.png"))
     assert img.get_size() == (180, 180)
+
+
+def test_on_screen_keyboard_types_a_name(renderer, content):
+    from lastbean.app import Game
+    from lastbean.meta.profile import MemoryProfileStore
+    from lastbean.ui import screens
+
+    r = renderer((300, 650))
+    r.touch = True
+    game = Game(content, r, MemoryProfileStore(), seed=1, autostart=False)
+    game.start_name_entry()
+    for key in ("F", "e", "n", "n", " ", "B", "x", "back"):
+        game.press_key(key)
+    assert game.name_buffer == "Fenn B"
+    buttons = screens.draw_name_entry(r, game.name_buffer, True, True, keyboard=True, upper=game.name_upper)
+    labels = {b.action for b in buttons}
+    assert "key:a" in labels and "key:ß" in labels and "key: " in labels  # small letters after the capital
+
+
+@pytest.mark.parametrize("css,dpr", [((390, 844), 3.0), ((1024, 1366), 2.0), ((1920, 1080), 1.0), ((412, 915), 2.625)])
+def test_every_canvas_pixel_is_a_whole_number_of_screen_pixels(css, dpr):
+    from lastbean.ui.layout import pixel_perfect_size
+
+    w, h, k = pixel_perfect_size(*css, dpr, 360)
+    assert w * k <= css[0] * dpr + 1e-6 and h * k <= css[1] * dpr + 1e-6  # fits on the screen
+    assert css[0] * dpr - w * k < k and css[1] * dpr - h * k < k  # and covers it up to less than one pixel
+    assert 250 <= min(w, h) <= 520

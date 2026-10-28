@@ -41,3 +41,14 @@ def is_compact(css_width: float, css_height: float) -> bool:
 
 def _even(v: float) -> int:
     return int(round(v / 2)) * 2
+
+
+def pixel_perfect_size(css_w: float, css_h: float, dpr: float, short: int) -> tuple[int, int, int]:
+    """Browser: canvas size and k such that every canvas pixel is exactly k x k device pixels.
+
+    Stretching by an uneven factor (say 1.3) makes some pixels one and others two screen pixels wide,
+    which is most visible on text. k is the whole number that brings the short side closest to
+    `short`; the canvas then covers the screen with at most k - 1 device pixels left over."""
+    dw, dh = max(1.0, css_w * dpr), max(1.0, css_h * dpr)
+    k = max(1, round(min(dw, dh) / short))
+    return int(dw // k), int(dh // k), k

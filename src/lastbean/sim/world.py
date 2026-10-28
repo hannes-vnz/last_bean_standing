@@ -318,6 +318,7 @@ class PlayerView(NamedTuple):
     weapons: tuple[tuple[str, int], ...] = ()  # extra weapons (id, level) in pick order
     shield: float = 0.0
     revives_left: int = 0
+    card_tiers: tuple[tuple[str, str], ...] = ()  # best rarity picked per upgrade or "weapon:<id>"
 
 
 class EnemyView(NamedTuple):
@@ -675,6 +676,8 @@ class World:
                 p.pending_chests.pop(0)
             else:
                 p.pending_levels -= 1
+            if RARITIES.index(tier) >= RARITIES.index(p.card_tiers.get(uid, "common")):
+                p.card_tiers[uid] = tier
             p.offer, p.offer_tiers, p.offer_source = (), (), ""
             events.append(UpgradeChosen(self.tick, p.player_id, uid, level, tier))
             self._offer(p, events)
@@ -1811,6 +1814,7 @@ class World:
                     tuple((st.weapon, st.level) for st in p.weapons),
                     p.shield,
                     max(0, p.stats.revives - p.revives_used),
+                    tuple(p.card_tiers.items()),
                 )
                 for p in self.players
             ),
@@ -1915,8 +1919,9 @@ class World:
             h.update(k.kind.encode() + struct.pack("<2d", k.x, k.y))
         h.update(struct.pack(f"<{len(self.players)}d", *(p.ability_cooldown for p in self.players)))
         for p in self.players:
-            h.update(repr((sorted(p.upgrade_power.items()), p.offer_tiers, p.haste_pct, p.haste_t, p.overcharge_t,
-                           p.shield, p.shield_t, p.revives_used, p.aura_t)).encode())  # fmt: skip
+            h.update(repr((sorted(p.upgrade_power.items()), p.offer_tiers, sorted(p.card_tiers.items()), p.haste_pct,
+                           p.haste_t, p.overcharge_t, p.shield, p.shield_t, p.revives_used,
+                           p.aura_t)).encode())  # fmt: skip
         h.update(repr([o.magnet_to for o in self.orbs]).encode())
         for p in self.players:
             for st in p.weapons:

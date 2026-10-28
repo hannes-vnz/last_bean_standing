@@ -1,15 +1,21 @@
-"""Pixel icons for weapons, upgrades and items (Paket F), drawn in code at 12 x 12 canvas pixels.
+"""Icons for weapons, upgrades and items, 20 x 20 canvas pixels, in a frame of their rarity colour.
 
-Each icon is an 8 x 8 symbol for what the thing does (sword = damage, heart = HP, flame = burn, ...)
-on a background colour by category, framed in its rarity colour. An upgrade or item uses the
-symbol of its first stat and a small corner mark for a second one, so similar ones stay apart.
+Weapons and items are 16 x 16 pixel drawings from assets/sprites/icons.json (tools/sprites/items.py).
+Upgrades are books ("Bücher" of a stat): a cover in the colour of the stat's category with the stat's
+8 x 8 symbol on it (sword = damage, heart = HP, flame = burn, ...). The frame is the rarity colour with
+a light and a dark edge; the slot behind the picture is dark, tinted by the rarity.
 """
 
 from __future__ import annotations
 
+import json
+
 import pygame
 
-SIZE = 12
+from .sprites import ASSETS_DIR
+
+SIZE = 20
+ART = 16
 
 GLYPHS = {
     "sword": ["......##", ".....###", "....###.", "#..###..", ".####...", "..##....", ".#.##...", "#......."],
@@ -94,53 +100,100 @@ class IconBank:
     def __init__(self, content, ink: tuple[int, int, int], rarity_colors: dict[str, tuple[int, int, int]]) -> None:
         self.ink = ink
         self.rarity_colors = rarity_colors
-        self._cache: dict[tuple[str, str], pygame.Surface] = {}
-        self._spec: dict[str, tuple[str, tuple[int, int, int], str | None, str]] = {}
+        self._cache: dict[tuple, pygame.Surface] = {}
+        self._art = _load_art()
+        self._rarity: dict[str, str] = {"weapon:start": "common"}
+        self._tome: dict[str, tuple[str, tuple[int, int, int], str | None]] = {}
         for u in content.upgrades:
             stats = [e["stat"] for e in u.effects if "stat" in e]
-            self._spec[u.id] = self._stat_spec(stats, u.rarity)
+            first = stats[0] if stats else "damage_pct"
+            mark = STAT_GLYPH.get(stats[1]) if len(stats) > 1 else None
+            self._tome[u.id] = (STAT_GLYPH.get(first, "star"), CATEGORY.get(first, OFFENSE), mark)
+            self._rarity[u.id] = u.rarity
         for i in content.items:
-            self._spec["item:" + i.id] = self._stat_spec([stat for stat, _ in i.effects], i.rarity)
+            self._rarity["item:" + i.id] = i.rarity
         for w in content.weapons:
-            glyph = WEAPON_ID_GLYPH.get(w.id, WEAPON_GLYPH.get(w.kind, "sword"))
-            self._spec["weapon:" + w.id] = (glyph, WEAPON, None, w.rarity)
-        self._spec["weapon:start"] = ("bow", WEAPON, None, "common")
+            self._rarity["weapon:" + w.id] = w.rarity
 
-    @staticmethod
-    def _stat_spec(stats: list[str], rarity: str) -> tuple[str, tuple[int, int, int], str | None, str]:
-        first = stats[0] if stats else "damage_pct"
-        mark = STAT_GLYPH.get(stats[1]) if len(stats) > 1 else None
-        return STAT_GLYPH.get(first, "star"), CATEGORY.get(first, OFFENSE), mark, rarity
-
-    def get(self, key: str, tier: str | None = None) -> pygame.Surface:
-        """Icon for an upgrade id, "item:<id>", "weapon:<id>" or "weapon:start"; `tier` overrides the frame colour."""
-        spec = self._spec.get(key, ("star", OFFENSE, None, "common"))
-        tier = tier or spec[3]
-        surf = self._cache.get((key, tier))
+    def get(self, key: str, tier: str | None = None, scale: int = 1) -> pygame.Surface:
+        """Icon for an upgrade id, "item:<id>", "weapon:<id>" or "weapon:start". `tier` sets the frame colour
+        (default: the thing's own rarity); `scale` enlarges it pixel-exact (cards, chest spinner)."""
+        tier = tier or self._rarity.get(key, "common")
+        surf = self._cache.get((key, tier, scale))
         if surf is None:
-            surf = self._build(*spec[:3], tier)
-            self._cache[(key, tier)] = surf
+            surf = self._cache.get((key, tier, 1))
+            if surf is None:
+                surf = self._build(key, tier)
+                self._cache[(key, tier, 1)] = surf
+            if scale != 1:
+                surf = pygame.transform.scale(surf, (SIZE * scale, SIZE * scale))
+                self._cache[(key, tier, scale)] = surf
         return surf
 
-    def _build(self, glyph: str, bg: tuple[int, int, int], mark: str | None, tier: str) -> pygame.Surface:
+    def art(self, key: str) -> pygame.Surface:
+        """Just the 16 x 16 picture, without a frame."""
+        surf = self._cache.get((key, "art", 0))
+        if surf is None:
+            surf = self._art.get(key) or self._tome_art(*self._tome.get(key, ("star", OFFENSE, None)))
+            self._cache[(key, "art", 0)] = surf
+        return surf
+
+    def _build(self, key: str, tier: str) -> pygame.Surface:
         s = pygame.Surface((SIZE, SIZE), pygame.SRCALPHA)
-        frame = self.rarity_colors.get(tier, (236, 236, 236))
+        frame = self.rarity_colors.get(tier, (180, 180, 180))
+        hi = tuple(min(255, v + 70) for v in frame)
+        lo = tuple(v * 3 // 5 for v in frame)
+        slot = tuple((v * 2 + d * 5) // 7 for v, d in zip(frame, (44, 32, 53), strict=True))
         s.fill(self.ink, (1, 0, SIZE - 2, SIZE))
         s.fill(self.ink, (0, 1, SIZE, SIZE - 2))
         s.fill(frame, (1, 1, SIZE - 2, SIZE - 2))
-        s.fill(bg, (2, 2, SIZE - 4, SIZE - 4))
+        s.fill(hi, (1, 1, SIZE - 2, 1))  # light top-left edge
+        s.fill(hi, (1, 1, 1, SIZE - 2))
+        s.fill(lo, (1, SIZE - 2, SIZE - 2, 1))  # dark bottom-right edge
+        s.fill(lo, (SIZE - 2, 1, 1, SIZE - 2))
+        s.fill(slot, (3, 3, SIZE - 6, SIZE - 6))
+        s.fill(tuple(min(255, v + 18) for v in slot), (3, 3, SIZE - 6, (SIZE - 6) // 2))  # soft light from above
+        s.blit(self.art(key), ((SIZE - ART) // 2, (SIZE - ART) // 2))
+        return s
+
+    def _tome_art(self, glyph: str, cover: tuple[int, int, int], mark: str | None) -> pygame.Surface:
+        """A book: coloured cover, darker spine, white pages, the stat's symbol in white on the cover."""
+        s = pygame.Surface((ART, ART), pygame.SRCALPHA)
+        ink, dark = self.ink, tuple(v * 2 // 3 for v in cover)
+        s.fill(ink, (2, 1, 13, 15))
+        s.fill((250, 244, 230), (12, 3, 2, 12))  # pages
+        s.fill(cover, (3, 2, 10, 13))
+        s.fill(dark, (3, 2, 2, 13))  # spine
+        s.fill(tuple(min(255, v + 45) for v in cover), (5, 2, 8, 1))
         rows = GLYPHS.get(glyph, GLYPHS["star"])
         for y, row in enumerate(rows):
             for x, ch in enumerate(row):
                 if ch == "#":
-                    if y + 1 < 8 and rows[y + 1][x] != "#":
-                        s.set_at((2 + x, 3 + y), _shade(bg))  # little drop shadow under the glyph
-                    s.set_at((2 + x, 2 + y), (255, 255, 255))
-        if mark:  # second stat: a 2 x 2 dot in the corner, coloured by its category
-            s.fill(self.ink, (SIZE - 4, SIZE - 4, 3, 3))
-            s.fill((255, 240, 160), (SIZE - 3, SIZE - 3, 1, 1))
+                    s.set_at((5 + x, 5 + y), (255, 255, 255))
+        s.fill((255, 212, 94), (5, 3, 7, 1))  # golden title band
+        if mark:
+            s.fill(ink, (12, 12, 4, 4))
+            s.fill((255, 240, 160), (13, 13, 2, 2))
         return s
 
 
-def _shade(c: tuple[int, int, int]) -> tuple[int, int, int]:
-    return tuple(int(v * 0.65) for v in c)
+def _load_art() -> dict[str, pygame.Surface]:
+    try:
+        raw = json.loads((ASSETS_DIR / "sprites" / "icons.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    out = {}
+    for key, spec in raw.items():
+        surf = pygame.Surface((spec["w"], spec["h"]), pygame.SRCALPHA)
+        pal = {k: _hex(v) for k, v in spec["pal"].items()}
+        for y, row in enumerate(spec["rows"]):
+            for x, ch in enumerate(row):
+                if ch != ".":
+                    surf.set_at((x, y), (*pal[ch], 255))
+        out[key] = surf
+    return out
+
+
+def _hex(c: str) -> tuple[int, int, int]:
+    c = c.lstrip("#")
+    return int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)

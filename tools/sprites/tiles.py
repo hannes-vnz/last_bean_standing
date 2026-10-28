@@ -2,7 +2,9 @@
 
 Usage (from the repo root): python tools/sprites/tiles.py
 Writes assets/tiles/<biome>.png: one row of 16 x 16 tiles per bed (index 0-3 plain variants,
-4-7 features). The renderer picks variants by position, so the ground never repeats visibly.
+4-7 features), and <biome>_decor.png: transparent decorations (pebbles, flowers, leaves, ...)
+that the renderer scatters over the ground. Variants are picked by position and shaded in
+large patches, so the ground never repeats visibly.
 Also writes docs/art/tiles_preview.png.
 """
 
@@ -90,6 +92,126 @@ def compost(rnd):
 BEDS = {"seedbed": seedbed, "veggiebed": veggiebed, "compost": compost}
 
 
+# ---------------------------------------------------------------------------- decorations (transparent, no collision)
+def deco(draw):
+    g = [[None] * T for _ in range(T)]
+
+    def put(x, y, c):
+        if 0 <= x < T and 0 <= y < T:
+            g[y][x] = c
+
+    draw(put)
+    ink = "#4a3358"
+    out = [row[:] for row in g]  # soft dark edge so decorations read on any ground
+    for y in range(T):
+        for x in range(T):
+            if g[y][x] is None and any(0 <= x + dx < T and 0 <= y + dy < T and g[y + dy][x + dx] not in (None, ink)
+                                       for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):  # fmt: skip
+                out[y][x] = ink
+    return out
+
+
+def pebbles(put, c="#c8bfb4"):
+    for x, y in ((5, 9), (6, 9), (5, 10), (6, 10), (9, 11), (10, 11), (8, 7)):
+        put(x, y, c)
+    put(5, 9, light(c, 0.4))
+    put(9, 11, light(c, 0.4))
+
+
+def flowers(put, petal):
+    for cx, cy in ((5, 7), (10, 9), (7, 12)):
+        for dx, dy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
+            put(cx + dx, cy + dy, petal)
+        put(cx, cy, "#ffd45e")
+
+
+def leaf(put, c="#d9a05a"):
+    for i in range(5):
+        put(5 + i, 10 - i // 2, c)
+        put(5 + i, 11 - i // 2, dark(c, 0.15))
+    put(4, 11, dark(c, 0.3))
+
+
+def mushroom(put, cap="#ff8f8f"):
+    for x in range(5, 11):
+        put(x, 7, cap)
+        put(x, 8, cap)
+    for x in range(6, 10):
+        put(x, 6, cap)
+    put(6, 7, "#ffffff")
+    put(9, 6, "#ffffff")
+    for y in (9, 10, 11):
+        put(7, y, "#fff1d6")
+        put(8, y, "#fff1d6")
+
+
+def tuft(put, c="#7ccf6a"):
+    for x, h in ((5, 3), (6, 5), (7, 4), (8, 6), (9, 3), (10, 4)):
+        for y in range(12 - h, 12):
+            put(x, y, c if y > 12 - h else light(c, 0.3))
+
+
+def twig(put):
+    for i in range(8):
+        put(4 + i, 9 + (i % 3 == 0), "#8a6a4a")
+    put(7, 8, "#8a6a4a")
+    put(8, 7, "#8a6a4a")
+
+
+def ladybug(put):
+    for x, y in ((7, 8), (8, 8), (6, 9), (7, 9), (8, 9), (9, 9), (7, 10), (8, 10)):
+        put(x, y, "#ff6b6b")
+    put(7, 7, "#4a3358")
+    put(8, 7, "#4a3358")
+    put(6, 9, "#4a3358")
+
+
+def eggshell(put):
+    for x, y in ((5, 9), (6, 8), (7, 8), (8, 9), (9, 10), (10, 10), (6, 10), (7, 10)):
+        put(x, y, "#fff1d6")
+    put(6, 9, "#e8dcc4")
+
+
+def peel(put):
+    for i in range(6):
+        put(5 + i, 8 + abs(3 - i) // 2, "#ffd45e")
+    put(4, 9, "#8a6a4a")
+    put(11, 9, "#8a6a4a")
+
+
+def apple_core(put):
+    for y in range(7, 12):
+        put(7, y, "#fff1d6")
+        put(8, y, "#fff1d6")
+    for x in (6, 9):
+        put(x, 7, "#ff6b6b")
+        put(x, 11, "#ff6b6b")
+    put(8, 6, "#8a6a4a")
+
+
+def spores(put):
+    for x, y in ((5, 8), (8, 6), (10, 9), (7, 11), (11, 12)):
+        put(x, y, "#b6e05a")
+        put(x + 1, y, light("#b6e05a", 0.4))
+
+
+def lettuce(put):
+    for x in range(4, 12):
+        for y in range(7, 12):
+            if (x - 7.5) ** 2 / 14 + (y - 9.5) ** 2 / 5 <= 1:
+                put(x, y, "#9be27f" if (x + y) % 3 else "#c8f0a8")
+
+
+DECOR = {
+    "seedbed": [pebbles, lambda p: flowers(p, "#ffffff"), leaf, tuft, twig, ladybug, mushroom,
+                lambda p: flowers(p, "#ff9fc0")],
+    "veggiebed": [lambda p: flowers(p, "#ffffff"), lambda p: flowers(p, "#ffd45e"), lettuce, tuft, ladybug,
+                  lambda p: pebbles(p, "#d8d0c4"), lambda p: flowers(p, "#b8a0ff"), mushroom],
+    "compost": [eggshell, peel, apple_core, spores, lambda p: leaf(p, "#a0784f"), lambda p: mushroom(p, "#c8f06a"),
+                twig, lambda p: pebbles(p, "#9a8a7a")],
+}  # fmt: skip
+
+
 def main():
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     import pygame
@@ -97,6 +219,14 @@ def main():
     out = ROOT / "assets" / "tiles"
     out.mkdir(parents=True, exist_ok=True)
     sheets = []
+    for bed, items in DECOR.items():
+        sheet = pygame.Surface((T * len(items), T), pygame.SRCALPHA)
+        for i, draw in enumerate(items):
+            for y, row in enumerate(deco(draw)):
+                for x, c in enumerate(row):
+                    if c is not None:
+                        sheet.set_at((i * T + x, y), (*hx(c), 255))
+        pygame.image.save(sheet, str(out / f"{bed}_decor.png"))
     for bed, fn in BEDS.items():
         tiles = fn(random.Random(bed))
         sheet = pygame.Surface((T * len(tiles), T))

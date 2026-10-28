@@ -70,6 +70,21 @@ Sprites, Effekte, Sound, Profil und Highscore, Browser-Version, Bestenlisten-Cli
 - [x] Icons für jede Waffe, jedes Upgrade und Item, gestapelt unter dem HUD mit Stufe.
 - [ ] Balance mit echten Läufen (Bot: Median-Tod 4:01, meist im ersten Beet).
 
+## Paket F2: Optik nach Rückmeldung (28.10.2026)
+- [x] Seltenheitsfarben grün, blau, lila, rot, gold; dicke Rahmen mit Licht- und Schattenkante.
+- [x] Eigene Pixelbilder für alle 46 Items und 7 Waffen (`tools/sprites/items.py`), Upgrades als Bücher mit Symbol.
+- [x] Level-up-Karten: dunkle Karte mit großem Bild, Werte zeilenweise, Umdrehen beim Erscheinen, Blitz und Ring, Lichtstrahlen ab „selten“.
+- [x] HUD: Waffen, Bücher und Items in eigenen Reihen; Neues und Stufenaufstiege springen groß auf („NEU“, „+1“).
+- [x] Boden: große helle und dunkle Flecken, Deko (Kiesel, Blumen, Blätter, Pilze, Eierschalen …), Schatten unter Hindernissen, Holzkanten an Gemüsereihen, schwebende Pollen, Blüten oder Sporen.
+- [x] Scharfe Pixel und Schrift im Browser: jeder Spielpixel ist genau 2, 3 oder 4 Bildschirmpixel.
+- [x] Bildschirmtastatur für den Namen auf Handy und iPad (PC tippt normal).
+
+## Als Nächstes (Vorschlag)
+1. Auf echten Geräten prüfen: Bildrate (F3), Schärfe, Tippen, Tastatur.
+2. Animationen für Bohne und Gegner (Laufen, Treffer, Tod) und Geschoss-Sprites (Paket D).
+3. Pixelschrift mit freier Lizenz statt der Standardschrift.
+4. Schreine auf der Karte (Gier-Schrein), dann Einstellungen und Hinweise beim ersten Lauf (Paket E).
+
 ## Paket D: Grafik-Durchgang
 - [ ] Boden-Kacheln je Biom mit Details (Gras, Blumen, Steine), Übergänge zwischen Biomen.
 - [ ] Animationen: Laufen und Ruhe (2 bis 4 Bilder), Treffer, Tod.

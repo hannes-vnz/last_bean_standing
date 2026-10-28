@@ -26,7 +26,7 @@ from .render.interp import interpolate
 from .render.renderer import CANVAS_H, CANVAS_W, Renderer, effect_palette
 from .sim import DT, PlayerInput, World, WorldConfig
 from .ui import screens
-from .ui.layout import is_compact, logical_size, zoom_step
+from .ui.layout import default_short_side, is_compact, logical_size, pixel_perfect_size, zoom_step
 from .ui.touch import TouchState
 
 MAX_STEPS_PER_FRAME = 3  # avoid the spiral of death after a stall (slow devices slow down instead)
@@ -135,6 +135,7 @@ class Game:
         self.result: dict = {}
         self.flags: dict = {}
         self.name_buffer = ""
+        self.name_upper = True  # on-screen keyboard: capital letter first, then small ones
         if autostart:
             self.state = "play"
         elif not self.profile.get("prologue_seen"):
@@ -215,6 +216,7 @@ class Game:
 
     def start_name_entry(self) -> None:
         self.name_buffer = self.profile.get("nickname") or ""
+        self.name_upper = not self.name_buffer
         self.state = "name"
         if not WEB:
             pygame.key.start_text_input()
@@ -226,6 +228,17 @@ class Game:
             self.first_name = False
             self.state = "menu"
             pygame.key.stop_text_input()
+
+    def press_key(self, key: str) -> None:
+        """A key of the on-screen keyboard (touch devices)."""
+        if key == "shift":
+            self.name_upper = not self.name_upper
+        elif key == "back":
+            self.name_buffer = self.name_buffer[:-1]
+            self.name_upper = not self.name_buffer
+        elif len(self.name_buffer) < 16:
+            self.name_buffer += key
+            self.name_upper = key == " "  # after a space the next word starts with a capital
 
     def type_name(self) -> None:
         """Phones and tablets: the browser's own text dialog brings up the on-screen keyboard."""
@@ -272,21 +285,36 @@ class Screen:
 
     def change_zoom(self, steps: int) -> bool:
         """Zoom in (negative steps) or out. Returns True when the view changed."""
-        current = self.zoom or min(self.renderer.w, self.renderer.h)
-        new = zoom_step(current, steps)
-        if new == current:
-            return False
-        self.zoom = new
-        self.fit(force=True)
-        return True
+        before = (self.renderer.w, self.renderer.h)
+        current = self.zoom or min(before)
+        # On the web only whole pixel scales exist, so keep stepping until the view really changes.
+        for _ in range(4):
+            new = zoom_step(current, steps)
+            if new == current:
+                return (self.renderer.w, self.renderer.h) != before
+            self.zoom = current = new
+            self.fit(force=True)
+            if (self.renderer.w, self.renderer.h) != before:
+                return True
+        return False
 
     def css_size(self) -> tuple[int, int]:
-        """Size of the canvas element on the page. innerWidth/innerHeight can be wrong right after an
-        iPhone home-screen app starts in portrait (until the first rotation), the element is not."""
+        """Size of the canvas element on the page (for mapping taps)."""
         import platform
 
         canvas = platform.document.getElementById("canvas")
         w, h = (int(canvas.clientWidth), int(canvas.clientHeight)) if canvas else (0, 0)
+        if w < 50 or h < 50:
+            w, h = self.page_size()
+        return w, h
+
+    def page_size(self) -> tuple[int, int]:
+        """Visible page in CSS pixels. documentElement is right even when innerWidth/innerHeight are not
+        (an iPhone home-screen app started in portrait, until the first rotation)."""
+        import platform
+
+        doc = platform.document.documentElement
+        w, h = int(doc.clientWidth or 0), int(doc.clientHeight or 0)
         if w < 50 or h < 50:
             w, h = int(platform.window.innerWidth), int(platform.window.innerHeight)
         return w, h
@@ -294,15 +322,25 @@ class Screen:
     def fit(self, force: bool = False) -> None:
         """Pick the canvas size for the current screen. On the web the page size is polled (rotation)."""
         if WEB:
-            css = self.css_size()
-            if css == self._css and not force:
+            import platform
+
+            css = self.page_size()
+            dpr = float(platform.window.devicePixelRatio or 1.0)
+            if (css, dpr) == self._css and not force:
                 return
-            self._css = css
-            w, h = logical_size(*css, compact=is_compact(*css), short=self.zoom)
-            # Drawing buffer = canvas size; CSS scales it up with `image-rendering: pixelated`
-            # (no per-frame software upscale, and 4x fewer pixels to hand to the browser).
+            self._css = (css, dpr)
+            short = self.zoom or default_short_side(is_compact(*css))
+            w, h, k = pixel_perfect_size(*css, dpr, short)
+            # Drawing buffer = canvas size, shown at exactly k x k device pixels per canvas pixel
+            # (CSS size set below), so pixels and letters stay even and sharp.
             self.window = pygame.display.set_mode((w, h))
             use_whole_page()
+            try:
+                canvas = platform.document.getElementById("canvas")
+                canvas.style.width = f"{w * k / dpr}px"
+                canvas.style.height = f"{h * k / dpr}px"
+            except Exception as exc:  # noqa: BLE001 - layout tweak only, never stop the game
+                print("Canvas-Größe nicht gesetzt:", exc)
         else:
             if self.window is None:
                 self.window = pygame.display.set_mode((CANVAS_W * 2, CANVAS_H * 2), pygame.RESIZABLE)
@@ -400,10 +438,12 @@ async def run(
         elif action == "board":
             game.open_board()
         elif action == "name":
-            game.start_name_entry()
-            game.type_name()
+            game.start_name_entry()  # touch: on-screen keyboard; otherwise just type
         elif action == "type":
-            game.type_name()
+            if not renderer.touch:
+                game.type_name()  # browser text dialog as a fallback (e.g. no keyboard focus)
+        elif action.startswith("key:"):
+            game.press_key(action[4:])
         elif action == "ok":
             game.confirm_name()
         elif action == "prologue_done":
@@ -637,7 +677,9 @@ async def run(
                 buttons = screens.draw_board(renderer, game.board, game.profile, game.leaderboard.enabled)
             else:
                 valid = valid_nickname(game.name_buffer)
-                buttons = screens.draw_name_entry(renderer, game.name_buffer, valid, game.first_name)
+                buttons = screens.draw_name_entry(
+                    renderer, game.name_buffer, valid, game.first_name, keyboard=renderer.touch, upper=game.name_upper
+                )
             if touch_debug is not None:
                 for i, line in enumerate((touch_debug or "Tippe irgendwo hin").split("\n")):
                     renderer.text(line, (4, renderer.h - 34 + i * 14))
