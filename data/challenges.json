@@ -1,17 +1,17 @@
 [
  {
   "id": "unlock_pyro",
-  "text": "Erreiche Minute 5 mit beliebigem Charakter.",
+  "text": "Erreiche Minute 3 mit beliebigem Charakter.",
   "condition": {
    "type": "run_stat",
    "stat": "minutes_survived",
    "op": ">=",
-   "value": 5
+   "value": 3
   },
   "reward": {
-   "type": "title",
-   "id": "Glutfreund",
-   "stones": 150
+   "type": "unlock_character",
+   "id": "pyro",
+   "stones": 100
   }
  },
  {
@@ -24,9 +24,9 @@
    "value": 5
   },
   "reward": {
-   "type": "title",
-   "id": "Schattenläufer",
-   "stones": 150
+   "type": "unlock_character",
+   "id": "rogue",
+   "stones": 100
   }
  },
  {
@@ -39,9 +39,9 @@
    "value": 5000
   },
   "reward": {
-   "type": "title",
-   "id": "Schildbohne",
-   "stones": 150
+   "type": "unlock_character",
+   "id": "guardian",
+   "stones": 100
   }
  },
  {
@@ -55,9 +55,9 @@
    "biome": "compost"
   },
   "reward": {
-   "type": "title",
-   "id": "Frostherz",
-   "stones": 150
+   "type": "unlock_character",
+   "id": "cryo",
+   "stones": 100
   }
  },
  {
@@ -85,9 +85,9 @@
    "value": 2
   },
   "reward": {
-   "type": "title",
-   "id": "Donnerbohne",
-   "stones": 150
+   "type": "unlock_character",
+   "id": "storm",
+   "stones": 100
   }
  },
  {
@@ -365,8 +365,8 @@
   "text": "Erreiche das zweite Beet in unter 4 Minuten.",
   "condition": {
    "type": "run_stat",
-   "stat": "stage2_before_s",
-   "op": ">=",
+   "stat": "stage2_reached_s",
+   "op": "<",
    "value": 240
   },
   "reward": {
@@ -411,12 +411,12 @@
  },
  {
   "id": "skin_ranger_a",
-  "text": "Erreiche Minute 10 mit Fenn.",
+  "text": "Erreiche mit Fenn das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10,
+   "value": 2,
    "character": "ranger"
   },
   "reward": {
@@ -427,12 +427,12 @@
  },
  {
   "id": "skin_ranger_b",
-  "text": "Erreiche Minute 15 mit Fenn.",
+  "text": "Erreiche mit Fenn das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 15,
+   "value": 3,
    "character": "ranger"
   },
   "reward": {
@@ -443,12 +443,12 @@
  },
  {
   "id": "skin_pyro_a",
-  "text": "Erreiche Minute 10 mit Mira.",
+  "text": "Erreiche mit Mira das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10,
+   "value": 2,
    "character": "pyro"
   },
   "reward": {
@@ -459,12 +459,12 @@
  },
  {
   "id": "skin_pyro_b",
-  "text": "Erreiche Minute 15 mit Mira.",
+  "text": "Erreiche mit Mira das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 15,
+   "value": 3,
    "character": "pyro"
   },
   "reward": {
@@ -475,12 +475,12 @@
  },
  {
   "id": "skin_rogue_a",
-  "text": "Erreiche Minute 10 mit Kaz.",
+  "text": "Erreiche mit Kaz das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10,
+   "value": 2,
    "character": "rogue"
   },
   "reward": {
@@ -491,12 +491,12 @@
  },
  {
   "id": "skin_rogue_b",
-  "text": "Erreiche Minute 15 mit Kaz.",
+  "text": "Erreiche mit Kaz das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 15,
+   "value": 3,
    "character": "rogue"
   },
   "reward": {
@@ -507,12 +507,12 @@
  },
  {
   "id": "skin_guardian_a",
-  "text": "Erreiche Minute 10 mit Brun.",
+  "text": "Erreiche mit Brun das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10,
+   "value": 2,
    "character": "guardian"
   },
   "reward": {
@@ -523,12 +523,12 @@
  },
  {
   "id": "skin_guardian_b",
-  "text": "Erreiche Minute 15 mit Brun.",
+  "text": "Erreiche mit Brun das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 15,
+   "value": 3,
    "character": "guardian"
   },
   "reward": {
@@ -539,12 +539,12 @@
  },
  {
   "id": "skin_cryo_a",
-  "text": "Erreiche Minute 10 mit Ysa.",
+  "text": "Erreiche mit Ysa das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10,
+   "value": 2,
    "character": "cryo"
   },
   "reward": {
@@ -555,12 +555,12 @@
  },
  {
   "id": "skin_cryo_b",
-  "text": "Erreiche Minute 15 mit Ysa.",
+  "text": "Erreiche mit Ysa das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 15,
+   "value": 3,
    "character": "cryo"
   },
   "reward": {
@@ -571,12 +571,12 @@
  },
  {
   "id": "skin_summoner_a",
-  "text": "Erreiche Minute 10 mit Thorn.",
+  "text": "Erreiche mit Thorn das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10,
+   "value": 2,
    "character": "summoner"
   },
   "reward": {
@@ -587,12 +587,12 @@
  },
  {
   "id": "skin_summoner_b",
-  "text": "Erreiche Minute 15 mit Thorn.",
+  "text": "Erreiche mit Thorn das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 15,
+   "value": 3,
    "character": "summoner"
   },
   "reward": {
@@ -603,12 +603,12 @@
  },
  {
   "id": "skin_storm_a",
-  "text": "Erreiche Minute 10 mit Vex.",
+  "text": "Erreiche mit Vex das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10,
+   "value": 2,
    "character": "storm"
   },
   "reward": {
@@ -619,12 +619,12 @@
  },
  {
   "id": "skin_storm_b",
-  "text": "Erreiche Minute 15 mit Vex.",
+  "text": "Erreiche mit Vex das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 15,
+   "value": 3,
    "character": "storm"
   },
   "reward": {
@@ -635,12 +635,12 @@
  },
  {
   "id": "skin_bomber_a",
-  "text": "Erreiche Minute 10 mit Orm.",
+  "text": "Erreiche mit Orm das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10,
+   "value": 2,
    "character": "bomber"
   },
   "reward": {
@@ -651,12 +651,12 @@
  },
  {
   "id": "skin_bomber_b",
-  "text": "Erreiche Minute 15 mit Orm.",
+  "text": "Erreiche mit Orm das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 15,
+   "value": 3,
    "character": "bomber"
   },
   "reward": {
@@ -667,12 +667,12 @@
  },
  {
   "id": "skin_venom_a",
-  "text": "Erreiche Minute 10 mit Lilu.",
+  "text": "Erreiche mit Lilu das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10,
+   "value": 2,
    "character": "venom"
   },
   "reward": {
@@ -683,12 +683,12 @@
  },
  {
   "id": "skin_venom_b",
-  "text": "Erreiche Minute 15 mit Lilu.",
+  "text": "Erreiche mit Lilu das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 15,
+   "value": 3,
    "character": "venom"
   },
   "reward": {
@@ -699,12 +699,12 @@
  },
  {
   "id": "skin_sniper_a",
-  "text": "Erreiche Minute 10 mit Aya.",
+  "text": "Erreiche mit Aya das zweite Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 10,
+   "value": 2,
    "character": "sniper"
   },
   "reward": {
@@ -715,12 +715,12 @@
  },
  {
   "id": "skin_sniper_b",
-  "text": "Erreiche Minute 15 mit Aya.",
+  "text": "Erreiche mit Aya das dritte Beet.",
   "condition": {
    "type": "run_stat",
-   "stat": "minutes_survived",
+   "stat": "stage_reached",
    "op": ">=",
-   "value": 15,
+   "value": 3,
    "character": "sniper"
   },
   "reward": {

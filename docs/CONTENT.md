@@ -33,12 +33,12 @@ Die Spalte „nötige HP/s“ ist die Leistung, die du brauchst, um alles Ersche
 | Name | Spielstil | HP | Tempo | Schaden | Schuss/s | Reichweite | Krit | Waffe | Passiv | Fertigkeit | Freischaltung | Phase |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Fenn der Falkenauge** (`ranger`) | Jäger: ausgewogen, durchschlagende Pfeile | 100 | 225 | 12 | 2.0 | 380 | 5 % | Ein Pfeil, durchschlägt 1 Gegner. | **Weitblick**: +12 % Reichweite. +8 % Schaden auf Ziele über 250 px. | **Pfeilhagel** (18 s): 16 Pfeile in alle Richtungen (je 60 % Schaden). | von Anfang an | 1 |
-| **Mira Aschenglut** (`pyro`) | Pyromantin: Flächenschaden und Brand | 80 | 175 | 14 | 1.1 | 320 | 5 % | Feuerball explodiert (Radius 64) und entzündet (3 s, 20 % Schaden/s). | **Hitzewelle**: Brennende Gegner erleiden +20 % Schaden. | **Inferno** (22 s): Feuerring (Radius 180) um dich, 4 s, 40 % Schaden/s. | von Anfang an | 1 |
-| **Kaz Nachtmesser** (`rogue`) | Schurke: schnell, kritisch, kurze Reichweite | 85 | 238 | 7 | 2.2 | 210 | 20 % | Fächer aus 3 Wurfmessern. | **Nervenkitzel**: +15 % Lauftempo. +6 % Schaden je Gegner im Umkreis 150 px (max. 5). | **Schattenschritt** (5 s): Dash über 220 px, 0,3 s unverwundbar. | von Anfang an | 1 |
-| **Brun Eisenschulter** (`guardian`) | Wächter: Nahkampf-Tank mit Dornen | 160 | 150 | 20 | 0.9 | 110 | 0 % | Schockwelle um dich (Radius 110) mit Rückstoß. | **Eisenhaut**: -15 % erlittener Schaden. Reflektiert 25 % des Nahkampfschadens. | **Bollwerk** (25 s): Schild für 3 s, absorbiert 150 Schaden. | von Anfang an | 1 |
-| **Ysa Winterhauch** (`cryo`) | Frostmagierin: Kontrolle und Verlangsamung | 90 | 181 | 10 | 1.3 | 340 | 5 % | Frostgeschoss verlangsamt um 30 % (2 s). 3 Kältestapel frieren 1,2 s ein. | **Frostaura**: Gegner im Umkreis von 140 px sind 15 % langsamer. | **Eiszeit** (24 s): Friert alle Gegner im Bild 2 s ein. | von Anfang an | 1 |
+| **Mira Aschenglut** (`pyro`) | Pyromantin: Flächenschaden und Brand | 80 | 175 | 14 | 1.1 | 320 | 5 % | Feuerball explodiert (Radius 64) und entzündet (3 s, 20 % Schaden/s). | **Hitzewelle**: Brennende Gegner erleiden +20 % Schaden. | **Inferno** (22 s): Feuerring (Radius 180) um dich, 4 s, 40 % Schaden/s. | Erreiche Minute 3 mit beliebigem Charakter. | 1 |
+| **Kaz Nachtmesser** (`rogue`) | Schurke: schnell, kritisch, kurze Reichweite | 85 | 238 | 7 | 2.2 | 210 | 20 % | Fächer aus 3 Wurfmessern. | **Nervenkitzel**: +15 % Lauftempo. +6 % Schaden je Gegner im Umkreis 150 px (max. 5). | **Schattenschritt** (5 s): Dash über 220 px, 0,3 s unverwundbar. | Räume eine Welle ab Welle 5, ohne Schaden zu nehmen. | 1 |
+| **Brun Eisenschulter** (`guardian`) | Wächter: Nahkampf-Tank mit Dornen | 160 | 150 | 20 | 0.9 | 110 | 0 % | Schockwelle um dich (Radius 110) mit Rückstoß. | **Eisenhaut**: -15 % erlittener Schaden. Reflektiert 25 % des Nahkampfschadens. | **Bollwerk** (25 s): Schild für 3 s, absorbiert 150 Schaden. | Erleide insgesamt 5000 Schaden. | 1 |
+| **Ysa Winterhauch** (`cryo`) | Frostmagierin: Kontrolle und Verlangsamung | 90 | 181 | 10 | 1.3 | 340 | 5 % | Frostgeschoss verlangsamt um 30 % (2 s). 3 Kältestapel frieren 1,2 s ein. | **Frostaura**: Gegner im Umkreis von 140 px sind 15 % langsamer. | **Eiszeit** (24 s): Friert alle Gegner im Bild 2 s ein. | Besiege 300 Gegner im Komposthaufen. | 1 |
 | **Thorn Geisterruf** (`summoner`) | Beschwörer: Begleiter kämpfen für ihn | 90 | 175 | 6 | 1.0 | 300 | 5 % | Schwacher Geisterbolzen. 2 Geister-Begleiter greifen selbstständig an (8 Schaden, 1,5/s). | **Seelenband**: Geister erhalten 50 % deiner Schadensboni. | **Totenruf** (30 s): 4 zusätzliche Geister für 10 s. | Erreiche Level 15 in einem Run. | 3 |
-| **Vex Donnerhall** (`storm`) | Sturmrufer: Kettenblitze, hohe Schussrate | 80 | 200 | 8 | 2.4 | 300 | 5 % | Kettenblitz springt 2-mal (160 px, je 80 % Schaden). | **Statische Ladung**: Jeder 10. Schuss ruft einen Blitzschlag (200 % Schaden) auf einen zufälligen Gegner. | **Gewittersturm** (28 s): 6 s lang 4 Blitze pro Sekunde auf zufällige Gegner. | von Anfang an | 1 |
+| **Vex Donnerhall** (`storm`) | Sturmrufer: Kettenblitze, hohe Schussrate | 80 | 200 | 8 | 2.4 | 300 | 5 % | Kettenblitz springt 2-mal (160 px, je 80 % Schaden). | **Statische Ladung**: Jeder 10. Schuss ruft einen Blitzschlag (200 % Schaden) auf einen zufälligen Gegner. | **Gewittersturm** (28 s): 6 s lang 4 Blitze pro Sekunde auf zufällige Gegner. | Erreiche das zweite Beet. | 1 |
 | **Orm Zündfunke** (`bomber`) | Sprengmeister: Bomben im Stand, Minen im Lauf | 110 | 188 | 26 | 0.7 | 300 | 5 % | Bombe im Bogen, explodiert nach 0,6 s (Radius 90). | **Minenleger**: Legt beim Laufen alle 1,5 s eine Mine (60 % Schaden, Radius 70, max. 6). | **Megabombe** (20 s): Große Bombe (Radius 200, 500 % Schaden). | Besiege insgesamt 2000 Gegner. | 3 |
 | **Lilu Schierling** (`venom`) | Giftmischerin: Giftpfützen und Seuche | 85 | 188 | 5 | 1.4 | 330 | 5 % | Giftphiole: Pfütze (Radius 55, 3 s, 12 Gift/s, stapelt bis 4x). | **Seuche**: Vergiftete Gegner verbreiten beim Tod Gift (Radius 80). | **Giftnebel** (26 s): Wolke (Radius 160) für 8 s, 35 % Schaden/s, verlangsamt 20 %. | Verursache insgesamt 10000 Giftschaden. | 3 |
 | **Aya Stillstand** (`sniper`) | Scharfschützin: je länger sie steht, desto härter | 75 | 162 | 40 | 0.45 | 600 | 10 % | Durchschlag-Schuss (3). +10 % Schaden je Sekunde Stillstand (max. +100 %). | **Ruhe vor dem Schuss**: Nach 2 s Stillstand ist der nächste Schuss ein garantierter Krit (x2,5). | **Fokus** (20 s): 4 s lang: schießt auch im Lauf, doppelte Schussrate. | Besiege alle drei Beet-Bosse (Schleimrun, Knollgrimm, den Schnitter). | 3 |
@@ -323,12 +323,12 @@ Rein kosmetische Zusatzfarben für jeden Charakter (Paletten-Tausch der Ramp-Far
 
 | ID | Aufgabe | Belohnung |
 |---|---|---|
-| `unlock_pyro` | Erreiche Minute 5 mit beliebigem Charakter. | title: Glutfreund |
-| `unlock_rogue` | Räume eine Welle ab Welle 5, ohne Schaden zu nehmen. | title: Schattenläufer |
-| `unlock_guardian` | Erleide insgesamt 5000 Schaden. | title: Schildbohne |
-| `unlock_cryo` | Besiege 300 Gegner im Komposthaufen. | title: Frostherz |
+| `unlock_pyro` | Erreiche Minute 3 mit beliebigem Charakter. | unlock_character: pyro |
+| `unlock_rogue` | Räume eine Welle ab Welle 5, ohne Schaden zu nehmen. | unlock_character: rogue |
+| `unlock_guardian` | Erleide insgesamt 5000 Schaden. | unlock_character: guardian |
+| `unlock_cryo` | Besiege 300 Gegner im Komposthaufen. | unlock_character: cryo |
 | `unlock_summoner` | Erreiche Level 15 in einem Run. | unlock_character: summoner |
-| `unlock_storm` | Erreiche das zweite Beet. | title: Donnerbohne |
+| `unlock_storm` | Erreiche das zweite Beet. | unlock_character: storm |
 | `unlock_bomber` | Besiege insgesamt 2000 Gegner. | unlock_character: bomber |
 | `unlock_venom` | Verursache insgesamt 10000 Giftschaden. | unlock_character: venom |
 | `unlock_sniper` | Besiege alle drei Beet-Bosse (Schleimrun, Knollgrimm, den Schnitter). | unlock_character: sniper |
@@ -350,26 +350,26 @@ Rein kosmetische Zusatzfarben für jeden Charakter (Paletten-Tausch der Ramp-Far
 | `unlock_up_glass_cannon` | Erreiche das zweite Beet in unter 4 Minuten. | title: Eilig |
 | `unlock_up_reaper_pact` | Besiege insgesamt 10 Bosse. | title: Bossbrecher |
 | `unlock_up_elemental_storm` | Besitze Entzünden, Kälte, Toxin und Schock in einem Run. | title: Elementar |
-| `skin_ranger_a` | Erreiche Minute 10 mit Fenn. | unlock_skin: ranger_a |
-| `skin_ranger_b` | Erreiche Minute 15 mit Fenn. | unlock_skin: ranger_b |
-| `skin_pyro_a` | Erreiche Minute 10 mit Mira. | unlock_skin: pyro_a |
-| `skin_pyro_b` | Erreiche Minute 15 mit Mira. | unlock_skin: pyro_b |
-| `skin_rogue_a` | Erreiche Minute 10 mit Kaz. | unlock_skin: rogue_a |
-| `skin_rogue_b` | Erreiche Minute 15 mit Kaz. | unlock_skin: rogue_b |
-| `skin_guardian_a` | Erreiche Minute 10 mit Brun. | unlock_skin: guardian_a |
-| `skin_guardian_b` | Erreiche Minute 15 mit Brun. | unlock_skin: guardian_b |
-| `skin_cryo_a` | Erreiche Minute 10 mit Ysa. | unlock_skin: cryo_a |
-| `skin_cryo_b` | Erreiche Minute 15 mit Ysa. | unlock_skin: cryo_b |
-| `skin_summoner_a` | Erreiche Minute 10 mit Thorn. | unlock_skin: summoner_a |
-| `skin_summoner_b` | Erreiche Minute 15 mit Thorn. | unlock_skin: summoner_b |
-| `skin_storm_a` | Erreiche Minute 10 mit Vex. | unlock_skin: storm_a |
-| `skin_storm_b` | Erreiche Minute 15 mit Vex. | unlock_skin: storm_b |
-| `skin_bomber_a` | Erreiche Minute 10 mit Orm. | unlock_skin: bomber_a |
-| `skin_bomber_b` | Erreiche Minute 15 mit Orm. | unlock_skin: bomber_b |
-| `skin_venom_a` | Erreiche Minute 10 mit Lilu. | unlock_skin: venom_a |
-| `skin_venom_b` | Erreiche Minute 15 mit Lilu. | unlock_skin: venom_b |
-| `skin_sniper_a` | Erreiche Minute 10 mit Aya. | unlock_skin: sniper_a |
-| `skin_sniper_b` | Erreiche Minute 15 mit Aya. | unlock_skin: sniper_b |
+| `skin_ranger_a` | Erreiche mit Fenn das zweite Beet. | unlock_skin: ranger_a |
+| `skin_ranger_b` | Erreiche mit Fenn das dritte Beet. | unlock_skin: ranger_b |
+| `skin_pyro_a` | Erreiche mit Mira das zweite Beet. | unlock_skin: pyro_a |
+| `skin_pyro_b` | Erreiche mit Mira das dritte Beet. | unlock_skin: pyro_b |
+| `skin_rogue_a` | Erreiche mit Kaz das zweite Beet. | unlock_skin: rogue_a |
+| `skin_rogue_b` | Erreiche mit Kaz das dritte Beet. | unlock_skin: rogue_b |
+| `skin_guardian_a` | Erreiche mit Brun das zweite Beet. | unlock_skin: guardian_a |
+| `skin_guardian_b` | Erreiche mit Brun das dritte Beet. | unlock_skin: guardian_b |
+| `skin_cryo_a` | Erreiche mit Ysa das zweite Beet. | unlock_skin: cryo_a |
+| `skin_cryo_b` | Erreiche mit Ysa das dritte Beet. | unlock_skin: cryo_b |
+| `skin_summoner_a` | Erreiche mit Thorn das zweite Beet. | unlock_skin: summoner_a |
+| `skin_summoner_b` | Erreiche mit Thorn das dritte Beet. | unlock_skin: summoner_b |
+| `skin_storm_a` | Erreiche mit Vex das zweite Beet. | unlock_skin: storm_a |
+| `skin_storm_b` | Erreiche mit Vex das dritte Beet. | unlock_skin: storm_b |
+| `skin_bomber_a` | Erreiche mit Orm das zweite Beet. | unlock_skin: bomber_a |
+| `skin_bomber_b` | Erreiche mit Orm das dritte Beet. | unlock_skin: bomber_b |
+| `skin_venom_a` | Erreiche mit Lilu das zweite Beet. | unlock_skin: venom_a |
+| `skin_venom_b` | Erreiche mit Lilu das dritte Beet. | unlock_skin: venom_b |
+| `skin_sniper_a` | Erreiche mit Aya das zweite Beet. | unlock_skin: sniper_a |
+| `skin_sniper_b` | Erreiche mit Aya das dritte Beet. | unlock_skin: sniper_b |
 | `boss_snail_queen` | Besiege Schleimrun. | title: Schneckenschreck |
 | `boss_beetle_king` | Besiege Knollgrimm. | title: Käferknacker |
 | `reach_swarm` | Überlebe 30 s Plagenflut. | unlock_mode: eternal_night |

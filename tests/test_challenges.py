@@ -27,7 +27,7 @@ def test_run_and_lifetime_challenges_complete_once_and_pay(content):
     assert {"unlock_pyro", "unlock_storm", "boss_snail_queen", "unlock_up_second_wind"} <= new
     assert "unlock_cryo" not in new  # 120 of 300 compost kills
     assert p["sparkles"] == sum(_ch(content, c).reward.stones for c in new)
-    assert "Glutfreund" in p["titles"]
+    assert "pyro" in p["unlocked"]["characters"] and "Beetbefreier" in p["titles"]
     assert challenges.progress(_ch(content, "unlock_cryo"), p, 6) == (120.0, 300.0)
     assert challenges.evaluate(p, res, content.challenges, 6) == []  # never twice
     p2 = normalize(p)  # survives saving
@@ -36,7 +36,7 @@ def test_run_and_lifetime_challenges_complete_once_and_pay(content):
 
 def test_skin_challenges_need_their_bean_and_unlock_the_skin(content):
     p = new_profile()
-    res = _result(character="pyro", seconds=600)
+    res = _result(character="pyro", seconds=200, stage=2)
     challenges.record_lifetime(p, res)
     new = {c.id for c in challenges.evaluate(p, res, content.challenges, 6)}
     assert "skin_pyro_a" in new and "skin_ranger_a" not in new

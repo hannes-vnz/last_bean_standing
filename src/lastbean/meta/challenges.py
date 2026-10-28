@@ -38,7 +38,7 @@ def run_value(stat: str, cond: dict, result: dict[str, Any]) -> float:
     stats = result.get("stats") or {}
     if stat == "minutes_survived":
         return result["seconds"] / 60.0
-    if stat == "stage2_before_s":  # "zweites Beet in unter N s": value counts when bed 2 came in time
+    if stat == "stage2_reached_s":  # "zweites Beet in unter N s" (op "<"): counts when bed 2 came in time
         reached = stats.get("stage2_s")
         return cond["value"] if reached is not None and reached < cond["value"] else 0.0
     return float({
@@ -107,7 +107,7 @@ def progress(ch, profile: dict[str, Any], characters_playable: int, result: dict
     best = _store(profile).get("best", {})
     if cond.get("character"):
         best = best.get("by_character", {}).get(cond["character"], {})
-    if cond["stat"] == "stage2_before_s":
+    if cond["stat"] == "stage2_reached_s":
         return 0.0, target
     return float(best.get(cond["stat"], 0.0)), target
 

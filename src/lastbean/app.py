@@ -128,9 +128,13 @@ class Game:
         except Exception as exc:  # noqa: BLE001 - a broken store must not stop the game
             print("Spielstand konnte nicht geladen werden:", exc)
             self.profile = new_profile()
-        # Beans of phase 1 are playable from the start, the four of phase 3 after their challenge.
+        # Only Fenn is there from the start; every other bean comes with its challenge (Paket K).
         self.all_characters = [c for c in content.characters if c.impl_phase in (1, 3)]
-        self.starters = sum(1 for c in content.characters if c.impl_phase == 1)
+        self.starters = sum(1 for c in self.all_characters if not c.unlock_challenge)
+        unlocked = self.profile.setdefault("unlocked", {"upgrades": [], "characters": [], "modes": []})["characters"]
+        for c in self.all_characters:  # beans someone already played before they were locked stay theirs
+            if c.unlock_challenge and c.id not in unlocked and c.id in self.profile["highscores"]["by_character"]:
+                unlocked.append(c.id)
         playable = {c.id for c in self.characters}
         self.character = self.profile.get("character") if self.profile.get("character") in playable else "ranger"
         self.normal = self._world_config(self.character)
@@ -165,7 +169,7 @@ class Game:
     def characters(self) -> list:
         """Playable beans: the starters and every unlocked one."""
         unlocked = set(self.profile.get("unlocked", {}).get("characters", []))
-        return [c for c in self.all_characters if c.impl_phase == 1 or c.id in unlocked]
+        return [c for c in self.all_characters if not c.unlock_challenge or c.id in unlocked]
 
     def choose_character(self, cid: str) -> None:
         """Pick the bean for the next runs (remembered in the profile)."""
