@@ -1,14 +1,34 @@
-"""Menu, nickname entry and results screens. They draw on the renderer's 640x360 canvas."""
+"""Menu, nickname entry, results, leaderboard and pause screens.
+
+They draw on the renderer's canvas, whatever its size (phone in portrait, tablet, desktop),
+and return the buttons they drew, so touches and mouse clicks can be matched to actions.
+Keyboard shortcuts keep working on desktop.
+"""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import pygame
 
-from ..render.renderer import CANVAS_H, CANVAS_W, Renderer
+from ..render.renderer import Renderer
 
-CX = CANVAS_W // 2
+PERIOD_NAMES = {"all": "Gesamt", "week": "Woche", "month": "Monat"}
+BUTTON_H = 30
+
+
+@dataclass(frozen=True)
+class Button:
+    rect: pygame.Rect
+    action: str
+
+
+def hit(buttons: list[Button], pos: tuple[int, int]) -> str | None:
+    for b in buttons:
+        if b.rect.collidepoint(pos):
+            return b.action
+    return None
 
 
 def _panel(r: Renderer, rect: pygame.Rect) -> None:
@@ -16,71 +36,116 @@ def _panel(r: Renderer, rect: pygame.Rect) -> None:
     r.canvas.fill((255, 250, 240), rect)
 
 
+def _button(r: Renderer, rect: pygame.Rect, label: str, action: str, primary: bool = False) -> Button:
+    r.canvas.fill(r.ink, rect.inflate(4, 4))
+    r.canvas.fill(r.crit_color if primary else (255, 250, 240), rect)
+    img = r.font.render(label, True, r.ink)
+    r.canvas.blit(img, (rect.centerx - img.get_width() // 2, rect.centery - img.get_height() // 2))
+    return Button(rect, action)
+
+
+def _button_column(r: Renderer, top: int, items: list[tuple[str, str]], width: int = 200) -> list[Button]:
+    """Buttons stacked vertically, centred; the first one is the main action."""
+    x = (r.w - width) // 2
+    return [
+        _button(r, pygame.Rect(x, top + i * (BUTTON_H + 10), width, BUTTON_H), label, action, primary=i == 0)
+        for i, (label, action) in enumerate(items)
+    ]
+
+
+def _button_row(r: Renderer, y: int, items: list[tuple[str, str]], width: int = 120) -> list[Button]:
+    gap = 10
+    width = min(width, (r.w - 20 - gap * (len(items) - 1)) // len(items))
+    x0 = (r.w - len(items) * width - (len(items) - 1) * gap) // 2
+    return [
+        _button(r, pygame.Rect(x0 + i * (width + gap), y, width, BUTTON_H), label, action, primary=i == 0)
+        for i, (label, action) in enumerate(items)
+    ]
+
+
+def _dim(r: Renderer, alpha: int) -> None:
+    dim = pygame.Surface((r.w, r.h), pygame.SRCALPHA)
+    dim.fill((*r.ink, alpha))
+    r.canvas.blit(dim, (0, 0))
+
+
 def _backdrop(r: Renderer) -> None:
     """The arena map, dimmed, as a friendly background."""
     r.canvas.fill(r.void)
     m = r.map_surface
-    r.canvas.blit(m, (CX - m.get_width() // 2, CANVAS_H // 2 - m.get_height() // 2))
-    dim = pygame.Surface((CANVAS_W, CANVAS_H), pygame.SRCALPHA)
-    dim.fill((*r.ink, 120))
-    r.canvas.blit(dim, (0, 0))
+    r.canvas.blit(m, (r.w // 2 - m.get_width() // 2, r.h // 2 - m.get_height() // 2))
+    _dim(r, 120)
 
 
 def _mmss(seconds: int) -> str:
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
-def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> None:
+def _top(r: Renderer, content_h: int) -> int:
+    """Vertical start so that a block of `content_h` pixels sits in the middle."""
+    return max(10, (r.h - content_h) // 2)
+
+
+def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
     _backdrop(r)
-    r.text("Last Bean Standing", (CX, 70), r.big_font, center=True)
-    r.text("Bleib stehen, um zu schießen. Lauf, um zu überleben.", (CX, 96), center=True)
-    panel = pygame.Rect(CX - 150, 120, 300, 130)
+    cx = r.w // 2
+    top = _top(r, 300)
+    r.text("Last Bean Standing", (cx, top + 16), r.big_font, center=True)
+    r.text("Laufen, ausweichen, wachsen.", (cx, top + 42), center=True)
+    panel = pygame.Rect(cx - min(150, r.w // 2 - 10), top + 60, min(300, r.w - 20), 92)
     _panel(r, panel)
-    name = profile.get("nickname") or "?"
-    r.dark_text(f"Hallo, {name}!", (CX, panel.y + 12), center=True)
+    r.dark_text(f"Hallo, {profile.get('nickname') or '?'}!", (cx, panel.y + 10), center=True)
     best = profile["highscores"]["overall"]
     if best:
-        r.dark_text(f"Rekord: {best['score']} Punkte", (CX, panel.y + 34), center=True)
-        r.dark_text(f"{_mmss(best['seconds'])}, {best['kills']} Kills, Level {best['level']}", (CX, panel.y + 50),
+        r.dark_text(f"Rekord: {best['score']} Punkte", (cx, panel.y + 32), center=True)
+        r.dark_text(f"{_mmss(best['seconds'])}, {best['kills']} Kills, Level {best['level']}", (cx, panel.y + 48),
                     center=True)  # fmt: skip
     else:
-        r.dark_text("Noch kein Rekord. Zeit für den ersten Lauf!", (CX, panel.y + 40), center=True)
+        r.dark_text("Noch kein Rekord.", (cx, panel.y + 38), center=True)
     t = profile["totals"]
-    r.dark_text(f"Läufe {t['runs']}   Kills gesamt {t['kills']}", (CX, panel.y + 74), center=True)
-    r.dark_text("Enter: Spielen   L: Bestenliste   N: Name", (CX, panel.y + 100), center=True)
+    r.dark_text(f"Läufe {t['runs']}   Kills gesamt {t['kills']}", (cx, panel.y + 70), center=True)
+    items = [("Spielen", "play"), ("Bestenliste", "board"), ("Name ändern", "name")]
     if not web:
-        r.text("Esc: Beenden", (CX, 270), center=True)
-    r.text("WASD/Pfeile laufen  ·  im Stand wird geschossen  ·  1/2/3 Upgrade wählen", (CX, CANVAS_H - 24), center=True)
+        items.append(("Beenden", "quit"))
+    buttons = _button_column(r, panel.bottom + 16, items)
+    if not r.touch and r.w >= 500:  # keyboard hints only where a keyboard is likely and there is room
+        r.text("Enter spielen · L Bestenliste · N Name · Leertaste Fähigkeit", (cx, r.h - 18), center=True)
+    return buttons
 
 
-def draw_name_entry(r: Renderer, current: str, valid: bool, first_time: bool) -> None:
+def draw_name_entry(r: Renderer, current: str, valid: bool, first_time: bool) -> list[Button]:
     _backdrop(r)
-    r.text("Wie heißt deine Bohne?" if first_time else "Neuer Spitzname", (CX, 90), r.big_font, center=True)
-    field = pygame.Rect(CX - 110, 130, 220, 28)
+    cx = r.w // 2
+    top = _top(r, 230)
+    r.text("Wie heißt deine Bohne?" if first_time else "Neuer Spitzname", (cx, top + 16), r.big_font, center=True)
+    field = pygame.Rect(cx - min(120, r.w // 2 - 10), top + 44, min(240, r.w - 20), 30)
     _panel(r, field)
     caret = "_" if (pygame.time.get_ticks() // 400) % 2 else " "
-    r.dark_text(current + caret, (field.x + 10, field.y + 8))
-    r.text("2 bis 16 Zeichen: Buchstaben, Ziffern, Leerzeichen, _ - .", (CX, 176), center=True)
-    r.text("Enter: Übernehmen" if valid else "Name noch nicht gültig", (CX, 200), center=True)
+    r.dark_text(current + caret, (field.x + 10, field.y + 9))
+    r.text("2 bis 16 Zeichen: Buchstaben, Ziffern, _ - .", (cx, field.bottom + 16), center=True)
+    r.text("Der Name erscheint in der Bestenliste.", (cx, field.bottom + 32), center=True)
+    items = [("Übernehmen" if valid else "Name eintippen", "ok" if valid else "type")]
+    if r.touch and valid:
+        items.append(("Ändern", "type"))
     if not first_time:
-        r.text("Esc: Abbrechen", (CX, 218), center=True)
-    r.text("Der Name erscheint später in der Online-Bestenliste.", (CX, 260), center=True)
+        items.append(("Abbrechen", "cancel"))
+    return [Button(field, "type"), *_button_column(r, field.bottom + 52, items)]
 
 
 def draw_results(
     r: Renderer, result: dict[str, Any], flags: dict[str, bool], profile: dict[str, Any], online: str = ""
-) -> None:
-    dim = pygame.Surface((CANVAS_W, CANVAS_H), pygame.SRCALPHA)
-    dim.fill((*r.ink, 150))
-    r.canvas.blit(dim, (0, 0))
-    r.text("Die Bohne ist gefallen", (CX, 60), r.big_font, center=True)
-    panel = pygame.Rect(CX - 140, 86, 280, 168)
+) -> list[Button]:
+    _dim(r, 150)
+    cx = r.w // 2
+    top = _top(r, 290)
+    r.text("Die Bohne ist gefallen", (cx, top + 14), r.big_font, center=True)
+    panel = pygame.Rect(cx - min(140, r.w // 2 - 10), top + 38, min(280, r.w - 20), 168)
     _panel(r, panel)
-    r.dark_text(f"{result['score']} Punkte", (CX, panel.y + 12), center=True)
+    r.dark_text(f"{result['score']} Punkte", (cx, panel.y + 12), center=True)
     if flags.get("new_best"):
-        badge = pygame.Rect(CX - 60, panel.y + 30, 120, 16)
+        badge = pygame.Rect(cx - 60, panel.y + 30, 120, 16)
         r.canvas.fill(r.crit_color, badge)
-        r.dark_text("Neuer Rekord!", (CX, badge.y + 2), center=True)
+        r.dark_text("Neuer Rekord!", (cx, badge.y + 2), center=True)
     rows = [
         ("Zeit", _mmss(result["seconds"])),
         ("Welle", str(result["wave"])),
@@ -90,58 +155,77 @@ def draw_results(
     ]
     for i, (label, value) in enumerate(rows):
         y = panel.y + 54 + i * 16
-        r.dark_text(label, (panel.x + 40, y))
-        img = r.font.render(value, True, r.ink)
-        r.canvas.blit(img, (panel.right - 40 - img.get_width(), y))
+        r.dark_text(label, (panel.x + 30, y))
+        _right(r, value, panel.right - 30, y)
     best = profile["highscores"]["overall"]
     if best and not flags.get("new_best"):
-        r.dark_text(f"Rekord: {best['score']}", (CX, panel.bottom - 22), center=True)
+        r.dark_text(f"Rekord: {best['score']}", (cx, panel.bottom - 22), center=True)
     if online:
-        r.text(online, (CX, panel.bottom + 14), center=True)
-    r.text("R: neuer Lauf     Enter: Menü", (CX, panel.bottom + 32), center=True)
+        r.text(online, (cx, panel.bottom + 14), center=True)
+    return _button_row(r, panel.bottom + 30, [("Neuer Lauf", "again"), ("Menü", "menu")])
 
 
-PERIOD_NAMES = {"all": "Gesamt", "week": "Woche", "month": "Monat"}
-
-
-def draw_board(r: Renderer, board: dict, profile: dict[str, Any], enabled: bool) -> None:
+def draw_board(r: Renderer, board: dict, profile: dict[str, Any], enabled: bool) -> list[Button]:
     """Online leaderboard: tabs for all time / week / month, top 10, own name highlighted."""
     _backdrop(r)
-    r.text("Bestenliste", (CX, 34), r.big_font, center=True)
-    tabs = " ".join(f"[{v}]" if k == board["period"] else f" {v} " for k, v in PERIOD_NAMES.items())
-    r.text(tabs, (CX, 58), center=True)
-    panel = pygame.Rect(CX - 200, 74, 400, 214)
+    cx = r.w // 2
+    rows = 10
+    panel_h = 30 + rows * 18
+    top = _top(r, 70 + panel_h + 80)
+    r.text("Bestenliste", (cx, top + 14), r.big_font, center=True)
+    tabs = _button_row(r, top + 32, [(v, f"period:{k}") for k, v in PERIOD_NAMES.items()], width=90)
+    for b in tabs:  # mark the active tab
+        if b.action == f"period:{board['period']}":
+            r.canvas.fill(r.crit_color, b.rect)
+            img = r.font.render(PERIOD_NAMES[board["period"]], True, r.ink)
+            r.canvas.blit(img, (b.rect.centerx - img.get_width() // 2, b.rect.centery - img.get_height() // 2))
+        else:
+            r.canvas.fill((255, 250, 240), b.rect)
+            img = r.font.render(PERIOD_NAMES[b.action.split(":")[1]], True, r.ink)
+            r.canvas.blit(img, (b.rect.centerx - img.get_width() // 2, b.rect.centery - img.get_height() // 2))
+    panel = pygame.Rect(cx - min(200, r.w // 2 - 6), top + 72, min(400, r.w - 12), panel_h)
     _panel(r, panel)
     entries = board.get("entries")
+    narrow = panel.w < 340  # portrait phone: drop the kills column
     if not enabled:
-        r.dark_text("Die Online-Bestenliste ist noch nicht verbunden.", (CX, panel.y + 90), center=True)
+        r.dark_text("Die Online-Bestenliste ist nicht verbunden.", (cx, panel.y + 90), center=True)
     elif entries is None:
-        msg = "Lade ..." if board.get("loading") else "Server nicht erreichbar. Versuch es später nochmal."
-        r.dark_text(msg, (CX, panel.y + 90), center=True)
+        msg = "Lade ..." if board.get("loading") else "Server nicht erreichbar."
+        r.dark_text(msg, (cx, panel.y + 90), center=True)
     elif not entries:
-        r.dark_text("Noch keine Einträge. Sei die erste Bohne!", (CX, panel.y + 90), center=True)
+        r.dark_text("Noch keine Einträge. Sei die erste Bohne!", (cx, panel.y + 90), center=True)
     else:
-        cols = (panel.x + 14, panel.x + 54, panel.x + 210, panel.x + 290, panel.x + 386)
-        for label, x in zip(("#", "Name", "Zeit", "Kills"), cols, strict=False):
-            r.dark_text(label, (x, panel.y + 8))
-        _right(r, "Punkte", cols[4], panel.y + 8)
+        right = panel.right - 10
+        cols = {
+            "rank": panel.x + 10,
+            "name": panel.x + 36,
+            "time": right - (110 if narrow else 180),
+            "kills": right - 100,
+        }
+        r.dark_text("#", (cols["rank"], panel.y + 8))
+        r.dark_text("Name", (cols["name"], panel.y + 8))
+        r.dark_text("Zeit", (cols["time"], panel.y + 8))
+        if not narrow:
+            r.dark_text("Kills", (cols["kills"], panel.y + 8))
+        _right(r, "Punkte", right, panel.y + 8)
         me = profile.get("nickname")
-        for i, e in enumerate(entries[:10]):
+        for i, e in enumerate(entries[:rows]):
             y = panel.y + 28 + i * 18
             if e.get("name") == me:
                 r.canvas.fill(r.crit_color, (panel.x + 4, y - 2, panel.w - 8, 16))
-            r.dark_text(str(e["rank"]), (cols[0], y))
-            r.dark_text(str(e["name"]), (cols[1], y))
-            r.dark_text(_mmss(int(e["seconds"])), (cols[2], y))
-            r.dark_text(str(e["kills"]), (cols[3], y))
-            _right(r, str(e["score"]), cols[4], y)
+            r.dark_text(str(e["rank"]), (cols["rank"], y))
+            r.dark_text(str(e["name"]), (cols["name"], y))
+            r.dark_text(_mmss(int(e["seconds"])), (cols["time"], y))
+            if not narrow:
+                r.dark_text(str(e["kills"]), (cols["kills"], y))
+            _right(r, str(e["score"]), right, y)
     best = (profile.get("online") or {}).get("best_rank")
     pending = len(profile.get("pending_submissions", []))
     footer = f"Dein bester Rang: #{best}" if best else "Noch kein Lauf online"
     if pending:
-        footer += f"   ({pending} Lauf/Läufe warten aufs Senden)"
-    r.text(footer, (CX, 300), center=True)
-    r.text("Pfeile: Zeitraum   Esc/Enter: zurück", (CX, 322), center=True)
+        footer += f" ({pending} warten aufs Senden)"
+    r.text(footer, (cx, panel.bottom + 14), center=True)
+    return [*tabs, *_button_row(r, panel.bottom + 30, [("Zurück", "back")])]
 
 
 def _right(r: Renderer, text: str, right_x: int, y: int) -> None:
@@ -161,22 +245,30 @@ def online_line(status: str, rank: int | None, rank_character: int | None) -> st
     return status
 
 
-def draw_pause(r: Renderer, snap, muted: bool) -> None:
+def draw_pause(r: Renderer, snap, muted: bool) -> list[Button]:
     """Pause overlay with the current build (upgrades and their levels)."""
-    dim = pygame.Surface((CANVAS_W, CANVAS_H), pygame.SRCALPHA)
-    dim.fill((*r.ink, 160))
-    r.canvas.blit(dim, (0, 0))
-    r.text("Pause", (CX, 60), r.big_font, center=True)
-    panel = pygame.Rect(CX - 150, 84, 300, 170)
+    _dim(r, 160)
+    cx = r.w // 2
+    top = _top(r, 240 if r.w > r.h else 330)
+    r.text("Pause", (cx, top + 14), r.big_font, center=True)
+    panel = pygame.Rect(cx - min(150, r.w // 2 - 10), top + 36, min(300, r.w - 20), 150)
     _panel(r, panel)
     focus = snap.players[0]
-    r.dark_text(
-        f"Level {focus.level}   Kills {focus.kills}   {_mmss(int(snap.time_s))}", (CX, panel.y + 10), center=True
-    )
+    summary = f"Level {focus.level}   Kills {focus.kills}   {_mmss(int(snap.time_s))}"
+    r.dark_text(summary, (cx, panel.y + 10), center=True)
     ups = [(r.upgrades[uid].name, lvl) for uid, lvl in focus.upgrades if uid in r.upgrades]
     if not ups:
-        r.dark_text("Noch keine Upgrades", (CX, panel.y + 40), center=True)
-    for i, (name, lvl) in enumerate(ups[:16]):
+        r.dark_text("Noch keine Upgrades", (cx, panel.y + 40), center=True)
+    col_w = (panel.w - 20) // 2
+    for i, (name, lvl) in enumerate(ups[:14]):
         col, row = i % 2, i // 2
-        r.dark_text(f"{name} {lvl}", (panel.x + 16 + col * 146, panel.y + 34 + row * 16))
-    r.text("Esc: weiter   R: neuer Lauf   Q: Menü   M: Ton " + ("an" if muted else "aus"), (CX, 272), center=True)
+        r.dark_text(f"{name} {lvl}", (panel.x + 10 + col * col_w, panel.y + 32 + row * 16))
+    items = [
+        ("Weiter", "resume"),
+        ("Neuer Lauf", "again"),
+        ("Menü", "menu"),
+        ("Ton an" if muted else "Ton aus", "mute"),
+    ]
+    if r.w > r.h:  # landscape: one row, so it fits the 360 pixel height
+        return _button_row(r, panel.bottom + 16, items, width=110)
+    return _button_column(r, panel.bottom + 16, items)

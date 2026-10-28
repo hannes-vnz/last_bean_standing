@@ -25,6 +25,8 @@ from .render.effects import Effects
 from .render.renderer import CANVAS_H, CANVAS_W, Renderer, effect_palette
 from .sim import DT, PlayerInput, World, WorldConfig
 from .ui import screens
+from .ui.layout import is_compact, logical_size
+from .ui.touch import TouchState
 
 MAX_STEPS_PER_FRAME = 5  # avoid the spiral of death after a stall
 WEB = sys.platform == "emscripten"
@@ -205,7 +207,25 @@ class Game:
     def start_name_entry(self) -> None:
         self.name_buffer = self.profile.get("nickname") or ""
         self.state = "name"
-        pygame.key.start_text_input()
+        if not WEB:
+            pygame.key.start_text_input()
+
+    def confirm_name(self) -> None:
+        if valid_nickname(self.name_buffer):
+            set_nickname(self.profile, self.name_buffer)
+            self.save()
+            self.first_name = False
+            self.state = "menu"
+            pygame.key.stop_text_input()
+
+    def type_name(self) -> None:
+        """Phones and tablets: the browser's own text dialog brings up the on-screen keyboard."""
+        if not WEB:
+            return
+        answer = web_prompt("Wie heißt deine Bohne? (2 bis 16 Zeichen)", self.name_buffer)
+        if answer is not None:
+            self.name_buffer = answer.strip()[:16]
+            self.confirm_name()
 
     def handle_name_event(self, event) -> None:
         if event.type == pygame.TEXTINPUT:
@@ -213,15 +233,60 @@ class Game:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_BACKSPACE:
                 self.name_buffer = self.name_buffer[:-1]
-            elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER) and valid_nickname(self.name_buffer):
-                set_nickname(self.profile, self.name_buffer)
-                self.save()
-                self.first_name = False
-                self.state = "menu"
-                pygame.key.stop_text_input()
+            elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                self.confirm_name()
             elif event.key == pygame.K_ESCAPE and not self.first_name:
                 self.state = "menu"
                 pygame.key.stop_text_input()
+
+
+def web_prompt(question: str, default: str) -> str | None:
+    try:
+        import platform
+
+        answer = platform.window.prompt(question, default)
+        return None if answer is None else str(answer)
+    except Exception as exc:  # noqa: BLE001 - no dialog available: keep the current name
+        print("Eingabedialog nicht verfügbar:", exc)
+        return None
+
+
+class Screen:
+    """The browser page or desktop window, and the logical canvas size that fits it."""
+
+    def __init__(self, renderer: Renderer) -> None:
+        self.renderer = renderer
+        self.window: pygame.Surface | None = None
+        self._css = (0, 0)
+        self.fit()
+
+    def css_size(self) -> tuple[int, int]:
+        import platform
+
+        return int(platform.window.innerWidth), int(platform.window.innerHeight)
+
+    def fit(self, force: bool = False) -> None:
+        """Pick the canvas size for the current screen. On the web the page size is polled (rotation)."""
+        if WEB:
+            css = self.css_size()
+            if css == self._css and not force:
+                return
+            self._css = css
+            w, h = logical_size(*css, compact=is_compact(*css))
+            self.window = pygame.display.set_mode((w * 2, h * 2))
+            use_whole_page()
+        else:
+            if self.window is None:
+                self.window = pygame.display.set_mode((CANVAS_W * 2, CANVAS_H * 2), pygame.RESIZABLE)
+            w, h = logical_size(*self.window.get_size())
+        self.renderer.resize(w, h)
+
+    def to_canvas(self, event) -> tuple[int, int]:
+        """Canvas position of a mouse or finger event (fingers come normalised to 0..1)."""
+        if event.type in (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION):
+            ww, wh = self.window.get_size()
+            return self.renderer.window_to_canvas(event.x * ww, event.y * wh)
+        return self.renderer.window_to_canvas(*event.pos)
 
 
 async def run(
@@ -234,12 +299,11 @@ async def run(
     content = load_content()
     pygame.init()
     pygame.display.set_caption("Last Bean Standing")
-    window = pygame.display.set_mode((CANVAS_W * 2, CANVAS_H * 2), 0 if WEB else pygame.RESIZABLE)
-    if WEB:
-        use_whole_page()
     renderer = Renderer(content)
+    screen = Screen(renderer)
     effects = Effects(*effect_palette(renderer))
     audio = Audio()
+    touch = TouchState()
     game = Game(content, renderer, store or default_store(), seed, autostart)
     if game.state == "name":
         game.start_name_entry()
@@ -248,20 +312,99 @@ async def run(
     clock = pygame.time.Clock()
     timer, show_timings, bench_result = FrameTimer(), False, ""
     acc, frames, running, choice = 0.0, 0, True, None
+    buttons: list[screens.Button] = []
+    touch_ability = False
     last = time.perf_counter()
+    next_fit = 0.0
+
+    def new_run() -> None:
+        nonlocal acc
+        game.new_run()
+        effects.reset()
+        touch.reset()
+        acc = 0.0
+
+    def do(action: str | None) -> None:
+        """Button actions, shared by touch, mouse and keyboard."""
+        nonlocal running, acc
+        if action is None:
+            return
+        if action in ("play", "again"):
+            new_run()
+        elif action == "board":
+            game.open_board()
+        elif action == "name":
+            game.start_name_entry()
+            game.type_name()
+        elif action == "type":
+            game.type_name()
+        elif action == "ok":
+            game.confirm_name()
+        elif action in ("cancel", "menu", "back"):
+            game.state = "menu"
+            pygame.key.stop_text_input()
+        elif action == "resume":
+            game.state, acc = "play", 0.0
+        elif action == "mute":
+            audio.muted = not audio.muted
+        elif action == "quit":
+            running = False
+        elif action.startswith("period:"):
+            game.board["period"], game.board["entries"] = action.split(":", 1)[1], None
+            game.refresh_board()
+
+    def tap(pos: tuple[int, int]) -> None:
+        nonlocal choice, touch_ability
+        if game.state == "play":
+            if game.world.paused:
+                for i, rect in enumerate(renderer.card_rects):
+                    if rect.collidepoint(pos):
+                        choice = i
+            elif renderer.pause_rect.collidepoint(pos):
+                game.state = "pause"
+            elif renderer.ability_rect.collidepoint(pos):
+                touch_ability = True
+        else:
+            do(screens.hit(buttons, pos))
+
     try:
         while running:
+            if WEB and time.monotonic() >= next_fit:  # page resized or device rotated
+                screen.fit()
+                next_fit = time.monotonic() + 0.5
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.WINDOWFOCUSLOST and game.state == "play" and not game.world.paused:
-                    game.state = "pause"  # switching tabs or windows must not cost the run
+                    game.state = "pause"  # switching tabs or apps must not cost the run
+                    touch.reset()
+                elif event.type == pygame.VIDEORESIZE and not WEB:
+                    screen.fit()
+                elif event.type == pygame.FINGERDOWN:
+                    renderer.touch = True
+                    pos = screen.to_canvas(event)
+                    on_button = renderer.ability_rect.collidepoint(pos) or renderer.pause_rect.collidepoint(pos)
+                    steer = game.state == "play" and not game.world.paused and not on_button
+                    touch.down(event.finger_id, *pos, steer=steer)
+                    if game.state == "play" and not game.world.paused and on_button:
+                        tap(pos)  # buttons react on touch down, so a running thumb is never blocked
+                elif event.type == pygame.FINGERMOTION:
+                    touch.move(event.finger_id, *screen.to_canvas(event))
+                elif event.type == pygame.FINGERUP:
+                    pos = screen.to_canvas(event)
+                    in_game = game.state == "play" and not game.world.paused
+                    if touch.up(event.finger_id, *pos) and not in_game:
+                        tap(pos)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not getattr(event, "touch", False):
+                    tap(screen.to_canvas(event))
                 elif game.state == "name":
                     game.handle_name_event(event)
                 elif event.type != pygame.KEYDOWN:
                     continue
                 elif event.key == pygame.K_m:
                     audio.muted = not audio.muted
+                elif event.key == pygame.K_F11 and not WEB:
+                    pygame.display.toggle_fullscreen()
                 elif event.key == pygame.K_F3:
                     show_timings = not show_timings
                 elif event.key == pygame.K_F5:
@@ -270,13 +413,11 @@ async def run(
                     show_timings, last = True, time.perf_counter()
                 elif game.state == "menu":
                     if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
-                        game.new_run()
-                        effects.reset()
-                        acc = 0.0
+                        do("play")
                     elif event.key == pygame.K_n:
                         game.start_name_entry()
                     elif event.key == pygame.K_l:
-                        game.open_board()
+                        do("board")
                     elif event.key == pygame.K_ESCAPE and not WEB:
                         running = False
                 elif game.state == "board":
@@ -285,31 +426,24 @@ async def run(
                     elif event.key in (pygame.K_RIGHT, pygame.K_d):
                         game.switch_period(1)
                     elif event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER):
-                        game.state = "menu"
+                        do("back")
                 elif game.state == "results":
                     if event.key == pygame.K_r:
-                        game.new_run()
-                        effects.reset()
-                        acc = 0.0
+                        do("again")
                     elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_ESCAPE):
-                        game.state = "menu"
+                        do("menu")
                 elif game.state == "pause":
                     if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE, pygame.K_p):
-                        game.state = "play"
-                        acc = 0.0
+                        do("resume")
                     elif event.key == pygame.K_r:
-                        game.new_run()
-                        effects.reset()
-                        acc = 0.0
+                        do("again")
                     elif event.key == pygame.K_q:
-                        game.state = "menu"  # abandon the run, it is not recorded
+                        do("menu")  # abandon the run, it is not recorded
                 elif event.key in (pygame.K_ESCAPE, pygame.K_p) and not game.world.paused:
                     game.state = "pause"
                 elif event.key == pygame.K_F4:
                     game.config = game.normal if game.config is not game.normal else stress_config(game.normal)
-                    game.new_run()
-                    effects.reset()
-                    acc = 0.0
+                    new_run()
                 elif game.world.paused:
                     choice = card_choice(event.key, renderer)
             acc += min(clock.tick(60 if WEB else 120) / 1000.0, DT * MAX_STEPS_PER_FRAME)
@@ -319,6 +453,7 @@ async def run(
             if game.state == "play":
                 if world.paused:
                     acc = 0.0
+                    touch.reset()
                     if choice is not None:
                         frame_events += world.step([PlayerInput(0, choice=choice)])
                         renderer.selected = 0
@@ -328,10 +463,12 @@ async def run(
                     effects.hitstop -= 1
                     acc = 0.0
                 else:
-                    inputs = [read_input(0)]
+                    inputs = [combine_input(read_input(0), touch.direction(), touch_ability)]
                     while acc >= DT and not world.paused and not world.over:
                         frame_events += world.step(inputs)
                         acc -= DT
+                        inputs = [dataclasses.replace(inputs[0], ability=False)]  # one press, one use
+                    touch_ability = False
                 if frame_events:
                     positions = {p.player_id: (p.x, p.y) for p in world.players}
                     effects.handle(frame_events, renderer.boss_names, positions)
@@ -339,27 +476,32 @@ async def run(
                 effects.update()
                 if world.over:
                     game.finish_run()
+                    touch.reset()
             else:
                 acc = 0.0
             choice = None
             t1 = time.perf_counter()
+            buttons = []
             if game.state in ("play", "results", "pause"):
                 debug = f"{timer.text(world)}  {bench_result}" if show_timings else None
                 renderer.draw(world.snapshot(), debug=debug, effects=effects)
+                if game.state == "play" and touch.stick is not None:
+                    renderer.draw_stick(touch.stick)
                 if game.state == "pause":
-                    screens.draw_pause(renderer, game.world.snapshot(), audio.muted)
+                    buttons = screens.draw_pause(renderer, game.world.snapshot(), audio.muted)
                 if game.state == "results":
                     line = screens.online_line(*game.online)
-                    screens.draw_results(renderer, game.result, game.flags, game.profile, line)
+                    buttons = screens.draw_results(renderer, game.result, game.flags, game.profile, line)
             elif game.state == "menu":
-                screens.draw_menu(renderer, game.profile, WEB)
+                buttons = screens.draw_menu(renderer, game.profile, WEB)
             elif game.state == "board":
                 if time.monotonic() - game.board["fetched_at"] > REFRESH_S:
                     game.refresh_board()
-                screens.draw_board(renderer, game.board, game.profile, game.leaderboard.enabled)
+                buttons = screens.draw_board(renderer, game.board, game.profile, game.leaderboard.enabled)
             else:
-                screens.draw_name_entry(renderer, game.name_buffer, valid_nickname(game.name_buffer), game.first_name)
-            renderer.present(window)
+                valid = valid_nickname(game.name_buffer)
+                buttons = screens.draw_name_entry(renderer, game.name_buffer, valid, game.first_name)
+            renderer.present(screen.window)
             pygame.display.flip()
             t2 = time.perf_counter()
             timer.add(sim=t1 - t0, draw=t2 - t1, frame=t2 - last)
@@ -371,3 +513,9 @@ async def run(
     finally:
         pygame.quit()
     return game.world
+
+
+def combine_input(keys: PlayerInput, stick: tuple[int, int], touch_ability: bool) -> PlayerInput:
+    """Keyboard and touch together: the stick wins when it is deflected."""
+    mx, my = stick if stick != (0, 0) else (keys.move_x, keys.move_y)
+    return PlayerInput(keys.player_id, mx, my, ability=keys.ability or touch_ability)

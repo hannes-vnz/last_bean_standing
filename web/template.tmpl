@@ -147,7 +147,7 @@ config = {
     xtermjs : "{{cookiecutter.xtermjs}}" ,
     _sdl2 : "canvas",
     user_canvas : 0,
-    user_canvas_managed : 0,
+    user_canvas_managed : 1,  // Last Bean Standing: the game picks the canvas size (phone, tablet, desktop)
     gui_divider : 1,  // Last Bean Standing: canvas uses the whole window (default 2 = half for a console)
     ume_block : {{cookiecutter.ume_block}},
     can_close : {{cookiecutter.can_close}},
@@ -181,10 +181,12 @@ function show_infobox() {
     <title>{{cookiecutter.title}}</title>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="viewport" content="height=device-height, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Last Bean">
+    <meta name="theme-color" content="#2c2035">
 
 
     <link rel="icon" type="image/png" href="favicon.png" sizes="16x16">
@@ -243,7 +245,24 @@ function show_infobox() {
             font-family: arial;
             margin: 0;
             padding: none;
-            background-color:powderblue;
+            background-color: #2c2035;
+        }
+
+        /* Last Bean Standing: a game page on phones and tablets: no scrolling, zooming, text selection
+           or long-press menus; the canvas covers the whole (safe) screen. */
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            overscroll-behavior: none;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        canvas.emscripten {
+            touch-action: none;
         }
 
         .topright{
@@ -288,6 +307,23 @@ function show_infobox() {
     </script>
 
     <script src="{{cookiecutter.cdn}}/browserfs.min.js"></script>
+
+    <script>
+    // Last Bean Standing: on Android and desktop browsers the first touch or click switches to fullscreen.
+    // iPhone Safari has no fullscreen API for pages: there "Teilen -> Zum Home-Bildschirm" gives a fullscreen app.
+    (function () {
+        function goFullscreen() {
+            const el = document.documentElement;
+            const req = el.requestFullscreen || el.webkitRequestFullscreen;
+            const touchDevice = "ontouchstart" in window;
+            if (touchDevice && req && !document.fullscreenElement && !document.webkitFullscreenElement) {
+                try { const p = req.call(el); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+            }
+        }
+        document.addEventListener("touchend", goFullscreen, { passive: true });
+        document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    })();
+    </script>
 
 </head>
 
