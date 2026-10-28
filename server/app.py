@@ -27,6 +27,8 @@ from pydantic import BaseModel, Field, field_validator
 
 CHARACTERS = {"ranger", "pyro", "rogue", "guardian", "cryo", "summoner", "storm", "bomber", "venom", "sniper"}
 MODES = {"normal", "eternal_night"}
+MODE_SCORE_MULT = {"normal": 1.0, "eternal_night": 1.5}  # data/modes.json score_mult
+FLOOD_START_S = 180  # the flood begins when the first garden bed (3:00, data/stages.json) runs out
 NAME_RE = re.compile(r"^[A-Za-z0-9ÄÖÜäöüß _\-.]{2,16}$")
 PERIOD_SECONDS = {"day": 86400, "week": 7 * 86400, "month": 30 * 86400}
 
@@ -111,7 +113,7 @@ def max_plausible_score(s: ScoreIn) -> float:
     base = 2 * s.seconds + 5 * s.kills + 20 * s.level + 500 * s.bosses
     base += 20000 if s.victory else 0
     base += 1000 * (s.swarm_seconds / 10) * 8
-    return base * (1 + 0.8 * (s.difficulty - 1)) * 1.02 + 50
+    return base * (1 + 0.8 * (s.difficulty - 1)) * MODE_SCORE_MULT.get(s.mode, 1.0) * 1.02 + 50
 
 
 def plausibility_error(s: ScoreIn) -> Optional[str]:
@@ -121,7 +123,7 @@ def plausibility_error(s: ScoreIn) -> Optional[str]:
         return "zu viele Kills fuer die Spielzeit"
     if abs(s.wave - (s.seconds // 30 + 1)) > 2 and s.swarm_seconds == 0:
         return "Welle passt nicht zur Spielzeit"
-    if s.swarm_seconds > max(0, s.seconds - 300 + 5):  # flood starts at the end of the first bed (5:00)
+    if s.swarm_seconds > max(0, s.seconds - FLOOD_START_S + 5):  # flood starts when the first bed runs out
         return "Flutzeit passt nicht zur Spielzeit"
     if s.bosses > 6 + (s.seconds // 900):
         return "zu viele Bosse"
