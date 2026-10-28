@@ -26,9 +26,13 @@ class CharacterStats:
     i_frames_s: float
     pickup_radius: float
     tags: tuple[str, ...] = ()
-    passive: tuple[tuple[str, float, float], ...] = ()  # (stat, value, threshold_px) of the passive ability
+    # Passive ability: (stat, value, a, b) with a = threshold_px or radius_px, b = max_stacks or damage_pct
+    passive: tuple[tuple[str, float, float, float], ...] = ()
     active_id: str = ""
     active_cooldown_s: float = 0.0
+    weapon_pattern: str = "single"  # single, single_explosive, fan3, shockwave, chain_lightning
+    aoe_radius: float = 0.0
+    weapon_extra: tuple[tuple[str, float], ...] = ()  # chain_jumps, slow_pct, ignite_s, ... from characters.json
 
     @classmethod
     def from_content(cls, content, character_id: str) -> CharacterStats:
@@ -49,12 +53,20 @@ class CharacterStats:
             pickup_radius=float(base["pickup_radius_px"]),
             tags=c.tags,
             passive=tuple(
-                (e["stat"], float(e.get("value", 0.0)), float(e.get("threshold_px", 0.0)))
+                (
+                    e["stat"],
+                    float(e.get("value", 0.0)),
+                    float(e.get("threshold_px", e.get("radius_px", 0.0))),
+                    float(e.get("max_stacks", e.get("damage_pct", 0.0))),
+                )
                 for e in c.passive.effects
                 if "stat" in e
             ),
             active_id=c.active.id,
             active_cooldown_s=float(c.active.cooldown_s or 0.0),
+            weapon_pattern=c.weapon.pattern,
+            aoe_radius=float(c.weapon.aoe_radius),
+            weapon_extra=tuple((k, float(v)) for k, v in c.weapon.extra.items() if isinstance(v, (int, float))),
         )
 
 
@@ -223,6 +235,15 @@ class Stats:
     revives: int = 0
     kill_haste_max_pct: float = 0.0
     shrapnel_chance_pct: float = 0.0
+    # Character passives (Paket H)
+    burning_damage_mult: float = 1.0  # Mira "Hitzewelle"
+    nearby_damage_pct: float = 0.0  # Kaz "Nervenkitzel": per enemy close by ...
+    nearby_radius: float = 0.0
+    nearby_max: int = 0
+    aura_slow_pct: float = 0.0  # Ysa "Frostaura"
+    aura_slow_radius: float = 0.0
+    strike_every: int = 0  # Vex "Statische Ladung": every n-th shot a lightning strike ...
+    strike_damage_pct: float = 0.0
 
 
 @dataclass(slots=True)
@@ -265,6 +286,13 @@ class Player:
     shield_t: float = 0.0
     revives_used: int = 0
     aura_t: float = 0.0
+    shots_fired: int = 0
+    last_dx: float = 1.0  # last walking direction (dash ability)
+    last_dy: float = 0.0
+    inferno_t: float = 0.0  # active abilities that last a while
+    storm_t: float = 0.0
+    temp_shield: float = 0.0
+    temp_shield_t: float = 0.0
 
     @property
     def max_hp(self) -> float:
@@ -308,6 +336,7 @@ class Enemy:
     chill_pct: float = 0.0
     chill_t: float = 0.0
     dot_owner: int = 0
+    frost_stacks: int = 0
 
 
 @dataclass(slots=True)
@@ -326,6 +355,9 @@ class Projectile:
     radius: float = PROJECTILE_RADIUS
     bounces_left: int = 0
     procs: bool = True  # False for shrapnel: no chain reactions
+    explode_r: float = 0.0  # Mira's fireball bursts on impact
+    burn_pct: float = 0.0  # ... and sets the burst on fire (share of its damage per second)
+    frost: bool = False  # Ysa's frost shot slows and, stacked, freezes
     turn: float = 0.0  # homing: how fast it turns towards the nearest enemy (radians per second, roughly)
     return_at: int = 0  # boomerang: turns back to its owner when ticks_left reaches this
     returning: bool = False

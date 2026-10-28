@@ -86,6 +86,14 @@ Sprites, Effekte, Sound, Profil und Highscore, Browser-Version, Bestenlisten-Cli
 - [x] Beet 2 und 3 starten heiß: 150 bzw. 180 s Wellen-Vorsprung (Gegnermenge und -arten) und volles Budget beim Betreten.
 - [x] Plagenflut als Zocken: XP und Samenkörner +25 % je 10 s Flut, Flutzeit zählt Punkte; das Tor bleibt offen.
 
+## Paket H: Flutwellen und 5 neue Bohnen (28.10.2026)
+- [x] Plagenflut in Wellen alle 30 s: Ring aus 12 + 8 je Welle Gegnern direkt um dich, je Welle 8 % schnellere Gegner, Banner mit Belohnungsfaktor.
+- [x] Spielbar und von Anfang an frei: Mira (Feuerball mit Flächenbrand, +20 % gegen Brennende, „Inferno“),
+  Kaz (3 Wurfmesser, Schaden je Gegner in der Nähe, „Schattenschritt“), Brun (Schockwelle mit Rückstoß, Eisenhaut, „Bollwerk“),
+  Ysa (Frostgeschoss, 3 Treffer frieren ein, Frostaura, „Eiszeit“), Vex (Kettenblitz, jeder 10. Schuss ein Blitz von oben, „Gewittersturm“).
+- [x] Bohnenauswahl vor jedem Lauf (gemerkt im Profil), Highscores je Bohne.
+- [ ] Waffenplätze: bleiben bei 4 (Entscheidung offen, siehe Bericht).
+
 ## Als Nächstes (Vorschlag)
 1. Auf echten Geräten prüfen: Bildrate (F3), Schärfe, Tippen, Tastatur.
 2. Animationen für Bohne und Gegner (Laufen, Treffer, Tod) und Geschoss-Sprites (Paket D).

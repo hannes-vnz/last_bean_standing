@@ -194,6 +194,9 @@ class Renderer:
                     pygame.draw.circle(c, self.crit_color, (sx, sy), r + 4)
                 flip = self._facing(e.eid, e.x)
                 img = self.sprites.get(e.kind, self._sprite_scale(e), flip, e.eid in flash)
+                if img is not None and e.status == "frozen":  # frozen solid: icy blue
+                    img = img.copy()
+                    img.fill((90, 160, 255, 0), special_flags=pygame.BLEND_RGBA_ADD)
                 if img is not None:
                     c.blit(img, (sx - img.get_width() // 2, sy - img.get_height() // 2))
                 else:
@@ -229,6 +232,18 @@ class Renderer:
                 body = pygame.Rect(sx - 8, sy - 8, 16, 16)
                 c.fill(ink, body)
                 c.fill(WHITE if blink else self.player_body, body.inflate(-2, -2))
+            if p.inferno:  # Mira's ring of fire
+                r = round(180 / UNITS_PER_PX)
+                for k in range(16):
+                    a = k * 0.3927 + snap.tick * 0.08
+                    fx_, fy_ = sx + round(math.cos(a) * r), sy + round(math.sin(a) * r)
+                    c.fill(self.ink, (fx_ - 2, fy_ - 3, 5, 6))
+                    c.fill((255, 140, 60) if k % 2 else (255, 212, 94), (fx_ - 1, fy_ - 2, 3, 4))
+            if p.shield >= 1:  # shield bubble ("Bollwerk", "Notschild")
+                pygame.draw.circle(c, (180, 220, 255), (sx, sy), 13, 1)
+            if p.storm and (snap.tick // 5) % 2:  # Vex's storm: a little cloud above him
+                c.fill(self.ink, (sx - 7, sy - 25, 15, 6))
+                c.fill((154, 143, 184), (sx - 6, sy - 24, 13, 4))
             bar = pygame.Rect(sx - 9, sy - 15, 18, 3)
             c.fill(ink, bar)
             c.fill(self.hp_color, (bar.x + 1, bar.y + 1, round(16 * p.hp / p.max_hp), 1))
@@ -1117,7 +1132,7 @@ MOTES = {  # floating particles per bed: colour, count
     "veggiebed": ((255, 255, 255), 14),
     "compost": ((190, 236, 110), 20),
 }
-STATUS_COLORS = {"burn": (255, 140, 60), "poison": (182, 224, 90), "chill": (140, 210, 255)}
+STATUS_COLORS = {"burn": (255, 140, 60), "poison": (182, 224, 90), "chill": (140, 210, 255), "frozen": (220, 240, 255)}
 WHOLE_STATS = frozenset({"extra_attacks", "pierce_add", "bounce_add", "revives", "rerolls", "banishes",
                          "flat_damage_reduction"})  # fmt: skip
 

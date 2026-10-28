@@ -233,7 +233,7 @@ BOSSES = {"snail_queen": snail_queen, "beetle_king": beetle_king, "reaper": reap
 def build() -> dict:
     out = {}
     beans = json.loads((ROOT / "docs" / "art" / "beans.json").read_text(encoding="utf-8"))
-    out["ranger"] = beans["ranger"]
+    out.update(beans)  # all ten beans (Paket H: six of them are playable)
     for mid, fn in {**MOBS, **BOSSES}.items():
         out[mid] = fn().export()
     return out

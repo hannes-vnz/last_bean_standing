@@ -127,8 +127,12 @@ class Game:
         except Exception as exc:  # noqa: BLE001 - a broken store must not stop the game
             print("Spielstand konnte nicht geladen werden:", exc)
             self.profile = new_profile()
-        self.normal = WorldConfig.from_content(content)
+        self.characters = [c for c in content.characters if c.impl_phase == 1]
+        playable = {c.id for c in self.characters}
+        self.character = self.profile.get("character") if self.profile.get("character") in playable else "ranger"
+        self.normal = WorldConfig.from_content(content, self.character)
         self.config = self.normal
+        renderer.character_sprite = self.character
         self.fixed_seed = seed
         self.seed = seed if seed is not None else secrets.randbelow(2**31)
         self.world = World(self.seed, self.config)
@@ -147,6 +151,16 @@ class Game:
         self.online: tuple[str, int | None, int | None] = ("", None, None)
         self.board: dict = {"period": "all", "entries": None, "loading": False, "fetched_at": 0.0}
         self._tasks: dict[str, asyncio.Future] = {}
+
+    def choose_character(self, cid: str) -> None:
+        """Pick the bean for the next runs (remembered in the profile)."""
+        if cid not in {c.id for c in self.characters}:
+            return
+        self.character = cid
+        self.profile["character"] = cid
+        self.save()
+        self.normal = self.config = WorldConfig.from_content(self.content, cid)
+        self.renderer.character_sprite = cid
 
     def new_run(self) -> None:
         self.seed = self.seed + 1 if self.fixed_seed is not None else secrets.randbelow(2**31)
@@ -433,7 +447,12 @@ async def run(
         nonlocal running, acc
         if action is None:
             return
-        if action in ("play", "again"):
+        if action == "play":
+            game.state = "characters"  # pick a bean first
+        elif action == "again":
+            new_run()
+        elif action.startswith("char:"):
+            game.choose_character(action[5:])
             new_run()
         elif action == "board":
             game.open_board()
@@ -576,6 +595,17 @@ async def run(
                         do("board")
                     elif event.key == pygame.K_ESCAPE and not WEB:
                         running = False
+                elif game.state == "characters":
+                    ids = [c.id for c in game.characters]
+                    if pygame.K_1 <= event.key <= pygame.K_9 and event.key - pygame.K_1 < len(ids):
+                        do(f"char:{ids[event.key - pygame.K_1]}")
+                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
+                        do(f"char:{game.character}")
+                    elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                        step = 1 if event.key == pygame.K_RIGHT else -1
+                        game.character = ids[(ids.index(game.character) + step) % len(ids)]
+                    elif event.key == pygame.K_ESCAPE:
+                        do("menu")
                 elif game.state == "board":
                     if event.key in (pygame.K_LEFT, pygame.K_a):
                         game.switch_period(-1)
@@ -669,6 +699,9 @@ async def run(
                     buttons = screens.draw_results(renderer, game.result, game.flags, game.profile, line)
             elif game.state == "menu":
                 buttons = screens.draw_menu(renderer, game.profile, WEB)
+            elif game.state == "characters":
+                best = game.profile["highscores"].get("by_character", {})
+                buttons = screens.draw_characters(renderer, game.characters, game.character, best)
             elif game.state == "prologue":
                 buttons = screens.draw_prologue(renderer)
             elif game.state == "board":

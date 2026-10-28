@@ -87,10 +87,14 @@ from .tuning import (
     BOSS_MIN_SPAWN_DISTANCE,
     BOUNCE_DAMAGE,
     BOUNCE_RANGE,
+    BULWARK_S,
+    BULWARK_SHIELD,
     BURN_S,
     BURN_SHARE,
     CHEST_PICKUP_RADIUS,
     CHILL_S,
+    DASH_DISTANCE,
+    DASH_I_FRAMES_S,
     DODGE_I_FRAMES_S,
     DOT_PULSE_TICKS,
     ENEMY_SHOT_RADIUS,
@@ -100,10 +104,16 @@ from .tuning import (
     GATE_DELAY_S,
     GATE_OFFSET,
     HOMING_RANGE,
+    ICE_AGE_REACH,
+    ICE_AGE_S,
+    INFERNO_DPS_SHARE,
+    INFERNO_RADIUS,
+    INFERNO_S,
     KILL_EXPLOSION_DAMAGE,
     KILL_EXPLOSION_RADIUS,
     KILL_HASTE_PCT,
     KILL_HASTE_S,
+    KNIFE_FAN_DEG,
     LOW_HP_SHARE,
     MAGNET_DROP_PCT,
     MAGNET_ORB_SPEED,
@@ -124,12 +134,18 @@ from .tuning import (
     SHOCK_DAMAGE,
     SHOCK_JUMPS,
     SHOCK_RANGE,
+    SHOCKWAVE_PUSH,
     SHRAPNEL_DAMAGE,
     SHRAPNEL_PIECES,
     SHRAPNEL_RANGE,
     SHRAPNEL_SPEED,
+    SKY_STRIKE_HEIGHT,
     SPREAD_COS,
     SPREAD_SIN,
+    STORM_DAMAGE,
+    STORM_REACH,
+    STORM_S,
+    STORM_STRIKES_PER_S,
     SWARM_SPREAD,
     VOLATILE_DELAY_S,
     VOLATILE_RADIUS,
@@ -347,6 +363,8 @@ class PlayerView(NamedTuple):
     shield: float = 0.0
     revives_left: int = 0
     card_tiers: tuple[tuple[str, str], ...] = ()  # best rarity picked per upgrade or "weapon:<id>"
+    inferno: bool = False  # Mira's ring of fire is burning
+    storm: bool = False  # Vex's thunderstorm is raging
 
 
 class EnemyView(NamedTuple):
@@ -849,6 +867,9 @@ class World:
             k = speed * INV_SQRT2 if (mx and my) else speed
             p.vx, p.vy = mx * k, my * k
             p.standing = not (mx or my)
+            if not p.standing:
+                n = INV_SQRT2 if (mx and my) else 1.0
+                p.last_dx, p.last_dy = mx * n, my * n
             x, y = self.obstacles.push_out(p.x + p.vx * DT, p.y + p.vy * DT, r)
             p.x = min(max(x, r), cfg.arena_w - r)
             p.y = min(max(y, r), cfg.arena_h - r)
@@ -866,6 +887,21 @@ class World:
                 p.haste_pct = 0.0
         if s.overcharge_pct and p.overcharge_t > 0:
             p.overcharge_t -= DT
+        if p.temp_shield_t > 0:  # Brun's "Bollwerk" lasts a few seconds
+            p.temp_shield_t -= DT
+            if p.temp_shield_t <= 0:
+                p.temp_shield = 0.0
+        if p.inferno_t > 0:
+            p.inferno_t -= DT
+        if p.storm_t > 0:  # Vex's "Gewittersturm": strikes in a steady beat
+            p.storm_t -= DT
+            if int(p.storm_t * TICK_HZ) % int(TICK_HZ / STORM_STRIKES_PER_S) == 0:
+                self._sky_strike(p, s.damage * STORM_DAMAGE, self._pending, STORM_REACH)
+        if s.aura_slow_pct and self.tick % 6 == 0:  # Ysa's "Frostaura"
+            r2 = s.aura_slow_radius * s.aura_slow_radius
+            for e in self._grid.query(p.x, p.y, s.aura_slow_radius):
+                if (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r2 and (e.chill_t <= 0.1 or e.chill_pct < s.aura_slow_pct):
+                    e.chill_pct, e.chill_t = s.aura_slow_pct, 0.15
         if s.shield:  # "Notschild": refills every SHIELD_INTERVAL_S
             p.shield_t -= DT
             if p.shield_t <= 0:
@@ -881,6 +917,12 @@ class World:
             m *= s.standing_damage_mult
         if self._low_hp(p):
             m *= 1.0 + s.low_hp_damage_pct / 100.0
+        if s.nearby_damage_pct:  # Kaz's "Nervenkitzel": braver the closer they get
+            r2 = s.nearby_radius * s.nearby_radius
+            near = sum(
+                1 for e in self._grid.query(p.x, p.y, s.nearby_radius) if (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r2
+            )
+            m *= 1.0 + s.nearby_damage_pct / 100.0 * min(near, s.nearby_max)
         return m
 
     def attack_rate(self, p: Player) -> float:
@@ -909,6 +951,36 @@ class World:
             dx, dy = COMPASS_16[(k * step) % len(COMPASS_16)]
             self._fire(p, dx, dy, s.damage * ARROW_STORM_DAMAGE, life, events)
 
+    def _inferno(self, p: Player, events: list[Event]) -> None:
+        """Mira's "Inferno": a ring of fire around her for a few seconds (pulses in `_aura`)."""
+        p.inferno_t = INFERNO_S
+
+    def _shadow_step(self, p: Player, events: list[Event]) -> None:
+        """Kaz's "Schattenschritt": a dash in the walking direction, briefly untouchable."""
+        cfg, r = self.config, PLAYER_RADIUS
+        steps = 8
+        for _ in range(steps):  # in small steps, so obstacles still stop the dash
+            x, y = self.obstacles.push_out(
+                p.x + p.last_dx * DASH_DISTANCE / steps, p.y + p.last_dy * DASH_DISTANCE / steps, r
+            )
+            p.x, p.y = min(max(x, r), cfg.arena_w - r), min(max(y, r), cfg.arena_h - r)
+        p.i_frames = max(p.i_frames, DASH_I_FRAMES_S)
+
+    def _bulwark(self, p: Player, events: list[Event]) -> None:
+        """Brun's "Bollwerk": a shield that soaks up damage for a few seconds."""
+        p.temp_shield, p.temp_shield_t = BULWARK_SHIELD, BULWARK_S
+
+    def _ice_age(self, p: Player, events: list[Event]) -> None:
+        """Ysa's "Eiszeit": every enemy around is frozen solid (bosses only slowed)."""
+        r2 = ICE_AGE_REACH * ICE_AGE_REACH
+        for e in self.enemies:
+            if (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r2:
+                e.chill_pct, e.chill_t = (60.0 if e.boss else 100.0), ICE_AGE_S
+
+    def _thunderstorm(self, p: Player, events: list[Event]) -> None:
+        """Vex's "Gewittersturm": lightning strikes in a steady beat for a few seconds (see `_tick_player_buffs`)."""
+        p.storm_t = STORM_S
+
     def _hurt(self, p: Player, damage: float, events: list[Event], use_i_frames: bool = True) -> None:
         """Damage a player. Hits respect and start i-frames; damage over time does not."""
         if not p.alive or (use_i_frames and p.i_frames > 0):
@@ -921,10 +993,12 @@ class World:
         dmg = damage * s.damage_taken_mult
         if use_i_frames and s.armor:
             dmg = max(1.0, dmg - s.armor)
-        if p.shield > 0:
-            absorbed = min(p.shield, dmg)
-            p.shield -= absorbed
-            dmg -= absorbed
+        for attr in ("temp_shield", "shield"):  # Brun's "Bollwerk" first, then "Notschild"
+            left = getattr(p, attr)
+            if left > 0 and dmg > 0:
+                absorbed = min(left, dmg)
+                setattr(p, attr, left - absorbed)
+                dmg -= absorbed
         p.hp = max(0.0, p.hp - dmg)
         p.damage_taken += dmg
         if use_i_frames:
@@ -1266,24 +1340,108 @@ class World:
             p.shot_cooldown += 1.0 / self.attack_rate(p)
             d = math.sqrt(best) or 1.0
             dx, dy = (target.x - p.x) / d, (target.y - p.y) / d
-            life = max(1, int(s.range / (ch.projectile_speed * s.projectile_speed_mult) * TICK_HZ + 0.5))
+            life = max(1, int(s.range / (max(ch.projectile_speed, 1.0) * s.projectile_speed_mult) * TICK_HZ + 0.5))
             damage = s.damage * self.damage_mult(p)
             if s.far_damage_pct and d > s.far_threshold:  # e.g. Fenn's passive "Weitblick"
                 damage *= 1.0 + s.far_damage_pct / 100.0
+            big = False
             if s.overcharge_pct and p.overcharge_t <= 0:  # "Überladung": one big shot every few seconds
                 p.overcharge_t = OVERCHARGE_INTERVAL_S
-                self._fire(p, dx, dy, damage * (1.0 + s.overcharge_pct / 100.0), life, events, big=True)
+                damage *= 1.0 + s.overcharge_pct / 100.0
+                big = True
+            pattern = ch.weapon_pattern
+            p.shots_fired += 1
+            if pattern == "shockwave":  # Brun: a ring around him, pushing the pests back
+                self._shockwave(p, damage, events)
+            elif pattern == "chain_lightning":  # Vex: a bolt that jumps on
+                self._chain_bolt(p, target, damage, events)
             else:
-                self._fire(p, dx, dy, damage, life, events)
-            # Extra attacks fan out alternately left and right of the main shot.
-            lx, ly, rx, ry = dx, dy, dx, dy
-            for k in range(s.extra_attacks):
-                if k % 2 == 0:
-                    lx, ly = lx * SPREAD_COS - ly * SPREAD_SIN, lx * SPREAD_SIN + ly * SPREAD_COS
-                    self._fire(p, lx, ly, damage * EXTRA_ATTACK_DAMAGE, life, events)
-                else:
-                    rx, ry = rx * SPREAD_COS + ry * SPREAD_SIN, -rx * SPREAD_SIN + ry * SPREAD_COS
-                    self._fire(p, rx, ry, damage * EXTRA_ATTACK_DAMAGE, life, events)
+                directions = [(dx, dy)]
+                if pattern == "fan3":  # Kaz: three knives in a fan
+                    directions = fan_directions(dx, dy, 3, KNIFE_FAN_DEG)
+                # Extra attacks fan out alternately left and right of the main shot.
+                lx, ly, rx, ry = dx, dy, dx, dy
+                extra = []
+                for k in range(s.extra_attacks):
+                    if k % 2 == 0:
+                        lx, ly = lx * SPREAD_COS - ly * SPREAD_SIN, lx * SPREAD_SIN + ly * SPREAD_COS
+                        extra.append((lx, ly))
+                    else:
+                        rx, ry = rx * SPREAD_COS + ry * SPREAD_SIN, -rx * SPREAD_SIN + ry * SPREAD_COS
+                        extra.append((rx, ry))
+                for i, (fx, fy) in enumerate(directions + extra):
+                    dmg = damage if i < len(directions) else damage * EXTRA_ATTACK_DAMAGE
+                    self._fire(p, fx, fy, dmg, life, events, big=big and i == 0, **self._shot_traits(ch))
+            if s.strike_every and p.shots_fired % s.strike_every == 0:  # Vex: "Statische Ladung"
+                self._sky_strike(p, s.damage * s.strike_damage_pct / 100.0, events)
+
+    def _shot_traits(self, ch: CharacterStats) -> dict:
+        """What the character's own shots do on impact (fireball burst and burn, frost)."""
+        if ch.weapon_pattern == "single_explosive":
+            extra = dict(ch.weapon_extra)
+            return dict(explode_r=ch.aoe_radius, burn_pct=extra.get("ignite_pct", 0.0))
+        if dict(ch.weapon_extra).get("slow_pct"):
+            return dict(frost=True)
+        return {}
+
+    def _shockwave(self, p: Player, damage: float, events: list[Event]) -> None:
+        """Brun's shockwave: everything in the ring is hit and pushed outwards."""
+        killed: set[int] = set()
+        radius = self.config.character.aoe_radius * p.stats.area_mult * (1.0 + 0.15 * p.stats.extra_attacks)
+        events.append(WeaponPulse(self.tick, p.player_id, "shockwave", p.x, p.y, radius))
+        dmg, crit = self._roll_crit(p, damage)
+        for e in self._grid.query(p.x, p.y, radius + self._max_radius):
+            ex, ey = e.x - p.x, e.y - p.y
+            d = math.sqrt(ex * ex + ey * ey)
+            if e.eid in killed or e.hp <= 0 or d > radius + e.radius:
+                continue
+            self._weapon_hit(p, p.player_id, e, dmg, crit, killed, events)
+            if not e.boss and d > 1e-9:
+                e.x += ex / d * SHOCKWAVE_PUSH
+                e.y += ey / d * SHOCKWAVE_PUSH
+        self._remove_killed(killed)
+
+    def _chain_bolt(self, p: Player, target: Enemy, damage: float, events: list[Event]) -> None:
+        """Vex's chain lightning: hits the target and jumps on, a little weaker each time."""
+        extra = dict(self.config.character.weapon_extra)
+        jumps = int(extra.get("chain_jumps", 2)) + p.stats.extra_attacks
+        radius, falloff = extra.get("chain_radius", 160.0), extra.get("chain_falloff", 0.8)
+        killed: set[int] = set()
+        points, hit, e = [(p.x, p.y), (target.x, target.y)], {target.eid}, target
+        dmg, crit = self._roll_crit(p, damage)
+        self._weapon_hit(p, p.player_id, e, dmg, crit, killed, events)
+        for _ in range(jumps):
+            dmg *= falloff
+            best, best_d2 = None, radius * radius
+            for o in self._grid.query(e.x, e.y, radius):
+                d2 = (o.x - e.x) ** 2 + (o.y - e.y) ** 2
+                if o.eid not in hit and o.eid not in killed and o.hp > 0 and d2 < best_d2:
+                    best, best_d2 = o, d2
+            if best is None:
+                break
+            hit.add(best.eid)
+            points.append((best.x, best.y))
+            e = best
+            self._weapon_hit(p, p.player_id, e, dmg, crit, killed, events)
+        events.append(Zap(self.tick, p.player_id, tuple(points)))
+        self._remove_killed(killed)
+
+    def _sky_strike(self, p: Player, damage: float, events: list[Event], reach: float | None = None) -> None:
+        """A lightning strike from above on a random enemy in reach (Vex's passive and "Gewittersturm")."""
+        reach = reach or p.stats.range
+        targets = [e for e in self.enemies if e.hp > 0 and (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= reach * reach]
+        if not targets:
+            return
+        e = targets[self.rng.randint(0, len(targets) - 1)]
+        killed: set[int] = set()
+        self._weapon_hit(p, p.player_id, e, damage, True, killed, events, procs=False)
+        events.append(Zap(self.tick, p.player_id, ((e.x, e.y - SKY_STRIKE_HEIGHT), (e.x, e.y))))
+        self._remove_killed(killed)
+
+    def _remove_killed(self, killed: set[int]) -> None:
+        if killed:
+            self.enemies = [e for e in self.enemies if e.eid not in killed]
+            self._rebuild_grid()
 
     def _pick_target(self, p: Player, reach: float | None = None) -> tuple[Enemy | None, float]:
         """Nearest enemy in range with a free line of fire (trees give cover)."""
@@ -1341,7 +1499,10 @@ class World:
                 if (e.x - pr.x) ** 2 + (e.y - pr.y) ** 2 > r * r:
                     continue
                 pr.hit_ids.add(e.eid)
-                self._weapon_hit(owners.get(pr.owner), pr.owner, e, pr.damage, pr.crit, killed, events, pr.procs)
+                owner = owners.get(pr.owner)
+                self._weapon_hit(owner, pr.owner, e, pr.damage, pr.crit, killed, events, pr.procs)
+                if owner is not None and (pr.explode_r or pr.frost):
+                    self._impact(owner, pr, e, killed, events)
                 pr.hits_left -= 1
                 if pr.hits_left <= 0:
                     if pr.bounces_left > 0 and self._bounce(pr, e, killed):
@@ -1353,6 +1514,30 @@ class World:
         if killed:
             self.enemies = [e for e in self.enemies if e.eid not in killed]
             self._rebuild_grid()
+
+    def _impact(self, p: Player, pr: Projectile, e: Enemy, killed: set[int], events: list[Event]) -> None:
+        """Mira's fireball bursts and sets the area on fire; Ysa's frost shot slows and, three times, freezes."""
+        if pr.explode_r:
+            radius = pr.explode_r * p.stats.area_mult
+            events.append(WeaponPulse(self.tick, p.player_id, "fireball", e.x, e.y, radius))
+            burn_t = dict(self.config.character.weapon_extra).get("ignite_s", 3.0)
+            for o in self._grid.query(e.x, e.y, radius + self._max_radius):
+                r = radius + o.radius
+                if o.eid in killed or o.hp <= 0 or (o.x - e.x) ** 2 + (o.y - e.y) ** 2 > r * r:
+                    continue
+                if o.eid != e.eid:
+                    self._weapon_hit(p, p.player_id, o, pr.damage, pr.crit, killed, events, procs=False)
+                if o.hp > 0 and pr.burn_pct:
+                    dps = pr.damage * pr.burn_pct / 100.0 * p.stats.elemental_mult
+                    o.burn_dps, o.burn_t, o.dot_owner = max(o.burn_dps, dps), burn_t, p.player_id
+        if pr.frost and e.hp > 0:
+            extra = dict(self.config.character.weapon_extra)
+            e.frost_stacks += 1
+            if e.frost_stacks >= int(extra.get("freeze_stacks", 3)):
+                e.frost_stacks = 0
+                e.chill_pct, e.chill_t = 100.0, extra.get("freeze_s", 1.2)  # frozen solid
+            elif e.chill_t <= 0 or e.chill_pct < extra.get("slow_pct", 30.0):
+                e.chill_pct, e.chill_t = extra.get("slow_pct", 30.0), extra.get("slow_s", 2.0)
 
     def _steer(self, pr: Projectile, owner: Player | None) -> bool:
         """Homing shots turn towards the nearest enemy; boomerangs fly back to their owner.
@@ -1421,6 +1606,8 @@ class World:
                 dmg *= s.elite_damage_mult
             if s.execute_damage_pct and e.hp < e.max_hp * EXECUTE_SHARE:  # "Henker"
                 dmg *= 1.0 + s.execute_damage_pct / 100.0
+            if e.burn_t > 0:  # Mira's "Hitzewelle"
+                dmg *= s.burning_damage_mult
         lost = damage_enemy(e, dmg)
         events.append(EnemyHit(self.tick, owner_id, e.eid, e.x, e.y, lost, crit))
         if s is not None and procs:
@@ -1517,7 +1704,7 @@ class World:
         """ "Brennnesselkranz": damage around the player in half-second pulses."""
         killed: set[int] = set()
         for p in self.players:
-            if not p.alive or not p.stats.aura_dps:
+            if not p.alive or not (p.stats.aura_dps or p.inferno_t > 0):
                 continue
             p.aura_t -= DT
             if p.aura_t > 0:
@@ -1525,6 +1712,9 @@ class World:
             p.aura_t = DOT_PULSE_TICKS * DT
             dmg = p.stats.aura_dps * DOT_PULSE_TICKS * DT * p.stats.damage / self._base_stats.damage
             radius = AURA_RADIUS * p.stats.area_mult
+            if p.inferno_t > 0:  # Mira's "Inferno": a big ring of fire for a few seconds
+                dmg += p.stats.damage * INFERNO_DPS_SHARE * DOT_PULSE_TICKS * DT
+                radius = max(radius, INFERNO_RADIUS * p.stats.area_mult)
             for e in self._grid.query(p.x, p.y, radius + self._max_radius):
                 r = radius + e.radius
                 if e.eid not in killed and e.hp > 0 and (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r * r:
@@ -2107,9 +2297,11 @@ class World:
                     p.rerolls,
                     p.banishes,
                     tuple((st.weapon, st.level) for st in p.weapons),
-                    p.shield,
+                    p.shield + p.temp_shield,
                     max(0, p.stats.revives - p.revives_used),
                     tuple(p.card_tiers.items()),
+                    p.inferno_t > 0,
+                    p.storm_t > 0,
                 )
                 for p in self.players
             ),
@@ -2125,7 +2317,15 @@ class World:
                     e.boss is not None,
                     e.shield / e.shield_max if e.shield_max else 0.0,
                     (e.cdx, e.cdy) if e.charge_state == 1 else None,
-                    "burn" if e.burn_t > 0 else "poison" if e.poison_t > 0 else "chill" if e.chill_t > 0 else "",
+                    "frozen"
+                    if e.chill_t > 0 and e.chill_pct >= 100
+                    else "burn"
+                    if e.burn_t > 0
+                    else "poison"
+                    if e.poison_t > 0
+                    else "chill"
+                    if e.chill_t > 0
+                    else "",
                 )
                 for e in self.enemies
             ),  # fmt: skip
@@ -2201,6 +2401,7 @@ class World:
             h.update(repr((sorted(p.upgrades.items()), p.offer, p.pending_chests)).encode())
         for e in self.enemies:
             h.update(struct.pack("<i6d", e.eid, e.x, e.y, e.hp, e.shield, e.timer, e.speed))
+            h.update(struct.pack("<i", e.frost_stacks))
             h.update(struct.pack("<i9d", e.charge_state, e.charge_t, e.cdx, e.cdy, e.poison_dps, e.poison_t,
                                  e.burn_dps, e.burn_t, e.chill_pct, e.chill_t))  # fmt: skip
             h.update(repr((e.affixes, e.phase, e.timers, e.volley)).encode())
@@ -2223,6 +2424,11 @@ class World:
             h.update(k.kind.encode() + struct.pack("<2d", k.x, k.y))
         h.update(struct.pack(f"<{len(self.players)}d", *(p.ability_cooldown for p in self.players)))
         for p in self.players:
+            h.update(
+                repr(
+                    (p.shots_fired, p.last_dx, p.last_dy, p.inferno_t, p.storm_t, p.temp_shield, p.temp_shield_t)
+                ).encode()
+            )
             h.update(repr((sorted(p.upgrade_power.items()), p.offer_tiers, sorted(p.card_tiers.items()), p.haste_pct,
                            p.haste_t, p.overcharge_t, p.shield, p.shield_t, p.revives_used,
                            p.aura_t)).encode())  # fmt: skip
@@ -2241,7 +2447,14 @@ class World:
         return h.hexdigest()
 
 
-ABILITIES = {"arrow_storm": World._arrow_storm}
+ABILITIES = {
+    "arrow_storm": World._arrow_storm,
+    "inferno": World._inferno,
+    "shadow_step": World._shadow_step,
+    "bulwark": World._bulwark,
+    "ice_age": World._ice_age,
+    "thunderstorm": World._thunderstorm,
+}
 WEAPON_KINDS = {
     "fan": World._weapon_fan,
     "nova": World._weapon_nova,

@@ -214,6 +214,9 @@ def _ability(r: _Reader, active: bool) -> Ability:
     )
 
 
+_WEAPON_KEYS = {"type", "pattern", "projectile_speed", "pierce", "aoe_radius", "text"}
+
+
 def _character(r: _Reader) -> Character:
     w = r.sub("weapon")
     vfx = r.dict("vfx")
@@ -236,6 +239,7 @@ def _character(r: _Reader) -> Character:
             pierce=w.int("pierce", 0),
             aoe_radius=w.int("aoe_radius", 0),
             text=w.str("text"),
+            extra={k: v for k, v in w.obj.items() if k not in _WEAPON_KEYS},
         ),
         passive=_ability(r.sub("passive"), active=False),
         active=_ability(r.sub("active"), active=True),

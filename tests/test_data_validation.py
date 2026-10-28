@@ -36,7 +36,7 @@ def test_counts(content):
 
 def test_phase_one_vertical_slice(content):
     phase1 = lambda items: {x.id for x in items if x.impl_phase == 1}  # noqa: E731
-    assert phase1(content.characters) == {"ranger"}
+    assert phase1(content.characters) == {"ranger", "pyro", "rogue", "guardian", "cryo", "storm"}  # Paket H
     assert sum(u.impl_phase == 1 for u in content.upgrades) == 46  # Paket F: every bonus that works is in
     assert phase1(content.bosses) == {"snail_queen", "beetle_king", "reaper"}
     bosses = [st.boss for st in sorted(content.stages, key=lambda st: st.index)]
@@ -96,14 +96,18 @@ def test_unknown_challenge_reference(raw):
 
 def test_challenge_must_grant_what_it_unlocks(raw):
     def mutate(d):
-        pyro = next(c for c in d["characters"] if c["id"] == "pyro")
-        pyro["unlock_challenge"] = next(c for c in d["characters"] if c["id"] == "rogue")["unlock_challenge"]
+        summoner = next(c for c in d["characters"] if c["id"] == "summoner")
+        summoner["unlock_challenge"] = next(c for c in d["characters"] if c["id"] == "bomber")["unlock_challenge"]
 
-    assert "does not reward unlock_character 'pyro'" in broken(raw, mutate)
+    assert "does not reward unlock_character 'summoner'" in broken(raw, mutate)
 
 
 def test_unknown_reward_target(raw):
-    msg = broken(raw, lambda d: d["challenges"][0]["reward"].__setitem__("id", "ghost"))
+    def mutate(d):
+        unlock = next(c for c in d["challenges"] if c["reward"]["type"] == "unlock_character")
+        unlock["reward"]["id"] = "ghost"
+
+    msg = broken(raw, mutate)
     assert "references unknown 'ghost'" in msg
 
 
