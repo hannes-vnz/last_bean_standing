@@ -11,10 +11,22 @@ SHORT_SIDE = 360
 SHORT_SIDE_COMPACT = 300  # small phones: zoom in a little
 COMPACT_BELOW = 500  # CSS pixels of the shorter screen side
 MAX_ASPECT = 2.4  # very long screens get bars instead of an extreme view
+# Player zoom: the short side in steps; smaller = closer. Pinch, mouse wheel or +/- move between steps.
+ZOOM_STEPS = (240, 270, 300, 330, 360, 400, 440, 480)
 
 
-def logical_size(width: float, height: float, compact: bool = False) -> tuple[int, int]:
-    short = SHORT_SIDE_COMPACT if compact else SHORT_SIDE
+def default_short_side(compact: bool) -> int:
+    return SHORT_SIDE_COMPACT if compact else SHORT_SIDE
+
+
+def zoom_step(short: int, steps: int) -> int:
+    """Move `steps` zoom steps out (positive) or in (negative), clamped to the allowed range."""
+    i = min(range(len(ZOOM_STEPS)), key=lambda k: abs(ZOOM_STEPS[k] - short))
+    return ZOOM_STEPS[max(0, min(len(ZOOM_STEPS) - 1, i + steps))]
+
+
+def logical_size(width: float, height: float, compact: bool = False, short: int | None = None) -> tuple[int, int]:
+    short = short or default_short_side(compact)
     width, height = max(1.0, width), max(1.0, height)
     if width >= height:
         aspect = min(width / height, MAX_ASPECT)

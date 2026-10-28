@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pygbag==0.9.3
+      - run: pip install pygbag==0.9.3 pygame-ce  # pygame-ce renders the loading-screen bean
       - run: python tools/build_web.py
       - uses: actions/upload-pages-artifact@v3
         with:

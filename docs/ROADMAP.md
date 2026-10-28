@@ -23,6 +23,9 @@ Sprites, Effekte, Sound, Profil und Highscore, Browser-Version, Bestenlisten-Cli
 - [x] **Lesbar auf kleinen Bildschirmen:** auf dem Handy näher herangezoomt, Karten im Hochformat untereinander, HUD bricht um, alle Menüs mit großen Knöpfen.
 - [x] **Touch-Steuerung:** Joystick dort, wo der Daumen aufsetzt; Fähigkeits- und Pause-Knopf; Karten und Menüs antippen; Name über die Handy-Tastatur.
 - [x] Desktop: Fenster frei skalierbar, F11 Vollbild, Mausklicks in Menüs.
+- [x] **Zoom** mit zwei Fingern (Desktop: Mausrad, +/-), 8 Stufen zwischen nah und weit, wird im Profil gemerkt.
+- [x] **Kein „Antippen zum Start“ mehr:** eigenes Startbild mit Bohne, solange Python lädt; Ton wird beim ersten Antippen freigeschaltet.
+- [x] Fehler behoben: Level-up-Karten ließen sich auf dem Handy nicht antippen (Test in `tests/test_touch_loop.py`).
 - [ ] Test auf echtem iPad, Handy (iOS und Android) und Desktop-Browsern. (Im Browser mit Handy-Emulation geprüft: Name, Menü, Joystick, Fähigkeit, Pause.)
 
 ## Paket B: Große Karte
