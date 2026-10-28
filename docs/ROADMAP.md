@@ -9,7 +9,7 @@ Sprites, Effekte, Sound, Profil und Highscore, Browser-Version, Bestenlisten-Cli
 
 ## Paket A: Tempo und Gefühl (zuerst, kleinster Aufwand, größte Wirkung)
 - [x] **Feuern auch im Laufen** (ersetzt Stop-and-Shoot). Stehenbleiben gibt keinen allgemeinen Vorteil, nur bestimmte Items belohnen es.
-- [x] **Schnellere Progression:** flachere XP-Kurve; gemessen: Bot erreicht um 5:00 Level 8 bis 9 (vorher 2 bis 4).
+- [x] **Schnellere Progression** (Variante C, 28.10.2026): XP 3 + 1,5n + 0,15n², Wellenbudget 40 + 7w, Aufsammelradius 220. Gemessen mit dem Bot: Level 2 nach etwa 10 s, Level 5 um 0:31, Level 10 um 1:36, Level 15 um 3:08 (vorher Level 2 erst nach 45 s). Bot stirbt im Median bei 2:55 statt 3:55.
 - [x] **Größerer Aufsammelradius** (130) und **Magnet**: fällt selten von Gegnern, immer von Elites, zieht alle XP-Kugeln an. Auf der Karte verteilt kommt er mit Paket B/C.
 - [x] Höheres Lauf- und Angriffstempo des Jägers (180, 2 Schüsse/s).
 - [x] **Fenns Fähigkeiten:** Passiv „Weitblick“ und Aktiv „Pfeilhagel“ (Leertaste oder E, 18 s Abklingzeit).

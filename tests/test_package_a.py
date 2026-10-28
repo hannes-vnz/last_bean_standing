@@ -13,7 +13,7 @@ def quiet(make_config, **kw) -> World:
 
 def test_new_values_from_data(make_config):
     cfg = make_config()
-    assert cfg.character.speed == 180 and cfg.character.attack_rate == 2.0 and cfg.character.pickup_radius == 130
+    assert cfg.character.speed == 180 and cfg.character.attack_rate == 2.0 and cfg.character.pickup_radius == 220
     assert dict(next(m for m in cfg.mobs if m.id == "batswarm").biome_weights)["forest"] == 0.5
 
 
@@ -78,4 +78,4 @@ def test_progression_is_faster(make_config):
     w = World(7, make_config(character={"hp": 10**9}))
     while w.time_s < 300:
         w.step([heuristic_input(w)])
-    assert w.players[0].level >= 6
+    assert w.players[0].level >= 12  # variant C: about level 14 to 16 by 5:00
