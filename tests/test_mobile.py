@@ -204,3 +204,31 @@ def test_every_canvas_pixel_is_a_whole_number_of_screen_pixels(css, dpr):
     assert w * k <= css[0] * dpr + 1e-6 and h * k <= css[1] * dpr + 1e-6  # fits on the screen
     assert css[0] * dpr - w * k < k and css[1] * dpr - h * k < k  # and covers it up to less than one pixel
     assert 250 <= min(w, h) <= 520
+
+
+@pytest.mark.parametrize(
+    "size,safe",
+    [
+        ((667, 308), (0, 0, 0, 0)),
+        ((640, 360), (0, 0, 0, 0)),
+        ((300, 650), (34, 0, 20, 0)),
+        ((712, 330), (0, 30, 12, 30)),
+        ((300, 560), (30, 0, 14, 0)),
+    ],  # fmt: skip
+)
+def test_menu_buttons_do_not_overlap(renderer, size, safe):
+    """Menu buttons stay inside the safe area, never overlap each other, and stay above the tip line."""
+    from lastbean.meta.profile import new_profile
+    from lastbean.ui import screens
+
+    r = renderer(size)
+    r.touch = True
+    r.safe = safe
+    st, sr, sb, sl = safe
+    usable = pygame.Rect(sl, st, size[0] - sl - sr, size[1] - st - sb - 14)
+    buttons = [b for b in screens.draw_menu(r, new_profile(), web=True) if b.action not in ("poke", "squish")]
+    assert all(usable.contains(b.rect) for b in buttons), [b for b in buttons if not usable.contains(b.rect)]
+    for i, a in enumerate(buttons):
+        for b in buttons[i + 1 :]:
+            assert not a.rect.colliderect(b.rect), (a, b)
+    assert {"play", "account", "workshop", "challenges", "board", "settings", "name"} <= {b.action for b in buttons}

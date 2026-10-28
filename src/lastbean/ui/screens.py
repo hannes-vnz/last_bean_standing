@@ -162,14 +162,16 @@ BEAN_SAYS = ("Hallo!", "Auf ins Beet!", "Hihi!", "Nicht kitzeln!", "Bereit!", "W
 _logo_font = None
 
 
-def _logo(r: Renderer, cx: int, y: int, t: int) -> None:
-    """LAST BEAN STANDING in big wobbling letters, gold with a dark outline, a sprout on the B."""
+def _logo(r: Renderer, cx: int, y: int, t: int, one_line: bool = False) -> None:
+    """LAST BEAN STANDING in big wobbling letters, gold with a dark outline, a sprout on the B.
+    Two lines (about 64 px high) or, on short screens, one line (about 34 px)."""
     global _logo_font
     if _logo_font is None:
         from ..render.pixelfont import body_font
 
         _logo_font = body_font(3)
-    for row, word in enumerate(("Last Bean", "Standing")):
+    words = ("Last Bean Standing",) if one_line else ("Last Bean", "Standing")
+    for row, word in enumerate(words):
         width = _logo_font.size(word)[0]
         x = cx - width // 2
         for k, ch in enumerate(word):
@@ -181,7 +183,10 @@ def _logo(r: Renderer, cx: int, y: int, t: int) -> None:
                 r.canvas.blit(dark, (x + ox, yy + oy))
             r.canvas.blit(gold, (x, yy))
             x += _logo_font.size(ch)[0] + 3
-    sprout_x = cx + _logo_font.size("Last Be")[0] // 2 - 4  # a little sprout grows out of the logo
+    if one_line:
+        sprout_x = cx - _logo_font.size(words[0])[0] // 2 + _logo_font.size("Last Be")[0] + 14
+    else:
+        sprout_x = cx + _logo_font.size("Last Be")[0] // 2 - 4  # a little sprout grows out of the logo
     r.canvas.fill(r.ink, (sprout_x, y - 9, 3, 9))
     r.canvas.fill(LEAF, (sprout_x + 1, y - 8, 1, 8))
     r.canvas.fill(r.ink, (sprout_x - 6, y - 12, 7, 5))
@@ -226,8 +231,9 @@ def _menu_slug(r: Renderer, t: int, squish_ms: int) -> pygame.Rect | None:
     """Every 20 s a slug crawls along the bottom of the menu. Squished ones leave a puff and stay away a while."""
     cycle, period = t // 20_000, 20_000
     since = t - squish_ms
+    ground = r.h - getattr(r, "safe", (0, 0, 0, 0))[2] - 24  # just above the tip line
     if 0 <= since < 600:  # squish puff
-        x, y = _menu_slug.last if hasattr(_menu_slug, "last") else (r.w // 2, r.h - 34)
+        x, y = _menu_slug.last if hasattr(_menu_slug, "last") else (r.w // 2, ground)
         for k in range(6):
             r.canvas.fill((200, 230, 160), (x - 8 + k * 3, y - 2 - (since // 60 + k) % 5, 2, 2))
         return None
@@ -236,7 +242,7 @@ def _menu_slug(r: Renderer, t: int, squish_ms: int) -> pygame.Rect | None:
     phase = (t % period) / 9000
     if phase > 1.0:
         return None
-    x, y = round(-20 + phase * (r.w + 40)), r.h - 34
+    x, y = round(-20 + phase * (r.w + 40)), ground
     img = r.sprites.get("slug", 1.0, False, False, (0, 1, 0, -1)[(t // 150) % 4])
     if img is not None:
         r.canvas.blit(img, (x - img.get_width() // 2, y + 6 - img.get_height()))
@@ -245,44 +251,76 @@ def _menu_slug(r: Renderer, t: int, squish_ms: int) -> pygame.Rect | None:
     return rect if rect.w > 8 else None
 
 
+def _column(r: Renderer, x: int, w: int, top: int, bottom: int, rows: list) -> list[Button]:
+    """Stack button rows (height, [(label, action), ...], primary) between `top` and `bottom`;
+    rows shrink (down to 70 %) and gaps tighten when the space is short, spare space stays below."""
+    base = sum(h for h, _, _ in rows)
+    gap = max(4, min(8, (bottom - top - base) // max(1, len(rows) - 1)))
+    scale = min(1.0, max(0.7, (bottom - top - gap * (len(rows) - 1)) / base))
+    buttons, y = [], top
+    for h, items, primary in rows:
+        h = round(h * scale)
+        step = (w + 4) // len(items)
+        for k, (label, action) in enumerate(items):
+            rect = pygame.Rect(x + k * step, y, step - 4 if len(items) > 1 else w, h)
+            buttons.append(_button(r, rect, label, action, primary=primary))
+        y += h + gap
+    return buttons
+
+
 def draw_menu(r: Renderer, profile: dict[str, Any], web: bool, bean: str = "ranger", poke_ms: int = -10_000,
               tint=None, squish_ms: int = -10_000) -> list[Button]:  # fmt: skip
-    """Main menu: logo, the chosen bean on its mound, big buttons, Funkelsteine and account in the corner."""
+    """Main menu: logo, the chosen bean on its mound, big buttons, Funkelsteine and account in the corner.
+    Positions follow the screen height and the safe area (notch, status bar), so nothing overlaps."""
     _backdrop(r)
     t = pygame.time.get_ticks()
     wide = r.w > r.h
+    st, sr, sb, sl = getattr(r, "safe", (0, 0, 0, 0))
     signed_in = bool(profile.get("account", {}).get("session"))
     buttons: list[Button] = []
     # top bar: Funkelsteine and account
-    _gem(r, 14, 16)
-    r.text(str(profile.get("sparkles", 0)), (22, 10))
-    acc = pygame.Rect(r.w - 96, 6, 90, 22)
+    _gem(r, 14 + sl, 16 + st)
+    r.text(str(profile.get("sparkles", 0)), (22 + sl, 10 + st))
+    acc = pygame.Rect(r.w - 96 - sr, 6 + st, 90, 22)
     buttons.append(_button(r, acc, "Konto: an" if signed_in else "Anmelden", "account"))
-    items = [("Gewächshaus", "workshop"), ("Challenges", "challenges"), ("Bestenliste", "board")]
     small = [("Optionen", "settings"), ("Name", "name")] + ([] if web else [("Beenden", "quit")])
+    tip_y = r.h - sb - 14  # the garden tip line; everything else stays above it
+    bottom = tip_y - 6
     if wide:
-        _logo(r, r.w // 2, 26, t)
-        col_x, col_w = 24, 176
-        buttons.append(_button(r, pygame.Rect(col_x, 104, col_w, 40), "Spielen", "play", primary=True))
-        for k, (label, action) in enumerate(items):
-            buttons.append(_button(r, pygame.Rect(col_x, 154 + k * 38, col_w, 30), label, action))
-        for k, (label, action) in enumerate(small):
-            buttons.append(_button(r, pygame.Rect(col_x + k * 60, 274, 56, 24), label, action))
-        bean_x, bean_y = r.w * 2 // 3 + 20, 216
+        one_line = r.h - st - sb < 340
+        logo_y = st + (18 if one_line else 26)
+        _logo(r, r.w // 2, logo_y, t, one_line)
+        top = logo_y + (40 if one_line else 72)
+        col_w = 176
+        rows = [(40, [("Spielen", "play")], True)]
+        rows += [(30, [(label, action)], False) for label, action in
+                 (("Gewächshaus", "workshop"), ("Challenges", "challenges"), ("Bestenliste", "board"))]  # fmt: skip
+        rows.append((24, small, False))
+        buttons += _column(r, 24 + sl, col_w, top, bottom, rows)
+        bean_x = (24 + sl + col_w + r.w - sr) // 2 + 10
+        # bean block: sprite top 70 px above bean_y, sign bottom 78 px below
+        bean_y = max(top + 70, min(bottom - 78, (top + bottom) // 2 + 4))
     else:
-        _logo(r, r.w // 2, 46, t)
-        bean_x, bean_y = r.w // 2, 216
-        y = 316
-        buttons.append(_button(r, pygame.Rect(r.w // 2 - 100, y, 200, 42), "Spielen", "play", primary=True))
-        for k, (label, action) in enumerate(items):
-            buttons.append(_button(r, pygame.Rect(r.w // 2 - 100, y + 54 + k * 40, 200, 32), label, action))
-        for k, (label, action) in enumerate(small):
-            buttons.append(_button(r, pygame.Rect(r.w // 2 - 100 + k * 68, y + 180, 64, 26), label, action))
+        logo_y = st + 46
+        _logo(r, r.w // 2, logo_y, t)
+        top = logo_y + 72
+        bean_x = r.w // 2
+        bean_y = top + 74
+        rows = [(42, [("Spielen", "play")], True)]
+        rows += [(32, [(label, action)], False) for label, action in
+                 (("Gewächshaus", "workshop"), ("Challenges", "challenges"), ("Bestenliste", "board"))]  # fmt: skip
+        rows.append((26, small, False))
+        col_top = bean_y + 78 + 12
+        if bottom - col_top < 150:  # short portrait screen: pull the bean up under the logo
+            bean_y = max(top + 64, bottom - 150 - 90)
+            col_top = bean_y + 78 + 12
+        spare = max(0, bottom - col_top - 210)
+        buttons += _column(r, r.w // 2 - 100, 200, col_top + spare // 3, bottom, rows)
     showcase = _showcase(r, bean, bean_x, bean_y, t, poke_ms, tint)
     buttons.append(Button(showcase, "poke"))
-    slug = _menu_slug(r, t, squish_ms)  # a slug crawls by now and then; tap it
+    slug = _menu_slug(r, t, squish_ms)  # a slug crawls by now and then; tap it (buttons go first)
     if slug is not None:
-        buttons.insert(0, Button(slug, "squish"))
+        buttons.append(Button(slug, "squish"))
     best = profile["highscores"]["overall"]
     sign = pygame.Rect(0, 0, 150, 34)
     sign.midtop = (bean_x, bean_y + 44)
@@ -294,7 +332,7 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool, bean: str = "rang
     )
     r.text(f"Rekord {best['score']}" if best else "Noch kein Rekord", (sign.centerx, sign.y + 22), center=True)
     tip = GARDEN_TIPS[(t // 6000) % len(GARDEN_TIPS)]
-    r.text(_fit(r, tip, r.w - 16), (r.w // 2, r.h - 14), center=True)
+    r.text(_fit(r, tip, r.w - 16 - sl - sr), (r.w // 2, tip_y), center=True)
     return buttons
 
 
