@@ -102,7 +102,7 @@
    "area",
    "burn"
   ],
-  "unlock_challenge": null,
+  "unlock_challenge": "unlock_pyro",
   "impl_phase": 1,
   "skins": [
    "pyro_a",
@@ -162,7 +162,7 @@
    "movement",
    "close"
   ],
-  "unlock_challenge": null,
+  "unlock_challenge": "unlock_rogue",
   "impl_phase": 1,
   "skins": [
    "rogue_a",
@@ -221,7 +221,7 @@
    "area",
    "melee"
   ],
-  "unlock_challenge": null,
+  "unlock_challenge": "unlock_guardian",
   "impl_phase": 1,
   "skins": [
    "guardian_a",
@@ -280,7 +280,7 @@
    "control",
    "ranged"
   ],
-  "unlock_challenge": null,
+  "unlock_challenge": "unlock_cryo",
   "impl_phase": 1,
   "skins": [
    "cryo_a",
@@ -392,7 +392,7 @@
    "lightning",
    "speed"
   ],
-  "unlock_challenge": null,
+  "unlock_challenge": "unlock_storm",
   "impl_phase": 1,
   "skins": [
    "storm_a",

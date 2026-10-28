@@ -102,11 +102,12 @@ CHARACTERS = [
 
 
 # Paket H (28.10.2026, Hannes: "5 weitere Charaktere mit ganz unterschiedlichen Skillsets"): Mira, Kaz, Brun, Ysa
-# und Vex sind spielbar und von Anfang an frei (die Freischalt-Challenges geben dafür Titel).
-PLAYABLE_H = {"pyro": "Glutfreund", "rogue": "Schattenläufer", "guardian": "Schildbohne", "cryo": "Frostherz", "storm": "Donnerbohne"}
+# und Vex sind spielbar (Phase 1). Seit Paket K (Hannes: "die kannst du auch gern locken") schalten ihre
+# Challenges sie frei wie bei Megabonk; nur Fenn ist von Anfang an da.
+PLAYABLE_H = {"pyro", "rogue", "guardian", "cryo", "storm"}
 for _c in CHARACTERS:
     if _c["id"] in PLAYABLE_H:
-        _c["impl_phase"], _c["unlock_challenge"] = 1, None
+        _c["impl_phase"], _c["unlock_challenge"] = 1, f"unlock_{_c['id']}"
 next(c for c in CHARACTERS if c["id"] == "pyro")["weapon"].update(ignite_s=3, ignite_pct=20)
 next(c for c in CHARACTERS if c["id"] == "cryo")["weapon"].update(slow_pct=30, slow_s=2, freeze_stacks=3, freeze_s=1.2)
 
@@ -324,11 +325,11 @@ CHALLENGES, SKINS = [], []
 STONES_BY_REWARD = {"unlock_character": 100, "unlock_skin": 50, "unlock_upgrade": 40, "title": 150, "unlock_mode": 300}
 def chal(id, text, cond, reward):
     CHALLENGES.append(dict(id=id, text=text, condition=cond, reward=dict(reward, stones=STONES_BY_REWARD[reward["type"]])))
-RS = lambda stat, v, **kw: dict(type="run_stat", stat=stat, op=">=", value=v, **kw)
+RS = lambda stat, v, op=">=", **kw: dict(type="run_stat", stat=stat, op=op, value=v, **kw)
 PS = lambda stat, v, **kw: dict(type="profile_stat", stat=stat, op=">=", value=v, **kw)
-UC = lambda i: dict(type="title", id=PLAYABLE_H[i]) if i in PLAYABLE_H else dict(type="unlock_character", id=i)
+UC = lambda i: dict(type="unlock_character", id=i)
 UU = lambda i: dict(type="unlock_upgrade", id=i)
-chal("unlock_pyro", "Erreiche Minute 5 mit beliebigem Charakter.", RS("minutes_survived", 5), UC("pyro"))
+chal("unlock_pyro", "Erreiche Minute 3 mit beliebigem Charakter.", RS("minutes_survived", 3), UC("pyro"))
 chal("unlock_rogue", "Räume eine Welle ab Welle 5, ohne Schaden zu nehmen.", RS("flawless_wave", 5), UC("rogue"))
 chal("unlock_guardian", "Erleide insgesamt 5000 Schaden.", PS("damage_taken_total", 5000), UC("guardian"))
 chal("unlock_cryo", "Besiege 300 Gegner im Komposthaufen.", PS("kills_in_biome", 300, biome="compost"), UC("cryo"))
@@ -353,7 +354,7 @@ UP_UNLOCKS = {
  "unlock_up_time_warp": ("Überlebe 2 Minuten Plagenflut.", RS("swarm_seconds", 120), "time_warp"),
  "unlock_up_shrapnel": ("Besiege insgesamt 10000 Gegner.", PS("kills_total", 10000), "Erntehelfer"),
  "unlock_up_titan_heart": ("Erleide 1500 Schaden in einem Run.", RS("damage_taken_run", 1500), "Dickhaut"),
- "unlock_up_glass_cannon": ("Erreiche das zweite Beet in unter 4 Minuten.", RS("stage2_before_s", 240), "Eilig"),
+ "unlock_up_glass_cannon": ("Erreiche das zweite Beet in unter 4 Minuten.", RS("stage2_reached_s", 240, op="<"), "Eilig"),
  "unlock_up_reaper_pact": ("Besiege insgesamt 10 Bosse.", PS("boss_kills_total", 10), "Bossbrecher"),
  "unlock_up_elemental_storm": ("Besitze Entzünden, Kälte, Toxin und Schock in einem Run.", dict(type="run_flag", flag="owns_all", ids=["ignite", "chill", "toxin", "shock"]), "Elementar"),
 }
@@ -369,10 +370,11 @@ SKIN_TINTS = {"ranger": ([90, 170, 90], [255, 210, 80]), "pyro": ([230, 80, 40],
               "storm": ([70, 110, 220], [255, 220, 120]), "bomber": ([240, 140, 40], [250, 250, 240]), "venom": ([110, 200, 60], [150, 70, 180]),
               "sniper": ([190, 160, 100], [235, 240, 245])}
 for c in CHARACTERS:
-    for i, minute in enumerate((10, 15)):
+    # Paket K (Hannes: Läufe sollen nicht so lange dauern): Skins für Beete statt für 10/15 Minuten.
+    for i, bed in enumerate((2, 3)):
         sid = f"{c['id']}_{'ab'[i]}"
         cid = f"skin_{sid}"
-        chal(cid, f"Erreiche Minute {minute} mit {c['name']}.", RS("minutes_survived", minute, character=c["id"]), dict(type="unlock_skin", id=sid))
+        chal(cid, f"Erreiche mit {c['name']} das {('zweite', 'dritte')[i]} Beet.", RS("stage_reached", bed, character=c["id"]), dict(type="unlock_skin", id=sid))
         SKINS.append(dict(id=sid, character=c["id"], name=SKIN_NAMES[c["id"]][i], tint=SKIN_TINTS[c["id"]][i], unlock_challenge=cid))
 chal("boss_snail_queen", "Besiege Schleimrun.", PS("boss_defeated", 1, boss="snail_queen"), dict(type="title", id="Schneckenschreck"))
 chal("boss_beetle_king", "Besiege Knollgrimm.", PS("boss_defeated", 1, boss="beetle_king"), dict(type="title", id="Käferknacker"))
