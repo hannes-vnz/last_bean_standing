@@ -1,6 +1,6 @@
 {
  "tick_hz": 60,
- "wave_interval_s": 30,
+ "wave_interval_s": 18,
  "max_wave": 40,
  "swarm_time_s": 300,
  "max_alive_enemies": 350,
@@ -10,15 +10,15 @@
   "quadratic": 0.22
  },
  "hp_mult": {
-  "linear": 0.1,
-  "quadratic": 0.012
+  "linear": 0.17,
+  "quadratic": 0.033
  },
  "damage_mult": {
-  "linear": 0.05,
-  "quadratic": 0.004
+  "linear": 0.085,
+  "quadratic": 0.011
  },
  "speed_mult": {
-  "linear": 0.01,
+  "linear": 0.017,
   "cap": 1.2
  },
  "xp_to_next": {

@@ -777,7 +777,7 @@ def first_run_hints(touch: bool) -> list[str]:
         "Sammle die Funken der Plagen: Jedes Level bringt eine neue Karte.",
         ability,
         "Schreine: Bleib im Kreis stehen. Mehr Belohnung, aber die Plagen werden stärker.",
-        "Bei 3:30 kommt der Boss. Besiegt öffnet er das Gartentor ins nächste Beet.",
+        "Bei 2:06 kommt der Boss. Besiegt öffnet er das Gartentor ins nächste Beet.",
     ]
 
 

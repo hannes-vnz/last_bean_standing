@@ -18,7 +18,7 @@ def test_map_size_and_start_in_the_middle(make_config):
 def test_boss_spawns_near_the_player(make_config):
     for seed in range(1, 6):
         w = World(seed, make_config(enemy_target=0, character={"attack_rate": 0.001, "hp": 10**6}))
-        w.tick = w.stage_tick = 210 * TICK_HZ
+        w.tick = w.stage_tick = int(w.boss_stats[w.stage_cfg.boss].spawn_time_s * TICK_HZ)
         w.step()
         boss = next(e for e in w.enemies if e.boss)
         assert boss.boss == "snail_queen"
@@ -55,7 +55,7 @@ def test_minimap_and_menu_backdrop(renderer, make_config):
     from lastbean.ui import screens
 
     w = World(3, make_config(enemy_target=0, character={"attack_rate": 0.001, "hp": 10**6}))
-    w.tick = w.stage_tick = 210 * TICK_HZ
+    w.tick = w.stage_tick = int(w.boss_stats[w.stage_cfg.boss].spawn_time_s * TICK_HZ)
     w.step()
     renderer.touch = True
     renderer.draw(w.snapshot())  # boss far away: arrow at the edge, dot on the minimap

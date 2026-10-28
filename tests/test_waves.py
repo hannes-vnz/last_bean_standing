@@ -32,9 +32,10 @@ def test_budget_formula_matches_content_model(make_config):
 
 def test_scaling_curves(make_config):
     sc = make_config().scaling
-    assert sc.hp_mult(0) == 1.0 and round(sc.hp_mult(5), 1) == 1.8 and round(sc.hp_mult(10), 1) == 3.2
-    assert round(sc.damage_mult(10), 1) == 1.9
-    assert sc.speed_mult(5) == pytest.approx(1.05) and sc.speed_mult(60) == 1.2
+    # Beds last 3:00 (28.10.2026): the curves run 5/3 times faster than with 5:00 beds.
+    assert sc.hp_mult(0) == 1.0 and sc.hp_mult(3) == pytest.approx(1 + 0.17 * 3 + 0.033 * 9)
+    assert sc.damage_mult(3) == pytest.approx(1 + 0.085 * 3 + 0.011 * 9)
+    assert sc.speed_mult(3) == pytest.approx(1.051) and sc.speed_mult(60) == 1.2
     assert sc.xp_needed(1) == pytest.approx(2 + 1.2 + 0.12)  # fast levels (Paket F)
 
 
@@ -57,9 +58,10 @@ def test_wave_budget_is_spent_over_each_wave(make_config):
 
 
 def test_difficulty_raises_spawns(make_config):
-    ticks = 60 * TICK_HZ
-    normal = spawned_costs(World(1, make_config(character={"attack_rate": 0.001})), ticks)
-    hard = spawned_costs(World(1, make_config(character={"attack_rate": 0.001}, difficulty=1.5)), ticks)
+    ticks = 54 * TICK_HZ  # three waves, before the 350-enemy cap
+    tough = {"attack_rate": 0.001, "hp": 10**9}  # the run must not end under the harder crowd
+    normal = spawned_costs(World(1, make_config(character=tough)), ticks)
+    hard = spawned_costs(World(1, make_config(character=tough, difficulty=1.5)), ticks)
     assert hard > normal * 1.4
 
 
@@ -68,12 +70,12 @@ def test_enemies_scale_with_time(make_config):
     w.step()
     first = w.enemies[0]
     w.enemies.clear()
-    w.tick = w.stage_tick = 4 * 60 * TICK_HZ  # jump to minute 4 of the first bed
+    w.tick = w.stage_tick = 2 * 60 * TICK_HZ  # jump to minute 2 of the first bed
     w.step()
     late = w.enemies[0]
     sc = w.config.scaling
-    assert late.max_hp == pytest.approx(first.max_hp * sc.hp_mult(4.0), rel=1e-3)
-    assert late.damage == pytest.approx(first.damage * sc.damage_mult(4.0), rel=1e-3)
+    assert late.max_hp == pytest.approx(first.max_hp * sc.hp_mult(2.0), rel=1e-3)
+    assert late.damage == pytest.approx(first.damage * sc.damage_mult(2.0), rel=1e-3)
     w.enemies.clear()
     w.stage, w.stage_tick = 1, 0  # second bed: its own multipliers on top
     w.step()
@@ -103,7 +105,7 @@ def test_every_pest_is_in_the_pool_and_beds_pick_their_own(content, make_config)
 
 
 def test_full_run_through_three_beds(make_config):
-    """Acceptance Paket F: bed 1 with its boss at 3:30, the gate, bed 2, bed 3; the bot has infinite HP.
+    """Acceptance Paket F: bed 1 with its boss at 2:06, the gate, bed 2, bed 3; the bot has infinite HP.
     Real survival is measured in tools/balance.py."""
     w = World(7, make_config(character={"hp": 10**9}))
     events = []
@@ -115,10 +117,10 @@ def test_full_run_through_three_beds(make_config):
     bosses = [e.boss for e in events if isinstance(e, BossSpawned)]
     assert bosses == ["snail_queen"]
     first = next(e for e in events if isinstance(e, BossSpawned))
-    assert first.tick // TICK_HZ == 210
+    assert first.tick // TICK_HZ == 126
     waves = [e.wave for e in events if isinstance(e, WaveStarted)]
     assert waves[:5] == [1, 2, 3, 4, 5]
-    assert [e.tick // TICK_HZ for e in events if isinstance(e, EliteSpawned)][0] == 150
+    assert [e.tick // TICK_HZ for e in events if isinstance(e, EliteSpawned)][0] == 90
     kinds = {e.kind for e in events if isinstance(e, EnemySpawned)}
     assert {"slug", "aphid", "snail", "potato_beetle"} <= kinds
     assert any(isinstance(e, BossKilled) for e in events)

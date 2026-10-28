@@ -4,8 +4,8 @@ Alle Zahlen sind **Startwerte aus einer Modellrechnung**, nicht aus gespielten R
 
 ## Lauf und Schwierigkeit
 
-- **Drei Beete, je 5:00 (Paket F, 28.10.2026).** Saatbeet, Gemüsebeet, Komposthaufen. Jedes Beet ist eine eigene Karte; Level, Upgrades, Waffen und Items bleiben beim Wechsel erhalten. Ein Lauf dauert höchstens etwa 15 Minuten.
-- **Boss bei 3:30 jedes Beets.** Ist er besiegt, öffnet sich das **Gartentor** zum nächsten Beet (volle Heilung). Der Schnitter im dritten Beet beendet den Lauf mit einem Sieg.
+- **Drei Beete, je 3:00 (Paket F, 28.10.2026; seit Paket I 3:00 statt 5:00, Gegner skalieren x5/3 schneller).** Saatbeet, Gemüsebeet, Komposthaufen. Jedes Beet ist eine eigene Karte; Level, Upgrades, Waffen und Items bleiben beim Wechsel erhalten. Ohne Flut dauert ein Lauf etwa 9 Minuten, mit Flut-Zockerei etwa 10 bis 13.
+- **Boss bei 2:06 jedes Beets.** Ist er besiegt, öffnet sich das **Gartentor** zum nächsten Beet (volle Heilung). Der Schnitter im dritten Beet beendet den Lauf mit einem Sieg.
 - **Plagenflut:** Läuft die Zeit eines Beets ab, wird es endlos: alle 10 s +40 % Gegner, +15 % HP, +8 % Schaden. Wer den Boss besiegt hat, kann jederzeit durchs Tor.
 - Welle alle **30 s** innerhalb des Beets, ohne Pause. Level-ups pausieren das Spiel.
 - **Gegnerwerte:** Grundwert x Beet-Faktor (1 / 2,6 / 6 bei HP) x Zeitfaktor im Beet `(1 + 0,10*m + 0,012*m²)`, m = Minuten im Beet.
@@ -16,11 +16,15 @@ Alle Zahlen sind **Startwerte aus einer Modellrechnung**, nicht aus gespielten R
 
 | Minute | Welle | Budget | HP x | Schaden x | nötige HP/s | Level (ca.) | XP gesamt |
 |---|---|---|---|---|---|---|---|
-| 1 | 2 | 55 | 1.1 | 1.1 | 18 | 9 | 102 |
-| 5 | 10 | 132 | 1.8 | 1.4 | 71 | 23 | 870 |
-| 10 | 20 | 268 | 3.2 | 1.9 | 256 | 37 | 2901 |
-| 15 | 30 | 448 | 5.2 | 2.6 | 696 | 50 | 6535 |
-| 20 | 40 | 672 | 7.8 | 3.6 | 1567 | 62 | 12211 |
+| 0.6 | 2 | 55 | 1.1 | 1.1 | 30 | 9 | 102 |
+| 1.2 | 4 | 72 | 1.3 | 1.1 | 45 | 14 | 237 |
+| 1.8 | 6 | 90 | 1.4 | 1.2 | 63 | 17 | 407 |
+| 2.4 | 8 | 110 | 1.6 | 1.3 | 88 | 20 | 617 |
+| 3 | 10 | 132 | 1.8 | 1.4 | 119 | 23 | 870 |
+| 4.2 | 14 | 181 | 2.3 | 1.6 | 207 | 29 | 1518 |
+| 6 | 20 | 268 | 3.2 | 1.9 | 428 | 37 | 2901 |
+| 9 | 30 | 448 | 5.2 | 2.7 | 1161 | 50 | 6535 |
+| 12 | 40 | 672 | 7.8 | 3.6 | 2609 | 62 | 12211 |
 
 Die Spalte „nötige HP/s“ ist die Leistung, die du brauchst, um alles Erscheinende zu töten. Ein Start-Jäger macht rund 19 Schaden pro Sekunde auf ein Ziel. Das Spiel soll so gebaut sein, dass starke Builds (Flächenschaden, Durchschlag, Ketten) diese Kurve bis etwa Minute 14 bis 18 halten können.
 
@@ -144,15 +148,15 @@ Auswahl: Gewichte gewöhnlich 60, ungewöhnlich 25, selten 10, episch 4, legend�
 | ID | Name | Verhalten | HP | Tempo | Schaden | Kosten | XP | ab Sek. | Biom | Beschreibung | Phase |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `slug` | Nacktschnecke | chaser | 12 | 80 | 5 | 1 | 1 | 0 | seedbed | Kriecht stur auf dich zu. Die häufigste Plage. | 1 |
-| `aphid` | Blattlaus | swarm | 4 | 160 | 3 | 0.4 | 0.4 | 20 | seedbed | Kommt in Schwärmen zu 5, wuselt schnell und unregelmäßig. | 1 |
-| `snail` | Gartenschnecke | chaser_tank | 50 | 52 | 10 | 4 | 4 | 60 | seedbed | Langsam, aber das Haus hält viel aus. | 1 |
-| `mold` | Schimmelpilz | ranged_lobbed | 16 | 60 | 4 | 3 | 3 | 90 | seedbed | Hält 260 px Abstand und wirft Sporen, die eine Schimmelpfütze (4 Schaden/s, 3 s) hinterlassen. | 1 |
+| `aphid` | Blattlaus | swarm | 4 | 160 | 3 | 0.4 | 0.4 | 12 | seedbed | Kommt in Schwärmen zu 5, wuselt schnell und unregelmäßig. | 1 |
+| `snail` | Gartenschnecke | chaser_tank | 50 | 52 | 10 | 4 | 4 | 36 | seedbed | Langsam, aber das Haus hält viel aus. | 1 |
+| `mold` | Schimmelpilz | ranged_lobbed | 16 | 60 | 4 | 3 | 3 | 54 | seedbed | Hält 260 px Abstand und wirft Sporen, die eine Schimmelpfütze (4 Schaden/s, 3 s) hinterlassen. | 1 |
 | `potato_beetle` | Kartoffelkäfer | chaser | 18 | 130 | 7 | 2 | 2 | 0 | veggiebed | Flinker Käfer, kommt im Trupp zu 3. | 1 |
-| `toxic_carrot` | Giftmöhre | charger | 30 | 70 | 12 | 3 | 3 | 30 | veggiebed | Zielt 0,8 s (Warnlinie), stürmt dann 0,6 s mit Tempo 340 los und ist 1 s benommen. | 1 |
-| `spray_cucumber` | Spritzgurke | ranged_direct | 14 | 70 | 7 | 2 | 2 | 60 | veggiebed | Hält 300 px Abstand und spritzt gerade Giftstrahlen (Tempo 280). | 1 |
+| `toxic_carrot` | Giftmöhre | charger | 30 | 70 | 12 | 3 | 3 | 18 | veggiebed | Zielt 0,8 s (Warnlinie), stürmt dann 0,6 s mit Tempo 340 los und ist 1 s benommen. | 1 |
+| `spray_cucumber` | Spritzgurke | ranged_direct | 14 | 70 | 7 | 2 | 2 | 36 | veggiebed | Hält 300 px Abstand und spritzt gerade Giftstrahlen (Tempo 280). | 1 |
 | `pest_tomato` | Pestizid-Tomate | exploder | 10 | 140 | 18 | 2 | 2 | 0 | compost | Rollt auf dich zu und platzt bei Berührung (Radius 70, 18 Schaden, 0,4 s Warnung). | 1 |
-| `vole` | Wühlmaus | chaser_tank | 90 | 58 | 14 | 7 | 7 | 60 | compost | Zäh und bissig, frisst sich durch alles. | 1 |
-| `spray_shroom` | Sprühpilz | ranged_lobbed | 18 | 64 | 7 | 3 | 3 | 30 | compost | Hält 280 px Abstand und sprüht Giftwolken (Radius 50, 3 s). | 1 |
+| `vole` | Wühlmaus | chaser_tank | 90 | 58 | 14 | 7 | 7 | 36 | compost | Zäh und bissig, frisst sich durch alles. | 1 |
+| `spray_shroom` | Sprühpilz | ranged_lobbed | 18 | 64 | 7 | 3 | 3 | 18 | compost | Hält 280 px Abstand und sprüht Giftwolken (Radius 50, 3 s). | 1 |
 
 Spawn: Position bestimmt das Biom, dort gewichtet `biome_weights` die Mob-Auswahl (nur Mobs mit `min_time_s` erreicht). Gruppen (`group_size`) kosten ihr Budget einmal je Gegner.
 
@@ -179,17 +183,17 @@ Pro Lauf liegen die Schreine mit festem Seed in den Zonen (jede Zone mindestens 
 
 | Beet | Dauer | Boss | HP x | Schaden x | Gegnermenge x |
 |---|---|---|---|---|---|
-| 1. Saatbeet | 5:00 | Schleimrun, die Schneckenkönigin | 1 | 1 | 1 |
-| 2. Gemüsebeet | 5:00 | Knollgrimm, der Käferkönig | 2.6 | 1.7 | 1.35 |
-| 3. Komposthaufen | 5:00 | Der Schnitter | 6 | 2.6 | 1.7 |
+| 1. Saatbeet | 3:00 | Schleimrun, die Schneckenkönigin | 1 | 1 | 1 |
+| 2. Gemüsebeet | 3:00 | Knollgrimm, der Käferkönig | 2.6 | 1.7 | 1.35 |
+| 3. Komposthaufen | 3:00 | Der Schnitter | 6 | 2.6 | 1.7 |
 
 Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Alle 30 s rollt eine neue Flutwelle heran: ein Ring aus 12 + 8 je Welle Gegnern direkt um dich, und alle neuen Gegner sind je Welle 8 % schneller. Das Gartentor bleibt offen, sobald der Boss besiegt ist. Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Hineinlaufen bringt dich ins nächste Beet (volle Heilung).
 
 ### Bosse
 
-- **Schleimrun, die Schneckenkönigin** (`snail_queen`, 3:30 im Beet, Phase 1): HP 2400, ab 100 % HP: Schleimring (8 Tropfen), alle 4 s; ab 60 % HP: Schleimspur: verlangsamt dich 40 % in einem Kreis, ruft 3 Gartenschnecken; ab 30 % HP: Schleimring doppelt so schnell, Sporenregen.
-- **Knollgrimm, der Käferkönig** (`beetle_king`, 3:30 im Beet, Phase 1): HP 6000, ab 100 % HP: Stachelfächer (5 Geschosse, alle 3 s) und Sturmangriff nach Warnlinie (Tempo 380); ab 60 % HP: ruft 4 Kartoffelkäfer, Fächer mit 7 Geschossen; ab 30 % HP: stürmt zweimal hintereinander, Fächer doppelt so schnell.
-- **Der Schnitter** (`reaper`, 3:30 im Beet, Phase 1): HP 14000, ab 100 % HP: Sensenring (12 Geschosse), alle 3,5 s; ab 66 % HP: Seelenregen: 6 Einschläge mit Warnkreis (Radius 80), ruft Pestizid-Tomaten; ab 33 % HP: Sensenring alle 2 s, stürmt nach Warnlinie.
+- **Schleimrun, die Schneckenkönigin** (`snail_queen`, 2:06 im Beet, Phase 1): HP 2400, ab 100 % HP: Schleimring (8 Tropfen), alle 4 s; ab 60 % HP: Schleimspur: verlangsamt dich 40 % in einem Kreis, ruft 3 Gartenschnecken; ab 30 % HP: Schleimring doppelt so schnell, Sporenregen.
+- **Knollgrimm, der Käferkönig** (`beetle_king`, 2:06 im Beet, Phase 1): HP 6000, ab 100 % HP: Stachelfächer (5 Geschosse, alle 3 s) und Sturmangriff nach Warnlinie (Tempo 380); ab 60 % HP: ruft 4 Kartoffelkäfer, Fächer mit 7 Geschossen; ab 30 % HP: stürmt zweimal hintereinander, Fächer doppelt so schnell.
+- **Der Schnitter** (`reaper`, 2:06 im Beet, Phase 1): HP 14000, ab 100 % HP: Sensenring (12 Geschosse), alle 3,5 s; ab 66 % HP: Seelenregen: 6 Einschläge mit Warnkreis (Radius 80), ruft Pestizid-Tomaten; ab 33 % HP: Sensenring alle 2 s, stürmt nach Warnlinie.
 
 ## Beete (120 x 120 Felder à 32 px)
 

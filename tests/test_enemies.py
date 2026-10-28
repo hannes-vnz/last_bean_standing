@@ -143,7 +143,7 @@ def test_elite_every_five_waves_with_scaled_stats(make_config):
     e = elites[0]
     base = next(m for m in w.config.mobs if m.id == e.kind)
     sc = w.config.scaling
-    assert e.max_hp == pytest.approx(base.hp * sc.hp_mult(2.5) * 4, rel=1e-6)
+    assert e.max_hp == pytest.approx(base.hp * sc.hp_mult(1.5) * 4, rel=1e-6)  # wave 5 = 1:30
     assert e.radius == pytest.approx(base.radius * 1.35) and len(e.affixes) == 1
 
 
@@ -206,7 +206,7 @@ def boss_world(make_config, stage: int = 0) -> tuple[World, Enemy]:
     if stage:
         w.stage = stage
         w._setup_stage()
-    w.tick = w.stage_tick = 210 * TICK_HZ
+    w.tick = w.stage_tick = int(w.boss_stats[w.stage_cfg.boss].spawn_time_s * TICK_HZ)
     w.step()
     boss = next(e for e in w.enemies if e.boss)
     return w, boss

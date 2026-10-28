@@ -27,7 +27,7 @@
   "damage": 3,
   "cost": 0.4,
   "xp": 0.4,
-  "min_time_s": 20,
+  "min_time_s": 12,
   "biome_weights": {
    "seedbed": 0.8,
    "veggiebed": 0.6,
@@ -47,7 +47,7 @@
   "damage": 10,
   "cost": 4,
   "xp": 4,
-  "min_time_s": 60,
+  "min_time_s": 36,
   "biome_weights": {
    "seedbed": 0.6,
    "veggiebed": 0.4,
@@ -66,7 +66,7 @@
   "damage": 4,
   "cost": 3,
   "xp": 3,
-  "min_time_s": 90,
+  "min_time_s": 54,
   "biome_weights": {
    "seedbed": 0.5,
    "veggiebed": 0.3,
@@ -106,7 +106,7 @@
   "damage": 12,
   "cost": 3,
   "xp": 3,
-  "min_time_s": 30,
+  "min_time_s": 18,
   "biome_weights": {
    "veggiebed": 1,
    "compost": 0.5
@@ -128,7 +128,7 @@
   "damage": 7,
   "cost": 2,
   "xp": 2,
-  "min_time_s": 60,
+  "min_time_s": 36,
   "biome_weights": {
    "veggiebed": 0.8,
    "compost": 0.6
@@ -168,7 +168,7 @@
   "damage": 14,
   "cost": 7,
   "xp": 7,
-  "min_time_s": 60,
+  "min_time_s": 36,
   "biome_weights": {
    "compost": 0.6,
    "veggiebed": 0.2
@@ -186,7 +186,7 @@
   "damage": 7,
   "cost": 3,
   "xp": 3,
-  "min_time_s": 30,
+  "min_time_s": 18,
   "biome_weights": {
    "compost": 0.8
   },

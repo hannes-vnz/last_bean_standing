@@ -6,7 +6,7 @@ Scope so far:
 - M4: all phase-1 mob behaviours (enemies.py), enemy projectiles and hazards, elites with
   affixes and chests every few waves, biome boss with phases and a boss chest.
 - Paket C2: extra weapons from level-up cards (weapons.py), up to `weapon_slots` incl. the start weapon.
-- Paket F: a run is three garden beds (stages). Each bed has its own map, a boss at 3:30 and, when its
+- Paket F: a run is three garden beds (stages). Each bed has its own map, a boss at 2:06 (stages.json) and, when its
   time runs out, the endless "Plagenflut". The boss opens a gate to the next bed; the last boss wins the run.
 
 Determinism: only + - * / and sqrt (correctly rounded in IEEE 754), no trigonometry,
