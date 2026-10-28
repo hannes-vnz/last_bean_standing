@@ -652,11 +652,27 @@ class Screen:
                 canvas.style.height = f"{h * k / dpr}px"
             except Exception as exc:  # noqa: BLE001 - layout tweak only, never stop the game
                 print("Canvas-Größe nicht gesetzt:", exc)
+            self.renderer.safe = self.safe_insets(css, (w * k / dpr, h * k / dpr), dpr / k)
         else:
             if self.window is None:
                 self.window = pygame.display.set_mode((CANVAS_W * 2, CANVAS_H * 2), pygame.RESIZABLE)
             w, h = logical_size(*self.window.get_size(), short=self.zoom)
         self.renderer.resize(w, h)
+
+    def safe_insets(self, page: tuple[int, int], canvas_css: tuple[float, float], px_per_css: float):
+        """The phone's safe area (notch, Dynamic Island, home bar) as canvas pixels inside the canvas."""
+        import platform
+
+        try:
+            platform.window.eval(SAFE_AREA_JS)
+            top, right, bottom, left = (float(v) for v in str(platform.window.lbsSafe).split(","))
+        except Exception as exc:  # noqa: BLE001 - layout tweak only
+            print("Safe Area unbekannt:", exc)
+            return (0, 0, 0, 0)
+        ox, oy = (page[0] - canvas_css[0]) / 2, (page[1] - canvas_css[1]) / 2  # canvas is centred on the page
+        return tuple(
+            max(0, round((v - off) * px_per_css)) for v, off in ((top, oy), (right, ox), (bottom, oy), (left, ox))
+        )
 
     def debug_requested(self) -> bool:
         """Web: `?debug` in the address shows touch diagnostics on screen (for testing on phones)."""
@@ -679,6 +695,24 @@ class Screen:
         if WEB:
             nx, ny = contain_point(nx, ny, self.css_size(), (ww, wh))
         return self.renderer.window_to_canvas(nx * ww, ny * wh)
+
+
+SAFE_AREA_JS = """
+(function () {
+  let d = document.getElementById("lbs-safe");
+  if (!d) {
+    d = document.createElement("div");
+    d.id = "lbs-safe";
+    d.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;" +
+      "padding:env(safe-area-inset-top) env(safe-area-inset-right) " +
+      "env(safe-area-inset-bottom) env(safe-area-inset-left)";
+    document.body.appendChild(d);
+  }
+  const s = getComputedStyle(d);
+  const pads = [s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft];
+  window.lbsSafe = pads.map((v) => parseFloat(v) || 0).join(",");
+})();
+"""
 
 
 def contain_point(nx: float, ny: float, element: tuple[int, int], buffer: tuple[int, int]) -> tuple[float, float]:

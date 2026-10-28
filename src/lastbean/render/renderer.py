@@ -67,6 +67,8 @@ class Renderer:
         self.pause_rect = pygame.Rect(0, 0, 0, 0)
         self.touch = False  # touch device: bigger buttons, no keyboard hints
         self.hud_bottom = 24
+        # Safe area (notch, Dynamic Island, home bar) in canvas pixels: top, right, bottom, left (app.Screen.fit).
+        self.safe = (0, 0, 0, 0)
         self._dest, self._scale = (0, 0), 1
         style = content.style
         self.tile_px = content.balance.tile_px
@@ -446,27 +448,28 @@ class Renderer:
                  f"Samen {focus.seeds}"] + ([f"Funkel {focus.sparkles}"] if focus.sparkles else [])  # fmt: skip
         if snap.difficulty != 1.0:
             parts.append(f"Schwierigkeit {round(snap.difficulty * 100)} %")
-        line, y = "", 9
+        st, sr, sb, sl = self.safe
+        line, y = "", 9 + st
         for part in parts:  # wrap onto a second line on narrow (portrait) screens
             trial = f"{line}   {part}" if line else part
-            if line and self.font.size(trial)[0] > self.w - 50:
-                self.text(line, (6, y))
+            if line and self.font.size(trial)[0] > self.w - 50 - sl - sr - self.minimap_size():
+                self.text(line, (6 + sl, y))
                 line, y = part, y + 14
             else:
                 line = trial
-        self.text(line, (6, y))
+        self.text(line, (6 + sl, y))
         self.hud_bottom = y + 14
         self._draw_build(focus)
         # Pause button (touch has no Esc key) and ability button, both big enough for a thumb on touch.
         size = 22 if self.touch else 0
-        self.pause_rect = pygame.Rect(self.w - size - 6, 8, size, size)
+        self.pause_rect = pygame.Rect(self.w - size - 6 - sr, 8 + st, size, size)
         if self.touch:
             c.fill(ink, self.pause_rect.inflate(4, 4))
             c.fill((90, 60, 100), self.pause_rect)
             c.fill(WHITE, (self.pause_rect.x + 6, self.pause_rect.y + 5, 3, 12))
             c.fill(WHITE, (self.pause_rect.x + 13, self.pause_rect.y + 5, 3, 12))
         side = 46 if self.touch else 28
-        box = pygame.Rect(self.w - side - 10, self.h - side - 10, side, side)
+        box = pygame.Rect(self.w - side - 10 - sr, self.h - side - 10 - sb, side, side)
         self.ability_rect = box
         c.fill(ink, box.inflate(4, 4))
         c.fill((90, 60, 100), box)
@@ -521,7 +524,7 @@ class Renderer:
                 continue
             for k, (key, n, tier) in enumerate(entries[: cols * 2]):
                 row, col = divmod(k, cols)
-                x, yy = 6 + col * step, y + row * step
+                x, yy = 6 + self.safe[3] + col * step, y + row * step
                 if self._build_seen.get(key) != n:  # new or levelled since the last frame
                     if key in self._build_seen or self.frame > 2:
                         self._build_pop[key] = self.frame
@@ -579,8 +582,8 @@ class Renderer:
         if img is None:
             img = pygame.transform.scale(self.overview, (size, size))
             self._number_cache[key] = img
-        top = self.pause_rect.bottom + 6 if self.touch else 8
-        box = pygame.Rect(self.w - size - 6, top, size, size)
+        top = self.pause_rect.bottom + 6 if self.touch else 8 + self.safe[0]
+        box = pygame.Rect(self.w - size - 6 - self.safe[1], top, size, size)
         c = self.canvas
         c.fill(self.ink, box.inflate(4, 4))
         c.blit(img, box)
