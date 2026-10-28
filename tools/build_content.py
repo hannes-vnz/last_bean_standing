@@ -14,14 +14,14 @@ DATA, DOCS = ROOT / "data", ROOT / "docs"
 # ---------------------------------------------------------------------------- Balance
 BALANCE = {
     "tick_hz": 60, "wave_interval_s": 30, "max_wave": 40, "swarm_time_s": 1200, "max_alive_enemies": 350,
-    "budget": {"base": 10, "linear": 5.5, "quadratic": 0.22},           # je Welle w: base + linear*w + quadratic*w^2
+    "budget": {"base": 40, "linear": 7.0, "quadratic": 0.22},           # je Welle w: base + linear*w + quadratic*w^2 (mehr Gegner früh, seit 28.10.2026)
     "hp_mult": {"linear": 0.10, "quadratic": 0.012},                     # 1 + a*m + b*m^2, m = Minuten
     "damage_mult": {"linear": 0.05, "quadratic": 0.004},
     "speed_mult": {"linear": 0.01, "cap": 1.2},
-    "xp_to_next": {"base": 8, "linear": 5, "quadratic": 0.4},            # Level L -> L+1 (flacher seit 28.10.2026)
+    "xp_to_next": {"base": 3, "linear": 1.5, "quadratic": 0.15},        # Level L -> L+1 (Vorschlag C, 28.10.2026)
     "elite_every_n_waves": 5, "boss_waves": {"10": "ildra", "15": "skarra", "20": "kalthorn", "30": "ignarok"},
     "spawn_distance_px": [520, 700], "arena_tiles": [60, 60], "tile_px": 32,
-    "player_base": {"hp": 100, "pickup_radius_px": 130, "i_frames_s": 0.6},
+    "player_base": {"hp": 100, "pickup_radius_px": 220, "i_frames_s": 0.6},
     "score": {"per_second": 2, "per_kill": 5, "per_level": 20, "per_boss": 500, "victory_bonus": 20000, "swarm_per_10s": 1000},
     "rarity_weights": {"common": 60, "uncommon": 25, "rare": 10, "epic": 4, "legendary": 1},
     "luck_shift_per_point": 0.4, "level_up_choices": 3, "elite_chest_min_rarity": "rare",

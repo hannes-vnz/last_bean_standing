@@ -5,8 +5,8 @@
  "swarm_time_s": 1200,
  "max_alive_enemies": 350,
  "budget": {
-  "base": 10,
-  "linear": 5.5,
+  "base": 40,
+  "linear": 7.0,
   "quadratic": 0.22
  },
  "hp_mult": {
@@ -22,9 +22,9 @@
   "cap": 1.2
  },
  "xp_to_next": {
-  "base": 8,
-  "linear": 5,
-  "quadratic": 0.4
+  "base": 3,
+  "linear": 1.5,
+  "quadratic": 0.15
  },
  "elite_every_n_waves": 5,
  "boss_waves": {
@@ -44,7 +44,7 @@
  "tile_px": 32,
  "player_base": {
   "hp": 100,
-  "pickup_radius_px": 130,
+  "pickup_radius_px": 220,
   "i_frames_s": 0.6
  },
  "score": {

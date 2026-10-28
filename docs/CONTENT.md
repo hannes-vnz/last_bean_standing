@@ -18,11 +18,11 @@ Alle Zahlen sind **Startwerte aus einer Modellrechnung**, nicht aus gespielten R
 
 | Minute | Welle | Budget | HP x | Schaden x | nötige HP/s | Level (ca.) | XP gesamt |
 |---|---|---|---|---|---|---|---|
-| 1 | 2 | 22 | 1.1 | 1.1 | 7 | 3 | 38 |
-| 5 | 10 | 87 | 1.8 | 1.4 | 48 | 10 | 487 |
-| 10 | 20 | 208 | 3.2 | 1.9 | 204 | 19 | 1986 |
-| 15 | 30 | 373 | 5.2 | 2.6 | 594 | 28 | 4938 |
-| 20 | 40 | 582 | 7.8 | 3.6 | 1391 | 36 | 9781 |
+| 1 | 2 | 55 | 1.1 | 1.1 | 19 | 8 | 102 |
+| 5 | 10 | 132 | 1.8 | 1.4 | 73 | 21 | 870 |
+| 10 | 20 | 268 | 3.2 | 1.9 | 263 | 34 | 2901 |
+| 15 | 30 | 448 | 5.2 | 2.6 | 714 | 46 | 6535 |
+| 20 | 40 | 672 | 7.8 | 3.6 | 1606 | 58 | 12211 |
 
 Die Spalte „nötige HP/s“ ist die Leistung, die du brauchst, um alles Erscheinende zu töten. Ein Start-Jäger macht rund 19 Schaden pro Sekunde auf ein Ziel. Das Spiel soll so gebaut sein, dass starke Builds (Flächenschaden, Durchschlag, Ketten) diese Kurve bis etwa Minute 14 bis 18 halten können.
 

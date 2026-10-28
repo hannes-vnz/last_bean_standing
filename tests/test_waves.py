@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 import pytest
 
 from lastbean.bots import heuristic_input
@@ -7,9 +10,12 @@ from lastbean.sim.waves import biome_at
 
 def test_budget_formula_matches_content_model(make_config):
     sc = make_config().scaling
-    # Values from the model table in docs/CONTENT.md (budget per wave).
-    for wave, budget in [(2, 22), (10, 87), (20, 208), (30, 373), (40, 582)]:
-        assert round(sc.wave_budget(wave)) == budget
+    # The model table in docs/CONTENT.md (generated from the same data) lists the budget per wave.
+    table = Path(__file__).resolve().parents[1].joinpath("docs", "CONTENT.md").read_text(encoding="utf-8")
+    rows = re.findall(r"^\| \d+ \| (\d+) \| (\d+) \|", table, re.M)
+    assert len(rows) >= 4
+    for wave, budget in rows:
+        assert round(sc.wave_budget(int(wave))) == int(budget)
     assert sc.wave_budget(10, difficulty=1.2) == pytest.approx(1.2 * sc.wave_budget(10))
     assert sc.wave_budget(10, player_count=2) == sc.wave_budget(10)  # co-op factor still open (0)
 
@@ -19,7 +25,7 @@ def test_scaling_curves(make_config):
     assert sc.hp_mult(0) == 1.0 and round(sc.hp_mult(5), 1) == 1.8 and round(sc.hp_mult(10), 1) == 3.2
     assert round(sc.damage_mult(10), 1) == 1.9
     assert sc.speed_mult(5) == pytest.approx(1.05) and sc.speed_mult(60) == 1.2
-    assert sc.xp_needed(1) == pytest.approx(8 + 5 + 0.4)  # flatter curve since 28.10.2026
+    assert sc.xp_needed(1) == pytest.approx(3 + 1.5 + 0.15)  # faster progression (variant C, 28.10.2026)
 
 
 def spawned_costs(world: World, ticks: int) -> float:
