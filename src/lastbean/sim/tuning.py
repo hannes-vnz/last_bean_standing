@@ -18,6 +18,9 @@ EXTRA_ATTACK_DAMAGE = 0.6  # balance.json stat_model
 GREED_XP_PCT = 10.0  # (text) Gier-Schrein: "+10 % XP-Gewinn ... je Aktivierung (stapelt)"
 SHRINE_START_CLEARANCE = 300.0  # no shrine right at the start of a bed
 START_SHIELD_S = 20.0  # (text) workshop "Startschild": "verfällt nach 20 s"
+CURSE_MAX_COPIES = 3  # (text) Fluchstein: "höchstens +3 Kopien insgesamt"
+CURSE_CARD_RARITY = "legendary"  # Fluchstein reward "eine Karte mehr, eine Stufe höher": boss chests are epic
+ELITE_SHRINE_COUNT = 3  # (text) Elite-Schrein: "Ruft sofort 3 Elite-Gegner"
 COURAGE_MIN_RARITY = "rare"  # (text) Mut-Schrein: "Gratis-Upgradewahl mit mindestens Seltenheit selten"
 
 # Performance (28.10.2026, measured: cost grows with the enemy count)

@@ -28,7 +28,10 @@ def _stand_on(w: World, kind: str, ticks: int, move: bool = False) -> list:
 def test_shrines_are_placed_per_bed_and_deterministic():
     a, b = _world(), _world()
     kinds = sorted(s.rules.id for s in a.shrines)
-    assert kinds == ["courage", "greed", "greed"]
+    assert kinds == ["courage", "curse", "elite", "greed", "greed"]  # bed 1 of 3: 6 greed, 3 courage, 2 + 2
+    rules = {s.rules.id: s.rules for s in a.shrines}
+    assert [rules["curse"].on_stage(i, 3) for i in range(3)] == [1, 1, 0]
+    assert sum(rules["greed"].on_stage(i, 3) for i in range(3)) == 6
     assert [(s.x, s.y) for s in a.shrines] == [(s.x, s.y) for s in b.shrines]
     assert [(s.x, s.y) for s in _world(5).shrines] != [(s.x, s.y) for s in a.shrines]
 
@@ -60,3 +63,35 @@ def test_courage_shrine_grants_a_rare_card():
     assert activated
     # The free card waits behind any open level-up, then comes as a chest offer of at least "rare".
     assert p.offer_source == "chest" or "rare" in p.pending_chests
+
+
+def test_curse_stone_doubles_the_next_boss_and_pays_a_legendary_card():
+    from lastbean.sim import TICK_HZ
+    from lastbean.sim.events import BossSpawned, GateOpened
+
+    w = _world()
+    _stand_on(w, "curse", 100)
+    assert w.curse_pending == 1
+    w.tick = w.stage_tick = int(w.boss_stats[w.stage_cfg.boss].spawn_time_s * TICK_HZ) - 1
+    events = []
+    for _ in range(3):
+        events += w.step([PlayerInput(0, 0.0, 0.0, 0 if w.players[0].offer else None)])
+    bosses = [e for e in w.enemies if e.boss]
+    assert sum(isinstance(e, BossSpawned) for e in events) == 2 and all(b.cursed for b in bosses)
+    first, second = bosses
+    first.hp = 0.0
+    events = []
+    w._kill(first, 0, events)
+    w.enemies.remove(first)
+    assert not any(isinstance(e, GateOpened) for e in events) and w.gate is None  # the copy still stands
+    assert "legendary" in w.players[0].pending_chests or w.players[0].offer_source == "chest"
+    second.hp = 0.0
+    w._kill(second, 0, events)
+    assert w.gate is not None
+
+
+def test_elite_shrine_calls_three_elites():
+    w = _world()
+    before = sum(1 for e in w.enemies if e.elite)
+    _stand_on(w, "elite", 100)
+    assert sum(1 for e in w.enemies if e.elite) >= before + 3

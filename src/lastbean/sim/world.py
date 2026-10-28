@@ -96,10 +96,13 @@ from .tuning import (
     CHEST_PICKUP_RADIUS,
     CHILL_S,
     COURAGE_MIN_RARITY,
+    CURSE_CARD_RARITY,
+    CURSE_MAX_COPIES,
     DASH_DISTANCE,
     DASH_I_FRAMES_S,
     DODGE_I_FRAMES_S,
     DOT_PULSE_TICKS,
+    ELITE_SHRINE_COUNT,
     ENEMY_SHOT_RADIUS,
     EXECUTE_SHARE,
     EXPLOSIVE_HIT_RADIUS,
@@ -556,6 +559,8 @@ class World:
         self._pending: list[Event] = [RunStarted(0, None, self.seed)]
         self.bosses_killed = 0
         self.elites_killed = 0
+        self.curse_total = 0  # Fluchstein: boss copies so far (at most CURSE_MAX_COPIES per run)
+        self.curse_pending = 0  # copies the next bed boss brings
         if cfg.economy is not None:
             for p in self.players:
                 p.rerolls = cfg.economy.rerolls + int(meta.get("rerolls", 0.0))
@@ -580,7 +585,7 @@ class World:
                             start, 220.0)  # fmt: skip
             self.chests = [MapChest(x, y, "map") for x, y in spots[: eco.chest_count]]
             self.pots = [Pot(x, y) for x, y in spots[eco.chest_count :]]
-            kinds = [s for s in cfg.shrines for _ in range(s.per_stage)]
+            kinds = [s for s in cfg.shrines for _ in range(s.on_stage(self.stage, len(cfg.stages)))]
             spots = scatter(Rng(self.seed ^ 0x5A17E ^ (self.stage * 0x9E3779B1)), len(kinds), cfg.arena_w,
                             cfg.arena_h, self.obstacles, start, SHRINE_START_CLEARANCE)  # fmt: skip
             self.shrines = [Shrine(s, x, y) for s, (x, y) in zip(kinds, spots, strict=False)]
@@ -1178,13 +1183,17 @@ class World:
         if p is None:
             return
         self._boss_spawned = True
-        x, y = self._boss_spawn_point(b, p)
-        hp = b.hp * self.difficulty
-        e = Enemy(self._next_eid, b.id, x, y, hp, hp, b.speed, b.damage * self.difficulty, b.radius, 0.0, "boss",
-                  boss=b.id)  # fmt: skip
-        self.enemies.append(e)
-        self._next_eid += 1
-        events.append(BossSpawned(self.tick, None, e.eid, b.id))
+        cursed = self.curse_pending > 0
+        for _ in range(1 + self.curse_pending):  # Fluchstein: the boss comes more than once
+            x, y = self._boss_spawn_point(b, p)
+            hp = b.hp * self.difficulty
+            e = Enemy(self._next_eid, b.id, x, y, hp, hp, b.speed, b.damage * self.difficulty, b.radius, 0.0, "boss",
+                      boss=b.id)  # fmt: skip
+            e.cursed = cursed
+            self.enemies.append(e)
+            self._next_eid += 1
+            events.append(BossSpawned(self.tick, None, e.eid, b.id))
+        self.curse_pending = 0
 
     def _boss_spawn_point(self, b: BossStats, p: Player) -> tuple[float, float]:
         """On the spawn ring around the player, but not closer than BOSS_MIN_SPAWN_DISTANCE."""
@@ -1328,10 +1337,20 @@ class World:
         if e.boss:
             self.bosses_killed += 1
             events.append(BossKilled(self.tick, killer, e.eid, e.boss, self.time_s))
-            if self.stage + 1 >= len(self.config.stages):
+            last = self.stage + 1 >= len(self.config.stages)
+            if e.cursed:  # Fluchstein reward: a free card one tier above the boss chest
+                owner = next((p for p in self.players if p.player_id == killer and p.alive), None)
+                owner = owner or next((p for p in self.players if p.alive), None)
+                if owner is not None:
+                    owner.pending_chests.append(CURSE_CARD_RARITY)
+                    self._offer(owner, events)
+            if not last:
+                self._drop_chest(e.x, e.y, "boss", events)
+            if any(o.boss and o.eid != e.eid and o.hp > 0 for o in self.enemies):
+                return  # copies of the boss are still standing
+            if last:
                 self.victory = True  # the last bed's boss: the run is won
             else:
-                self._drop_chest(e.x, e.y, "boss", events)
                 gx, gy = self._clamp(*self.obstacles.push_out(e.x, e.y + GATE_OFFSET, self.config.gate_radius),
                                      self.config.gate_radius)  # fmt: skip
                 self.gate = (gx, gy)
@@ -2258,6 +2277,12 @@ class World:
             elif r.id == "courage":
                 owner.pending_chests.append(COURAGE_MIN_RARITY)
                 self._offer(owner, events)
+            elif r.id == "curse" and self.curse_total < CURSE_MAX_COPIES:
+                self.curse_total += 1
+                self.curse_pending += 1  # the next bed boss brings a copy
+            elif r.id == "elite":
+                for _ in range(ELITE_SHRINE_COUNT):
+                    self._spawn_elite(events)
             events.append(ShrineActivated(self.tick, owner.player_id, r.id, r.name, sh.x, sh.y, self.difficulty))
         self.shrines = remaining
 
@@ -2492,7 +2517,7 @@ class World:
             h.update(struct.pack("<2d", pot.x, pot.y))
         for sh in self.shrines:
             h.update(sh.rules.id.encode() + struct.pack("<2di", sh.x, sh.y, sh.charge))
-        h.update(struct.pack("<d", self.difficulty))
+        h.update(struct.pack("<d2i", self.difficulty, self.curse_total, self.curse_pending))
         h.update(repr([(p.seeds, sorted(p.items.items()), p.rerolls, p.banishes, sorted(p.banished))
                        for p in self.players]).encode() + struct.pack("<q", self.chests_opened))  # fmt: skip
         h.update(repr([o.kind for o in self.orbs]).encode())

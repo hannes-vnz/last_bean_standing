@@ -326,6 +326,7 @@ class Enemy:
     phase: int = 0
     timers: list[float] = field(default_factory=list)  # boss pattern timers
     volley: int = 0
+    cursed: bool = False  # Fluchstein copy: its death gives a bonus card
     charge_state: int = 0  # dashers: 0 walk, 1 aim (warning line), 2 dash, 3 dazed
     charge_t: float = 0.0
     cdx: float = 0.0  # dash direction
