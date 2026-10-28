@@ -6,7 +6,7 @@ times the reward factor 1 + 0.8 x (D - 1) of the shrine difficulty D.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +46,10 @@ class RunResult:
     stage: int = 1  # garden bed reached (Paket F)
     elites: int = 0  # elites killed (Funkelstein drops)
     chests: int = 0  # chests opened
+    shrines: int = 0  # shrines activated
+    stats: dict = field(default_factory=dict)  # challenge statistics (World.run_stats)
+    boss_ids: list = field(default_factory=list)  # bosses defeated, by id
+    owned: list = field(default_factory=list)  # upgrade and item ids at the end
 
     def to_dict(self) -> dict:
         return asdict(self)

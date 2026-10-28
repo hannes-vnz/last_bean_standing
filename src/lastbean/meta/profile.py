@@ -67,6 +67,19 @@ def normalize(data: Any) -> dict[str, Any]:
     out["sparkles"] = _num(data.get("sparkles"))  # Funkelsteine
     ws = data.get("workshop") if isinstance(data.get("workshop"), dict) else {}
     out["workshop"] = {k: v for k, v in ws.items() if isinstance(k, str) and _num(v) > 0}
+    # Challenges (meta/challenges.py): lifetime sums, completed ids, rewards, chosen skin per bean
+    life = data.get("lifetime")
+    out["lifetime"] = life if isinstance(life, dict) else {}
+    for key in ("challenges_done", "titles", "skins"):
+        items = data.get(key)
+        out[key] = [x for x in items if isinstance(x, str)] if isinstance(items, list) else []
+    unlocked = data.get("unlocked") if isinstance(data.get("unlocked"), dict) else {}
+    out["unlocked"] = {
+        k: [x for x in unlocked.get(k, []) if isinstance(x, str)] if isinstance(unlocked.get(k), list) else []
+        for k in ("upgrades", "characters", "modes")
+    }
+    chosen = data.get("skin") if isinstance(data.get("skin"), dict) else {}
+    out["skin"] = {k: v for k, v in chosen.items() if isinstance(k, str) and isinstance(v, str) and v in out["skins"]}
     out["prologue_seen"] = bool(data.get("prologue_seen", False))
     character = data.get("character")
     out["character"] = character if isinstance(character, str) and character.isidentifier() else "ranger"

@@ -109,6 +109,7 @@ GATE_DELAY_S = 2.0  # the gate opens with an animation and lets you through afte
 
 # Paket F bonuses (texts in upgrades.json / items.json; the rest are assumptions)
 LOW_HP_SHARE = 0.35  # (text) "unter 35 % HP"
+CHALLENGE_LOW_HP_SHARE = 0.2  # (text) challenge "unlock_up_last_stand": "unter 20 % HP"
 EXECUTE_SHARE = 0.30  # (text) "unter 30 % HP"
 OVERCHARGE_INTERVAL_S = 6.0  # (text) "alle 6 s"
 SHIELD_INTERVAL_S = 12.0  # (text) "alle 12 s"

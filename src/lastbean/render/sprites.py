@@ -53,16 +53,17 @@ class SpriteBank:
         return name in self._base
 
     def get(
-        self, name: str, scale: float = 1.0, flip: bool = False, flash: bool = False, squash: int = 0
+        self, name: str, scale: float = 1.0, flip: bool = False, flash: bool = False, squash: int = 0, tint=None
     ) -> pygame.Surface | None:
         """Sprite `name`, scaled by `scale` (nearest neighbour), mirrored, or as a white silhouette.
 
         `squash` animates: -1 wide and flat (landing, hit), 1 narrow and tall (stepping up), 0 as drawn.
+        `tint` (r, g, b) recolours a skin: the colours are pulled towards it, outlines stay dark.
         """
         base = self._base.get(name)
         if base is None:
             return None
-        key = (name, round(scale, 2), flip, flash, squash)
+        key = (name, round(scale, 2), flip, flash, squash, tint)
         surf = self._cache.get(key)
         if surf is None:
             surf = base
@@ -75,6 +76,13 @@ class SpriteBank:
                 surf = pygame.transform.scale(base, (w, h))
             if flip:
                 surf = pygame.transform.flip(surf, True, False)
+            if tint is not None and not flash:
+                tinted = surf.copy()
+                tinted.fill((*tint, 255), special_flags=pygame.BLEND_RGBA_MULT)
+                tinted.fill((40, 40, 40, 0), special_flags=pygame.BLEND_RGBA_ADD)
+                tinted.set_alpha(150)
+                surf = surf.copy()
+                surf.blit(tinted, (0, 0))
             if flash:
                 surf = surf.copy()
                 surf.fill((255, 255, 255, 0), special_flags=pygame.BLEND_RGBA_MAX)
