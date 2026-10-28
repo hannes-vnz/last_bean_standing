@@ -38,15 +38,17 @@ def test_effects_react_to_events_without_touching_the_world(content, make_config
     fx = Effects(*effect_palette(r))
     with_fx = World(4, make_config())
     without = World(4, make_config())
+    seen = False
     for _ in range(90 * 60):
         events = with_fx.step([heuristic_input(with_fx)])
         without.step([heuristic_input(without)])
         fx.handle(events, r.boss_names, {p.player_id: (p.x, p.y) for p in with_fx.players})
         fx.update()
+        seen = seen or bool(fx.particles or fx.texts or fx.rings)
         if with_fx.tick % 600 == 0:
             r.draw(with_fx.snapshot(), effects=fx)
     assert with_fx.state_hash() == without.state_hash()  # effects never change the run
-    assert fx.particles or fx.texts or fx.rings
+    assert seen  # (the run may already be over at the end)
     assert len(fx.particles) <= 2000
 
 
