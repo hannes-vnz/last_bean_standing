@@ -1,5 +1,5 @@
 {
- "start_s": 1200,
+ "start_s": 300,
  "entity": "floodwisp",
  "name": "Flutgeist",
  "hp": 6,
@@ -15,5 +15,5 @@
  "score_mult_gain_per_45s": 1,
  "score_mult_cap": 8,
  "hp_damage_scaling": "wie normale Gegner (hp_mult, damage_mult), setzt sich unbegrenzt fort",
- "text": "Ab 20:00 beginnt die Schwarmflut: fliegende Flutgeister in Schüben, die nie aufhört und immer schneller wird. Sie ist der Endlos-Modus für den Highscore."
+ "text": "Seit Paket F ersetzt die Plagenflut am Ende jedes Beets (stages.json, flood) die Schwarmflut; diese Werte sind für spätere Flutgeister vorgemerkt."
 }

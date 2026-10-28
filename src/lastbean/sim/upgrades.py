@@ -39,8 +39,36 @@ SUPPORTED_STATS = frozenset(
         "heal_per_kill",
         "i_frames_pct",
         "explode_on_kill_pct",
+        # Paket F (procs, conditions, status effects)
+        "max_hp_pct",
+        "heal_orb_chance_pct",
+        "area_pct",
+        "thorns_pct",
+        "projectile_size_pct",
+        "projectile_speed_pct",
+        "dodge_chance_pct",
+        "flat_damage_reduction",
+        "rerolls",
+        "banishes",
+        "ignite_chance_pct",
+        "chill_slow_pct",
+        "poison_pct_per_s",
+        "shock_chance_pct",
+        "bounce_add",
+        "execute_damage_pct",
+        "lifesteal_pct",
+        "shield_flat",
+        "low_hp_damage_pct",
+        "overcharge_pct",
+        "explosive_hit_pct",
+        "aura_dps",
+        "elemental_damage_pct",
+        "revives",
+        "kill_haste_max_pct",
+        "shrapnel_chance_pct",
     }
 )
+INSTANT_STATS = frozenset({"rerolls", "banishes"})  # granted once when the card is taken
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,9 +91,11 @@ class UpgradeDef:
         return bool(self.effects) and all(stat in SUPPORTED_STATS for stat, _ in self.effects)
 
 
-def modifier_sums(levels: dict[str, int], defs: dict[str, UpgradeDef], items: dict[str, int] | None = None,
+def modifier_sums(levels: dict[str, float], defs: dict[str, UpgradeDef], items: dict[str, int] | None = None,
                   item_defs: dict | None = None) -> dict[str, float]:  # fmt: skip
-    """Stat sums from upgrade levels plus item stacks (an item counts once per copy)."""
+    """Stat sums from upgrade power plus item stacks (an item counts once per copy).
+
+    `levels` is the summed card power per upgrade: 1 per common card, more for rarer cards (card_tier_mult)."""
     sums: dict[str, float] = {}
     for uid, level in levels.items():
         for stat, per_level in defs[uid].effects:
@@ -90,7 +120,7 @@ def derive_stats(base: CharacterStats, mods: dict[str, float]) -> Stats:
             mods[stat] = mods.get(stat, 0.0) + value
     pct = lambda key: 1.0 + mods.get(key, 0.0) / 100.0  # noqa: E731
     return Stats(
-        max_hp=base.hp + mods.get("max_hp_flat", 0.0),
+        max_hp=max(1.0, (base.hp + mods.get("max_hp_flat", 0.0)) * pct("max_hp_pct")),
         speed=base.speed * pct("move_speed_pct"),
         damage=base.damage * pct("damage_pct"),
         attack_rate=base.attack_rate * pct("attack_speed_pct"),
@@ -114,7 +144,41 @@ def derive_stats(base: CharacterStats, mods: dict[str, float]) -> Stats:
         heal_per_kill=mods.get("heal_per_kill", 0.0),
         i_frames_mult=pct("i_frames_pct"),
         explode_on_kill_pct=min(100.0, mods.get("explode_on_kill_pct", 0.0)),
+        heal_orb_chance_pct=mods.get("heal_orb_chance_pct", 0.0),
+        area_mult=max(0.2, pct("area_pct")),
+        thorns_pct=mods.get("thorns_pct", 0.0),
+        projectile_size_mult=max(0.2, pct("projectile_size_pct")),
+        projectile_speed_mult=max(0.2, pct("projectile_speed_pct")),
+        dodge_chance_pct=min(60.0, mods.get("dodge_chance_pct", 0.0)),
+        armor=mods.get("flat_damage_reduction", 0.0),
+        ignite_chance_pct=min(100.0, mods.get("ignite_chance_pct", 0.0)),
+        chill_slow_pct=min(60.0, mods.get("chill_slow_pct", 0.0)),
+        poison_pct_per_s=mods.get("poison_pct_per_s", 0.0),
+        shock_chance_pct=min(100.0, mods.get("shock_chance_pct", 0.0)),
+        bounces=int(mods.get("bounce_add", 0.0)),
+        execute_damage_pct=mods.get("execute_damage_pct", 0.0),
+        lifesteal_pct=mods.get("lifesteal_pct", 0.0),
+        shield=mods.get("shield_flat", 0.0),
+        low_hp_damage_pct=mods.get("low_hp_damage_pct", 0.0),
+        overcharge_pct=mods.get("overcharge_pct", 0.0),
+        explosive_hit_pct=mods.get("explosive_hit_pct", 0.0),
+        aura_dps=mods.get("aura_dps", 0.0),
+        elemental_mult=pct("elemental_damage_pct"),
+        revives=int(mods.get("revives", 0.0)),
+        kill_haste_max_pct=mods.get("kill_haste_max_pct", 0.0),
+        shrapnel_chance_pct=min(100.0, mods.get("shrapnel_chance_pct", 0.0)),
     )
+
+
+def roll_tier(rng: Rng, rarity_weights: dict[str, float], luck: float = 0.0, luck_shift: float = 0.0) -> str:
+    """Rarity of one level-up card (Paket F). Luck moves weight to rarer tiers like in `roll_offer`."""
+    weights = [rarity_weights[r] * (1.0 + luck * luck_shift * i) for i, r in enumerate(RARITIES)]
+    r = rng.random() * sum(weights)
+    for tier, w in zip(RARITIES, weights, strict=True):
+        if r < w:
+            return tier
+        r -= w
+    return RARITIES[-1]
 
 
 def roll_offer(

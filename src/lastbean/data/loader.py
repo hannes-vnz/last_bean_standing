@@ -23,6 +23,7 @@ from .schema import (
     Character,
     Condition,
     Content,
+    ExtraWeapon,
     Item,
     Mob,
     Mode,
@@ -30,6 +31,7 @@ from .schema import (
     Shop,
     Shrine,
     Skin,
+    Stage,
     Style,
     Upgrade,
     Weapon,
@@ -49,7 +51,7 @@ def _find_data_dir() -> Path:
 DATA_DIR = _find_data_dir()
 DATA_FILES = (
     "balance", "biomes", "bosses", "challenges", "characters", "elite", "mobs",
-    "modes", "shop", "shrines", "skins", "style", "swarm", "upgrades", "items",
+    "modes", "shop", "shrines", "skins", "style", "swarm", "upgrades", "items", "weapons", "stages",
 )  # fmt: skip
 REWARD_TYPES = ("unlock_character", "unlock_upgrade", "unlock_skin", "unlock_mode", "title")
 CONDITION_TYPES = ("run_stat", "profile_stat", "run_flag")
@@ -472,6 +474,55 @@ def _items_and_economy(raw, e) -> tuple[tuple[Item, ...], dict[str, Any]]:
     return tuple(out), dict(eco.obj)
 
 
+WEAPON_KINDS = ("fan", "nova", "aura", "orbit", "lobbed")
+
+
+def _weapons(raw, e) -> tuple[tuple[ExtraWeapon, ...], int, int]:
+    r = _Reader(raw, "weapons", e)
+    slots, max_level = r.int("slots", 1), r.int("max_level", 1)
+    out = []
+    for w in _items(r.list("weapons"), "weapons.weapons", e):
+        tables = {}
+        for key in ("base", "per_level"):
+            table = w.dict(key)
+            if not all(isinstance(k, str) and _is_num(v) for k, v in table.items()):
+                e.append(f"{w.ctx}.{key}: numbers expected")
+            tables[key] = {str(k): float(v) for k, v in table.items() if _is_num(v)}
+        if set(tables["per_level"]) - set(tables["base"]):
+            e.append(f"{w.ctx}.per_level: keys without a base value")
+        if tables["base"].get("cooldown_s", 0.0) <= 0 or "damage" not in tables["base"]:
+            e.append(f"{w.ctx}.base: 'damage' and a positive 'cooldown_s' expected")
+        out.append(
+            ExtraWeapon(
+                w.str("id"), w.str("name"), w.str("kind", choices=WEAPON_KINDS), w.str("rarity", choices=RARITIES),
+                w.str("text"), w.str("level_text"), tables["base"], tables["per_level"], w.phase(),
+            )
+        )  # fmt: skip
+    return tuple(out), slots or 1, max_level or 1
+
+
+def _stages(raw, e) -> tuple[tuple[Stage, ...], dict, dict, dict[str, str]]:
+    r = _Reader(raw, "stages", e)
+    out = []
+    for st in _items(r.list("stages"), "stages.stages", e):
+        out.append(
+            Stage(
+                st.str("id"), st.int("index", 1), st.str("name"), st.str("biome"), st.int("duration_s", 1),
+                st.str("boss"), st.num("hp_mult", 0.01), st.num("damage_mult", 0.01), st.num("budget_mult", 0.01),
+                st.str("tagline"),
+            )
+        )  # fmt: skip
+    flood = r.sub("flood")
+    for key in ("warning_s", "budget_growth_per_10s", "hp_growth_per_10s", "damage_growth_per_10s"):
+        flood.num(key, 0)
+    gate = r.sub("gate")
+    gate.num("radius_px", 1)
+    labels = r.dict("stat_labels")
+    if not all(isinstance(v, str) and "{v}" in v for v in labels.values()):
+        e.append("stages.stat_labels: texts with '{v}' expected")
+    return tuple(out), dict(flood.obj), dict(gate.obj), {str(k): str(v) for k, v in labels.items()}
+
+
 def _shop(raw, e) -> Shop:
     r = _Reader(raw, "shop", e)
     cur = r.sub("currency")
@@ -525,6 +576,14 @@ def _cross_check(c: Content, e: list[str]) -> None:
     _unique("shrines", c.shrines, e)
     _unique("shop.workshop", c.shop.workshop, e)
     _unique("items", c.items, e)
+    _unique("weapons", c.weapons, e)
+    for st in c.stages:
+        if st.boss not in bosses:
+            e.append(f"stage {st.id}: unknown boss '{st.boss}'")
+        if st.biome not in biomes:
+            e.append(f"stage {st.id}: unknown biome '{st.biome}'")
+    if sorted(st.index for st in c.stages) != list(range(1, len(c.stages) + 1)):
+        e.append("stages: index must run 1, 2, 3, ...")
     chal = {x.id: x for x in c.challenges}
 
     def unlocked_by(owner: str, cid: str | None, rtype: str, target: str) -> None:
@@ -547,8 +606,6 @@ def _cross_check(c: Content, e: list[str]) -> None:
     for u in c.upgrades:
         if u.unlocked_at_start == (u.unlock_challenge is not None):
             e.append(f"upgrade {u.id}: unlocked_at_start and unlock_challenge disagree")
-        if u.rarity in ("epic", "legendary") and u.unlocked_at_start:
-            e.append(f"upgrade {u.id}: epic/legendary upgrades must start locked")
         unlocked_by(f"upgrade {u.id}", u.unlock_challenge, "unlock_upgrade", u.id)
 
     for s in c.skins:
@@ -636,6 +693,8 @@ def parse_content(raw: dict[str, Any]) -> Content:
     e: list[str] = []
     shrines_raw = raw.get("shrines", {})
     items, economy = _items_and_economy(raw.get("items"), e)
+    weapons, weapon_slots, weapon_max_level = _weapons(raw.get("weapons"), e)
+    stages, flood, gate, stat_labels = _stages(raw.get("stages"), e)
     content = Content(
         balance=_balance(raw.get("balance"), e),
         characters=tuple(_character(r) for r in _items(raw.get("characters"), "characters", e)),
@@ -656,6 +715,13 @@ def parse_content(raw: dict[str, Any]) -> Content:
         swarm=raw.get("swarm") if isinstance(raw.get("swarm"), dict) else {},
         items=items,
         economy=economy,
+        weapons=weapons,
+        weapon_slots=weapon_slots,
+        weapon_max_level=weapon_max_level,
+        stages=stages,
+        flood=flood,
+        gate=gate,
+        stat_labels=stat_labels,
     )
     if not e:
         _cross_check(content, e)

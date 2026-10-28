@@ -74,6 +74,12 @@ class MobStats:
     group_size: int = 1
     keep_distance: float = 0.0
     shot_interval: float = 0.0
+    telegraph_s: float = 0.0  # charger: aim time before the dash
+    charge_s: float = 0.0
+    charge_speed: float = 0.0
+    recovery_s: float = 0.0
+    explosion_radius: float = 0.0  # exploder
+    projectile_speed: float = 0.0  # ranged_direct
 
     @classmethod
     def from_content(cls, content, mob_id: str) -> MobStats:
@@ -93,6 +99,12 @@ class MobStats:
             int(m.extra.get("group_size", 1)),
             float(m.extra.get("keep_distance_px", 0.0)),
             float(m.extra.get("shot_interval_s", 0.0)),
+            float(m.extra.get("telegraph_s", 0.0)),
+            float(m.extra.get("charge_s", 0.0)),
+            float(m.extra.get("charge_speed", 0.0)),
+            float(m.extra.get("recovery_s", 0.0)),
+            float(m.extra.get("explosion_radius", 0.0)),
+            float(m.extra.get("projectile_speed", 0.0)),
         )
 
 
@@ -105,8 +117,9 @@ class BossStats:
     damage: float
     radius: float
     biome: str | None
-    spawn_time_s: float
+    spawn_time_s: float  # seconds after the start of its garden bed
     phase_thresholds: tuple[int, ...]  # at_hp_pct of each phase, descending
+    summon_mob: str = ""
 
     @classmethod
     def from_content(cls, content, boss_id: str) -> BossStats:
@@ -121,6 +134,7 @@ class BossStats:
             b.biome,
             float(b.spawn_time_s or 0),
             tuple(sorted((p["at_hp_pct"] for p in b.phases), reverse=True)),
+            str(b.extra.get("summon_mob", "")),
         )
 
 
@@ -185,6 +199,30 @@ class Stats:
     heal_per_kill: float = 0.0
     i_frames_mult: float = 1.0
     explode_on_kill_pct: float = 0.0
+    # Paket F
+    heal_orb_chance_pct: float = 0.0
+    area_mult: float = 1.0
+    thorns_pct: float = 0.0
+    projectile_size_mult: float = 1.0
+    projectile_speed_mult: float = 1.0
+    dodge_chance_pct: float = 0.0
+    armor: float = 0.0
+    ignite_chance_pct: float = 0.0
+    chill_slow_pct: float = 0.0
+    poison_pct_per_s: float = 0.0
+    shock_chance_pct: float = 0.0
+    bounces: int = 0
+    execute_damage_pct: float = 0.0
+    lifesteal_pct: float = 0.0
+    shield: float = 0.0
+    low_hp_damage_pct: float = 0.0
+    overcharge_pct: float = 0.0
+    explosive_hit_pct: float = 0.0
+    aura_dps: float = 0.0
+    elemental_mult: float = 1.0
+    revives: int = 0
+    kill_haste_max_pct: float = 0.0
+    shrapnel_chance_pct: float = 0.0
 
 
 @dataclass(slots=True)
@@ -216,6 +254,16 @@ class Player:
     rerolls: int = 0
     banishes: int = 0
     banished: set[str] = field(default_factory=set)
+    weapons: list = field(default_factory=list)  # WeaponState of each extra weapon, in pick order
+    upgrade_power: dict[str, float] = field(default_factory=dict)  # summed card_tier_mult of every pick
+    offer_tiers: tuple[str, ...] = ()  # rarity rolled for each offered card
+    haste_pct: float = 0.0  # "Blutrausch": attack speed from recent kills
+    haste_t: float = 0.0
+    overcharge_t: float = 0.0
+    shield: float = 0.0
+    shield_t: float = 0.0
+    revives_used: int = 0
+    aura_t: float = 0.0
 
     @property
     def max_hp(self) -> float:
@@ -247,6 +295,18 @@ class Enemy:
     phase: int = 0
     timers: list[float] = field(default_factory=list)  # boss pattern timers
     volley: int = 0
+    charge_state: int = 0  # dashers: 0 walk, 1 aim (warning line), 2 dash, 3 dazed
+    charge_t: float = 0.0
+    cdx: float = 0.0  # dash direction
+    cdy: float = 0.0
+    # Status effects from player hits (Paket F)
+    poison_dps: float = 0.0
+    poison_t: float = 0.0
+    burn_dps: float = 0.0
+    burn_t: float = 0.0
+    chill_pct: float = 0.0
+    chill_t: float = 0.0
+    dot_owner: int = 0
 
 
 @dataclass(slots=True)
@@ -261,6 +321,10 @@ class Projectile:
     ticks_left: int
     hits_left: int
     hit_ids: set[int] = field(default_factory=set)
+    weapon: str = ""  # extra weapon id, "" for the character's own
+    radius: float = PROJECTILE_RADIUS
+    bounces_left: int = 0
+    procs: bool = True  # False for shrapnel: no chain reactions
 
 
 @dataclass(frozen=True, slots=True)

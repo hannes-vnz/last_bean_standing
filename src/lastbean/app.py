@@ -22,13 +22,14 @@ from .data import load_content
 from .meta.profile import ProfileStore, default_store, new_profile, record_run, set_nickname, valid_nickname
 from .online.leaderboard import REFRESH_S, Leaderboard
 from .render.effects import Effects
+from .render.interp import interpolate
 from .render.renderer import CANVAS_H, CANVAS_W, Renderer, effect_palette
 from .sim import DT, PlayerInput, World, WorldConfig
 from .ui import screens
 from .ui.layout import is_compact, logical_size, zoom_step
 from .ui.touch import TouchState
 
-MAX_STEPS_PER_FRAME = 5  # avoid the spiral of death after a stall
+MAX_STEPS_PER_FRAME = 3  # avoid the spiral of death after a stall (slow devices slow down instead)
 WEB = sys.platform == "emscripten"
 STRESS_ENEMIES = 200
 
@@ -280,9 +281,15 @@ class Screen:
         return True
 
     def css_size(self) -> tuple[int, int]:
+        """Size of the canvas element on the page. innerWidth/innerHeight can be wrong right after an
+        iPhone home-screen app starts in portrait (until the first rotation), the element is not."""
         import platform
 
-        return int(platform.window.innerWidth), int(platform.window.innerHeight)
+        canvas = platform.document.getElementById("canvas")
+        w, h = (int(canvas.clientWidth), int(canvas.clientHeight)) if canvas else (0, 0)
+        if w < 50 or h < 50:
+            w, h = int(platform.window.innerWidth), int(platform.window.innerHeight)
+        return w, h
 
     def fit(self, force: bool = False) -> None:
         """Pick the canvas size for the current screen. On the web the page size is polled (rotation)."""
@@ -292,7 +299,9 @@ class Screen:
                 return
             self._css = css
             w, h = logical_size(*css, compact=is_compact(*css), short=self.zoom)
-            self.window = pygame.display.set_mode((w * 2, h * 2))
+            # Drawing buffer = canvas size; CSS scales it up with `image-rendering: pixelated`
+            # (no per-frame software upscale, and 4x fewer pixels to hand to the browser).
+            self.window = pygame.display.set_mode((w, h))
             use_whole_page()
         else:
             if self.window is None:
@@ -313,10 +322,24 @@ class Screen:
 
     def to_canvas(self, event) -> tuple[int, int]:
         """Canvas position of a mouse or finger event (fingers come normalised to 0..1)."""
+        ww, wh = self.window.get_size()
         if event.type in (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION):
-            ww, wh = self.window.get_size()
-            return self.renderer.window_to_canvas(event.x * ww, event.y * wh)
-        return self.renderer.window_to_canvas(*event.pos)
+            nx, ny = event.x, event.y
+        else:
+            nx, ny = event.pos[0] / ww, event.pos[1] / wh
+        if WEB:
+            nx, ny = contain_point(nx, ny, self.css_size(), (ww, wh))
+        return self.renderer.window_to_canvas(nx * ww, ny * wh)
+
+
+def contain_point(nx: float, ny: float, element: tuple[int, int], buffer: tuple[int, int]) -> tuple[float, float]:
+    """Undo CSS `object-fit: contain`: SDL reports positions relative to the whole canvas element,
+    but the picture is letterboxed inside it whenever the element and the drawing buffer differ in shape."""
+    (cw, ch), (bw, bh) = element, buffer
+    if cw <= 0 or ch <= 0 or bw <= 0 or bh <= 0:
+        return nx, ny
+    s = min(cw / bw, ch / bh)
+    return (nx * cw - (cw - bw * s) / 2) / (bw * s), (ny * ch - (ch - bh * s) / 2) / (bh * s)
 
 
 async def run(
@@ -334,6 +357,8 @@ async def run(
     screen = Screen(renderer, game.profile["settings"]["zoom"])
     effects = Effects(*effect_palette(renderer))
     effects.item_info = {i.id: (i.name, i.text) for i in content.items}
+    effects.item_rarity = {i.id: i.rarity for i in content.items}
+    effects.taglines = {st.index: st.tagline for st in content.stages}
     audio = Audio()
     touch = TouchState()
 
@@ -355,14 +380,15 @@ async def run(
     was_paused = False
     touch_debug = "" if screen.debug_requested() else None
     last = time.perf_counter()
+    prev_positions = None
     next_fit = 0.0
 
     def new_run() -> None:
-        nonlocal acc
+        nonlocal acc, prev_positions
         game.new_run()
         effects.reset()
         touch.reset()
-        acc = 0.0
+        acc, prev_positions = 0.0, None
 
     def do(action: str | None) -> None:
         """Button actions, shared by touch, mouse and keyboard."""
@@ -441,6 +467,12 @@ async def run(
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                elif (
+                    game.state == "play"
+                    and effects.reel is not None
+                    and event.type in (pygame.FINGERDOWN, pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN)
+                ):
+                    effects.skip_reel()  # chest draw: a tap or key skips the spin, a second one closes it
                 elif event.type == pygame.WINDOWFOCUSLOST and game.state == "play" and not game.world.paused:
                     game.state = "pause"  # switching tabs or apps must not cost the run
                     touch.reset()
@@ -537,7 +569,8 @@ async def run(
                         picked = card_choice(event.key, renderer)
                         if picked is not None:
                             pick_card(picked)
-            acc += min(clock.tick(60 if WEB else 120) / 1000.0, DT * MAX_STEPS_PER_FRAME)
+            # Web: the browser paces frames (requestAnimationFrame), an extra 60 fps cap would drop frames.
+            acc += min((clock.tick() if WEB else clock.tick(120)) / 1000.0, DT * MAX_STEPS_PER_FRAME)
             t0 = time.perf_counter()
             world = game.world
             frame_events: list = []
@@ -553,12 +586,16 @@ async def run(
                         renderer.selected = 0
                     elif game.config is not game.normal:
                         frame_events += world.step([PlayerInput(0, choice=0)])  # stress test picks automatically
+                elif effects.reel is not None:  # chest draw on screen: the run waits until it is done
+                    acc = 0.0
                 elif effects.hitstop > 0:  # hit-stop: the picture holds for a few frames, the run just waits
                     effects.hitstop -= 1
                     acc = 0.0
                 else:
                     inputs = [combine_input(read_input(0), touch.direction(), touch_ability)]
                     while acc >= DT and not world.paused and not world.over:
+                        if acc < 2 * DT:  # last step of this frame: remember where everything was
+                            prev_positions = world.positions()
                         frame_events += world.step(inputs)
                         acc -= DT
                         inputs = [dataclasses.replace(inputs[0], ability=False)]  # one press, one use
@@ -579,7 +616,10 @@ async def run(
             buttons = []
             if game.state in ("play", "results", "pause"):
                 debug = f"{timer.text(world)}  {bench_result}" if show_timings else None
-                renderer.draw(world.snapshot(), debug=debug, effects=effects)
+                snap = world.snapshot()
+                if game.state == "play" and not world.paused and effects.hitstop <= 0:
+                    snap = interpolate(snap, prev_positions, acc / DT)  # smooth motion between ticks
+                renderer.draw(snap, debug=debug, effects=effects)
                 if game.state == "play" and touch.stick is not None:
                     renderer.draw_stick(touch.stick)
                 if game.state == "pause":

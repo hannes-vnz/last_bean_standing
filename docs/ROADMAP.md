@@ -47,9 +47,28 @@ Sprites, Effekte, Sound, Profil und Highscore, Browser-Version, Bestenlisten-Cli
 - [x] **Neu würfeln und Verbannen** bei der Kartenwahl (je 2 pro Lauf).
 
 ## Paket C2: Mehrere Waffen (entschieden 28.10.2026: in 1.0)
-- [ ] Waffen-Plätze (Vorschlag 4); neue Waffen erscheinen als Karten beim Level-up neben den Upgrades.
-- [ ] Waffenstufen (Waffe erneut wählen = stärker).
-- [ ] Für 1.0 etwa 6 bis 8 Waffen, Entwurf von mir, Freigabe durch dich. Die Startwaffe bleibt die des Charakters.
+- [x] 4 Waffen-Plätze (inkl. Startwaffe); neue Waffen erscheinen als Karten beim Level-up neben den Upgrades.
+- [x] Waffenstufen (Waffe erneut wählen = stärker, höchstens Stufe 5).
+- [x] 6 Waffen (Entwurf, Werte in `docs/CONTENT.md`): Dornenzweig, Pusteblume, Pollenwolke, Bienenschwarm, Sonnenpuls, Kürbisbombe.
+
+## Paket T: Technik (Rückmeldung Hannes 28.10.2026)
+- [x] Ruckeln beim Laufen: Zeichnen zwischen den Simulationsschritten (Interpolation), Browser bestimmt die Bildrate.
+- [x] Lag nach einigen Minuten: Gedränge-Berechnung je Gitterzelle (350 Gegner: 3,2 auf 2,1 ms je Schritt), weit entfernte Gegner springen zurück in deine Nähe statt sich zu stapeln, Browser skaliert das Bild.
+- [x] Hochkant im Vollbild nichts antippbar: Tippen rechnet jetzt mit der echten Größe der Spielfläche.
+- [x] Monster und Held 25 % schneller.
+- [ ] Auf echten Geräten prüfen (Bildrate mit F3).
+
+## Paket F: Drei Beete, Gartenplagen, mehr Dopamin (Rückmeldung Hannes 28.10.2026)
+- [x] Drei Beete à 5:00 (Saatbeet, Gemüsebeet, Komposthaufen) mit eigenen Karten, Bodenkacheln und Hindernissen; Lauf höchstens etwa 15 Minuten.
+- [x] Boss je Beet bei 3:30: Schleimrun (Schneckenkönigin), Knollgrimm (Käferkönig), der Schnitter. Gartentor ins nächste Beet, Sieg nach dem Schnitter.
+- [x] Plagenflut nach Ablauf eines Beets: endlos, alle 10 s +40 % Gegner, +15 % HP, +8 % Schaden.
+- [x] 10 neue Gegner: Gartenplagen und verpestetes Gemüse (Nacktschnecke, Blattlaus, Gartenschnecke, Schimmelpilz, Kartoffelkäfer, Giftmöhre mit Sturmangriff, Spritzgurke, Pestizid-Tomate, Wühlmaus, Sprühpilz).
+- [x] Schnellere Level (XP 2 + 1,2n + 0,12n²).
+- [x] Kartenseltenheit: jede Level-up-Karte würfelt eine Seltenheit, die den Wert vervielfacht (x1 / x1,3 / x1,7 / x2,2 / x3); seltene Karten leuchten, legendäre glänzen; Karten fallen nacheinander ins Bild.
+- [x] Glücksrad bei Kisten: Item-Symbole drehen sich und landen auf dem Fund (antippen überspringt).
+- [x] Komplexere Boni: Brand, Gift, Kälte, Kettenblitz, Sprengtreffer, Rückprall, Henker, Lebensraub, Schild, Ausweichen, Rüstung, Letztes Gefecht, Überladung, Blutrausch, Splitter, Wiederbeleben, Aura; 46 von 50 Upgrades im Pool, 16 neue Items mit Auslösern.
+- [x] Icons für jede Waffe, jedes Upgrade und Item, gestapelt unter dem HUD mit Stufe.
+- [ ] Balance mit echten Läufen (Bot: Median-Tod 4:01, meist im ersten Beet).
 
 ## Paket D: Grafik-Durchgang
 - [ ] Boden-Kacheln je Biom mit Details (Gras, Blumen, Steine), Übergänge zwischen Biomen.

@@ -22,7 +22,6 @@ from lastbean.sim import (
 )
 from lastbean.sim import tuning as T
 from lastbean.sim.enemies import apply_affixes, damage_enemy
-from lastbean.sim.waves import biome_at
 
 
 def quiet_world(make_config, **overrides) -> World:
@@ -51,19 +50,19 @@ def run(w: World, seconds: float, inputs=None) -> list:
 # ---------------------------------------------------------------------------- behaviours
 
 
-def test_bats_spawn_in_groups_and_pay_per_member(make_config):
+def test_aphids_spawn_in_groups_and_pay_per_member(make_config):
     w = World(3, make_config(character={"attack_rate": 0.001, "hp": 10**6}, bosses=()))
-    w.tick = 70 * TICK_HZ  # bats need 60 s
+    w.tick = w.stage_tick = 30 * TICK_HZ  # aphids need 20 s
     spawned = [e for e in run(w, 60) if isinstance(e, EnemySpawned)]
-    bats = [e for e in spawned if e.kind == "batswarm"]
-    assert bats and len(bats) % 4 == 0
-    groups = [bats[i : i + 4] for i in range(0, len(bats), 4)]
+    bats = [e for e in spawned if e.kind == "aphid"]
+    assert bats and len(bats) % 5 == 0
+    groups = [bats[i : i + 5] for i in range(0, len(bats), 5)]
     assert all(len({b.tick for b in g}) == 1 for g in groups)  # a group appears in the same tick
 
 
-def test_bats_flutter_but_reach_the_player(make_config):
+def test_aphids_flutter_but_reach_the_player(make_config):
     w = quiet_world(make_config)
-    bat = place(w, "batswarm", 300)
+    bat = place(w, "aphid", 300)
     xs = []
     for _ in range(4 * TICK_HZ):
         w.step()
@@ -73,9 +72,9 @@ def test_bats_flutter_but_reach_the_player(make_config):
     assert (bat.x - p.x) ** 2 + (bat.y - p.y) ** 2 < 50**2
 
 
-def test_sporeshooter_keeps_distance_and_poisons(make_config):
+def test_mold_keeps_distance_and_poisons(make_config):
     w = quiet_world(make_config)
-    s = place(w, "sporeshooter", 120)
+    s = place(w, "mold", 120)
     events = run(w, 3)
     p = w.players[0]
     d = ((s.x - p.x) ** 2 + (s.y - p.y) ** 2) ** 0.5
@@ -96,10 +95,41 @@ def test_poison_puddle_damage_matches_text(make_config):
     assert hp - w.players[0].hp == pytest.approx(4.0 * T.POISON_DURATION_S, abs=0.2)
 
 
-def test_rootguard_is_slow_and_tough(make_config):
+def test_snail_is_slow_and_tough(make_config):
     cfg = make_config()
     m = {m.id: m for m in cfg.mobs}
-    assert m["rootguard"].hp > 4 * m["slimeling"].hp and m["rootguard"].speed < m["slimeling"].speed
+    assert m["snail"].hp > 4 * m["slug"].hp and m["snail"].speed < m["slug"].speed
+
+
+def test_carrot_aims_then_dashes(make_config):
+    w = quiet_world(make_config)
+    c = place(w, "toxic_carrot", 250)
+    run(w, 0.2)
+    assert c.charge_state == 1 and w.snapshot().enemies[0].aim is not None  # warning line first
+    x = c.x
+    run(w, 1.0)
+    assert c.charge_state == 2 and x - c.x > 100  # then it rushes in a straight line
+    run(w, 1.0)
+    assert c.charge_state in (0, 3)
+
+
+def test_pest_tomato_bursts_after_a_warning(make_config):
+    w = quiet_world(make_config)
+    place(w, "pest_tomato", 40)
+    hp = w.players[0].hp
+    run(w, 0.3)
+    assert not w.enemies and w.hazards and w.hazards[0].delay > 0 and w.players[0].hp == hp  # gone, warning only
+    events = run(w, 0.5)
+    assert any(isinstance(e, HazardActivated) and e.kind == "explosion" for e in events)
+    assert w.players[0].hp < hp
+
+
+def test_cucumber_shoots_straight(make_config):
+    w = quiet_world(make_config)
+    place(w, "spray_cucumber", 280)
+    events = run(w, 3)
+    assert any(isinstance(e, EnemyShotFired) and not e.lobbed for e in events)
+    assert w.players[0].hp < w.players[0].max_hp
 
 
 # ---------------------------------------------------------------------------- elites
@@ -119,16 +149,16 @@ def test_elite_every_five_waves_with_scaled_stats(make_config):
 
 def test_affixes(make_config):
     w = quiet_world(make_config)
-    armored = place(w, "slimeling", 300, hp=100.0, max_hp=100.0, affixes=("armored",), elite=True)
+    armored = place(w, "slug", 300, hp=100.0, max_hp=100.0, affixes=("armored",), elite=True)
     assert damage_enemy(armored, 10.0) == pytest.approx(7.0)
-    shielded = place(w, "slimeling", 300, hp=100.0, max_hp=100.0, affixes=("shielded",), elite=True)
+    shielded = place(w, "slug", 300, hp=100.0, max_hp=100.0, affixes=("shielded",), elite=True)
     apply_affixes(shielded)
     assert damage_enemy(shielded, 30.0) == 0.0 and shielded.shield == 20.0
-    swift = place(w, "slimeling", 300, affixes=("swift",), elite=True)
+    swift = place(w, "slug", 300, affixes=("swift",), elite=True)
     speed = swift.speed
     apply_affixes(swift)
     assert swift.speed == pytest.approx(speed * 1.4)
-    regen = place(w, "slimeling", -300, hp=50.0, max_hp=100.0, affixes=("regenerating",), elite=True)
+    regen = place(w, "slug", -300, hp=50.0, max_hp=100.0, affixes=("regenerating",), elite=True)
     run(w, 1)
     assert regen.hp == pytest.approx(53.0, abs=0.1)
     assert shielded.shield == 20.0  # recharges only after 8 s without hits
@@ -138,7 +168,7 @@ def test_affixes(make_config):
 
 def test_volatile_elite_explodes_after_warning(make_config):
     w = quiet_world(make_config)
-    e = place(w, "slimeling", 40, elite=True, affixes=("volatile",), hp=1.0, max_hp=1.0, speed=0.0)
+    e = place(w, "slug", 40, elite=True, affixes=("volatile",), hp=1.0, max_hp=1.0, speed=0.0)
     w._kill(e, 0, [])
     w.enemies.remove(e)
     hp = w.players[0].hp
@@ -151,7 +181,7 @@ def test_volatile_elite_explodes_after_warning(make_config):
 
 def test_vampiric_heals_on_contact(make_config):
     w = quiet_world(make_config)
-    e = place(w, "slimeling", 0, elite=True, affixes=("vampiric",), hp=5.0, max_hp=20.0, damage=6.0)
+    e = place(w, "slug", 0, elite=True, affixes=("vampiric",), hp=5.0, max_hp=20.0, damage=6.0)
     run(w, 0.1)
     assert e.hp == pytest.approx(11.0)
 
@@ -171,23 +201,25 @@ def test_elite_chest_gives_a_rare_item(make_config):
 # ---------------------------------------------------------------------------- boss
 
 
-def boss_world(make_config) -> tuple[World, Enemy]:
+def boss_world(make_config, stage: int = 0) -> tuple[World, Enemy]:
     w = World(1, make_config(enemy_target=0, character={"attack_rate": 0.001, "hp": 10**6}))
-    w.tick = 300 * TICK_HZ
+    if stage:
+        w.stage = stage
+        w._setup_stage()
+    w.tick = w.stage_tick = 210 * TICK_HZ
     w.step()
     boss = next(e for e in w.enemies if e.boss)
     return w, boss
 
 
-def test_ildra_spawns_at_five_minutes_in_the_forest(make_config):
+def test_snail_queen_arrives_at_three_thirty(make_config):
     w, boss = boss_world(make_config)
-    assert boss.boss == "ildra" and boss.max_hp == 2500
-    assert biome_at(w.config.biomes, boss.x, boss.y) == "forest"
+    assert boss.boss == "snail_queen" and boss.max_hp == 2400
     p = w.players[0]
     assert (boss.x - p.x) ** 2 + (boss.y - p.y) ** 2 >= T.BOSS_MIN_SPAWN_DISTANCE**2
 
 
-def test_ildra_thorn_ring_every_four_seconds(make_config):
+def test_snail_queen_ring_every_four_seconds(make_config):
     w, boss = boss_world(make_config)
     boss.speed = 0.0
     events = run(w, 8.1)
@@ -196,13 +228,13 @@ def test_ildra_thorn_ring_every_four_seconds(make_config):
     assert sum(1 for s in w.enemy_shots if not s.lobbed) <= 16
 
 
-def test_ildra_phases(make_config):
+def test_snail_queen_phases(make_config):
     w, boss = boss_world(make_config)
     boss.speed = 0.0
     boss.hp = boss.max_hp * 0.59
     events = run(w, 0.1)
     assert any(isinstance(e, BossPhase) and e.phase == 1 for e in events)
-    assert sum(1 for e in w.enemies if e.kind == "rootguard") == 3
+    assert sum(1 for e in w.enemies if e.kind == "snail") == 3
     run(w, 1.5)
     assert any(h.spec.kind == "grip" for h in w.hazards)
     boss.hp = boss.max_hp * 0.29
@@ -223,23 +255,48 @@ def test_root_grip_slows(make_config):
     assert p.x - x == pytest.approx(w.config.character.speed * 0.6 * 0.5, rel=0.05)
 
 
-def test_boss_kill_drops_chest(make_config):
+def test_boss_kill_drops_chest_and_opens_the_gate(make_config):
     w, boss = boss_world(make_config)
     events = []
     boss.hp = 0
     w._kill(boss, 0, events)
     assert any(isinstance(e, BossKilled) for e in events)
     assert [e.min_rarity for e in events if isinstance(e, ChestDropped)] == ["boss"]  # free, at least epic
+    assert w.gate is not None and not w.victory
+
+
+def test_beetle_king_fans_and_dashes(make_config):
+    w, boss = boss_world(make_config, stage=1)
+    assert boss.boss == "beetle_king"
+    events = run(w, 7)
+    assert sum(isinstance(e, EnemyShotFired) and e.enemy_id == boss.eid for e in events) >= 2
+    assert boss.charge_state or any(isinstance(e, EnemyShotFired) for e in events)
+    boss.hp = boss.max_hp * 0.59
+    run(w, 0.1)
+    assert sum(1 for e in w.enemies if e.kind == "potato_beetle") >= 4
+
+
+def test_reaper_rains_and_wins_the_run(make_config):
+    w, boss = boss_world(make_config, stage=2)
+    assert boss.boss == "reaper"
+    boss.hp = boss.max_hp * 0.6
+    run(w, 4.2)
+    assert any(h.spec.kind == "explosion" for h in w.hazards)  # soul rain with warning circles
+    boss.hp = 0
+    w._kill(boss, 0, [])
+    assert w.victory and w.gate is None
+    events = w.step()
+    assert w.over and w.result().victory and any(getattr(e, "victory", False) for e in events)
 
 
 def test_thorns_are_blocked_by_trees(make_config):
-    import dataclasses
+    from conftest import with_obstacles
 
     from lastbean.sim.arena import OBSTACLE_RADIUS, Obstacle
 
     cfg = make_config(enemy_target=0, bosses=())
     tree = Obstacle("tree", cfg.arena_w / 2 + 60, cfg.arena_h / 2, OBSTACLE_RADIUS, True, True)
-    w = World(1, dataclasses.replace(cfg, obstacles=(tree,)))
+    w = World(1, with_obstacles(cfg, (tree,)))
     p = w.players[0]
     w.enemy_shots.append(EnemyShot(p.x + 150, p.y, -T.THORN_SPEED, 0.0, 10.0, 200, 0))
     run(w, 2)
@@ -252,7 +309,7 @@ def test_thorns_are_blocked_by_trees(make_config):
 def test_new_mob_only_via_json(content):
     """Acceptance M4: a new mob is just a data entry."""
     raw = read_raw()
-    clone = copy.deepcopy(next(m for m in raw["mobs"] if m["id"] == "slimeling"))
+    clone = copy.deepcopy(next(m for m in raw["mobs"] if m["id"] == "slug"))
     clone.update(id="mossling", name="Moosling", hp=20, min_time_s=0)
     raw["mobs"].append(clone)
     cfg = WorldConfig.from_content(parse_content(raw))

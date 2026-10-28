@@ -25,6 +25,13 @@ Jeder Lauf ist eine **Saison**: Die Bohne hält so lange stand, wie sie kann, un
 | Schreine | Alte Gartensteine; wer sie weckt, lockt mehr Plagen an, wächst aber schneller | Gier-Schrein |
 | Schwarmflut (ab 20:00) | Die Ernte beginnt: der Himmel voller Flutgeister | Endlos-Modus |
 
+## Seit Paket F (28.10.2026): drei Beete
+Der Lauf führt durch **drei Beete**: das **Saatbeet** (Keimlinge in Reihen; Nacktschnecken, Blattläuse, Gartenschnecken,
+Schimmelpilze; Bossin **Schleimrun, die Schneckenkönigin**), das **Gemüsebeet** (verpestetes Gemüse: Kartoffelkäfer,
+Giftmöhren, Spritzgurken; Boss **Knollgrimm, der Käferkönig**) und den **Komposthaufen** (Pestizide: Pestizid-Tomaten,
+Wühlmäuse, Sprühpilze; **Der Schnitter** selbst). Ein besiegter Boss öffnet das **Gartentor** zum nächsten Beet.
+Wer zu lange bleibt, erlebt die **Plagenflut**. Rettet die Bohne alle drei Beete, ist die Saat gerettet (Sieg).
+
 ## Töne und Regeln
 - Freundlich und ein bisschen augenzwinkernd, nie düster außer beim Schnitter (er ist das einzige dunkle Element).
 - Keine Namen oder Texte aus anderen Spielen. Pflanzen und Gartenbegriffe sind frei, eigene Namen bleiben eigen.

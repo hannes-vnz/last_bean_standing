@@ -84,7 +84,7 @@ def _definitions(rng: random.Random) -> dict:
 
 
 # Minimum frames between two plays of the same sound, so crowds do not turn into noise.
-COOLDOWN = {"shoot": 3, "hit": 3, "kill": 3, "blocked": 4}
+COOLDOWN = {"shoot": 3, "hit": 3, "kill": 3, "blocked": 4, "explosion": 6}
 
 
 class Audio:
@@ -131,7 +131,7 @@ class Audio:
                 self.play("blocked")
             elif isinstance(e, ev.BossSpawned):
                 self.play("boss")
-            elif isinstance(e, ev.HazardActivated) and e.kind == "explosion":
+            elif isinstance(e, ev.WeaponPulse) or (isinstance(e, ev.HazardActivated) and e.kind == "explosion"):
                 self.play("explosion")
             elif isinstance(e, ev.ProjectileBlocked):
                 self.play("blocked")

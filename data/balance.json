@@ -2,7 +2,7 @@
  "tick_hz": 60,
  "wave_interval_s": 30,
  "max_wave": 40,
- "swarm_time_s": 1200,
+ "swarm_time_s": 300,
  "max_alive_enemies": 350,
  "budget": {
   "base": 40,
@@ -22,24 +22,19 @@
   "cap": 1.2
  },
  "xp_to_next": {
-  "base": 3,
-  "linear": 1.5,
-  "quadratic": 0.15
+  "base": 2,
+  "linear": 1.2,
+  "quadratic": 0.12
  },
  "elite_every_n_waves": 5,
- "boss_waves": {
-  "10": "ildra",
-  "15": "skarra",
-  "20": "kalthorn",
-  "30": "ignarok"
- },
+ "boss_waves": {},
  "spawn_distance_px": [
   520,
   700
  ],
  "arena_tiles": [
-  200,
-  200
+  120,
+  120
  ],
  "tile_px": 32,
  "player_base": {
@@ -65,6 +60,13 @@
  "luck_shift_per_point": 0.4,
  "level_up_choices": 3,
  "elite_chest_min_rarity": "rare",
+ "card_tier_mult": {
+  "common": 1.0,
+  "uncommon": 1.3,
+  "rare": 1.7,
+  "epic": 2.2,
+  "legendary": 3.0
+ },
  "target_median_death_minutes": {
   "beginner": [
    3,

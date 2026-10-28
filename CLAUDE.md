@@ -1,10 +1,10 @@
 # Last Bean Standing
 
-Stop-and-Shoot-Roguelite: zeitbasierte, endlos härter werdende Wellen in einer endlichen Arena, Schwierigkeit und Bosse nach Megabonk-Vorbild ohne Portale (Schreine, Endboss per Altar, ab 20:00 endlose Schwarmflut). Python plus pygame, Simulation und Darstellung getrennt.
+Roguelite mit Auto-Feuer nach Megabonk-Vorbild (eigene Optik: Bohnen verteidigen die letzte Saat gegen Gartenplagen): drei Beete à 5:00 (Saatbeet, Gemüsebeet, Komposthaufen), Boss je Beet bei 3:30, Gartentor ins nächste Beet, nach Ablauf der Zeit endlose Plagenflut, Sieg mit dem Schnitter. Python plus pygame, Simulation und Darstellung getrennt.
 
 ## Quellen der Wahrheit
 - `docs/DESIGN.md`: Konzept, Architektur, Meilensteine M0 bis M8.
-- `data/*.json`: fester Spielinhalt (10 Charaktere, 50 Upgrades, 10 Mobs, 5 Bosse, 5 Zonen, 55 Challenges, 20 Skins). `docs/CONTENT.md` ist nur die lesbare Fassung.
+- `data/*.json`: fester Spielinhalt (10 Charaktere, 50 Upgrades, 46 Items, 6 Waffen, 10 Gartenplagen, 3 Bosse, 3 Beete in `stages.json`, 53 Challenges, 20 Skins). `docs/CONTENT.md` ist nur die lesbare Fassung.
 - `tools/build_content.py` erzeugt beides und prüft Querverweise. Inhalt ändern: dort, dann `python tools/build_content.py`.
 
 ## Regeln
@@ -30,11 +30,12 @@ Stop-and-Shoot-Roguelite: zeitbasierte, endlos härter werdende Wellen in einer 
 - Benchmark Simulation: `python tools/bench.py` (Schritte pro Sekunde, Ergebnis messen und notieren)
 - Web: `python tools/build_web.py [--serve]` (pygbag; `web/main.py` muss pygame direkt importieren); Push auf `main` deployt GitHub Pages
 
-## Struktur (Stand M6b)
-- `sim/world.py`: `World(seed, WorldConfig.from_content(...))`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; `PlayerInput(player_id, move_x, move_y, choice)`; Level-up pausiert nur im Einzelspiel
+## Struktur (Stand Paket F)
+- `sim/world.py`: `World(seed, WorldConfig.from_content(...))`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; `PlayerInput(player_id, move_x, move_y, choice)`; Level-up pausiert nur im Einzelspiel; Beete als `StageConfig` (eigene Hindernisse, Boss, Faktoren), `stage`/`stage_tick`, Gartentor, Plagenflut; Boni mit Auslösern (`_weapon_hit`, `_on_hit_effects`, `_tick_statuses`), Kartenseltenheit (`offer_tiers`, `upgrade_power`)
+- `sim/weapons.py`: Zusatzwaffen (Fächer, Nova, Aura, Orbit, Wurf), deterministisches `cos_sin`
 - `sim/waves.py` (Budget, Skalierung, XP-Kurve, Biome), `sim/upgrades.py` (Stat-Summen, Kartenwahl), `sim/arena.py` (Hindernisse, Deckung), `sim/enemies.py` (Verhalten je `behavior`, Elite-Affixe, Boss-Muster), `sim/entities.py`, `sim/spatial.py`; neue Verhalten in `BEHAVIORS`/`BOSS_BEHAVIORS`, Hindernisarten in `OBSTACLE_KINDS`
 - `sim/tuning.py`: Zahlen, die noch nicht in `data/` stehen (Annahmen, mit Hannes klären und dann ins JSON)
 - `online/leaderboard.py`: Senden mit Warteschlange im Profil, Rangliste; `online/http.py`: async HTTP ohne Threads (Desktop: asyncio, Browser: fetch); Server-URL `DEFAULT_URL` oder `LBS_LEADERBOARD_URL`
 - `bots.py`: Heuristik-Spieler; `tools/balance.py` misst Todeszeiten über viele Seeds
 - `data/loader.py`: `load_content()` liefert typisierte `Content` (`data/schema.py`), sammelt alle Fehler in `ContentError`
-- `meta/profile.py`: Profil (Spitzname, Token, Highscores, Export-Code), Speicher Datei/localStorage; `sim/score.py`: Punkte (synchron mit `server/app.py`); `ui/screens.py`: Bildschirme mit Knöpfen (Touch/Maus), `ui/layout.py` Bildgröße je Gerät, `ui/touch.py` Joystick; `render/effects.py` (Partikel, Blitz, Zahlen, Wackeln, Hit-Stop aus Ereignissen), `render/sprites.py` (`assets/sprites/sprites.json`, erzeugt von `tools/sprites/mobs.py`), `audio.py` (synthetische Töne); `render/renderer.py`: 640x360-Fläche, ganzzahlig skaliert, Karte einmal vorgerendert (`set_arena`), Level-up-Karten
+- `meta/profile.py`: Profil (Spitzname, Token, Highscores, Export-Code), Speicher Datei/localStorage; `sim/score.py`: Punkte (synchron mit `server/app.py`); `ui/screens.py`: Bildschirme mit Knöpfen (Touch/Maus), `ui/layout.py` Bildgröße je Gerät, `ui/touch.py` Joystick; `render/effects.py` (Partikel, Blitz, Zahlen, Wackeln, Hit-Stop aus Ereignissen), `render/sprites.py` (`assets/sprites/sprites.json`, erzeugt von `tools/sprites/mobs.py`), `render/icons.py` (Pixel-Icons je Bonus, HUD-Stapel), Bodenkacheln `assets/tiles/*.png` (`tools/sprites/tiles.py`), `render/interp.py` (Zeichnen zwischen Ticks), `audio.py` (synthetische Töne); `render/renderer.py`: Fläche je nach Gerät, ganzzahlig skaliert, Karte in Kacheln je Beet (`set_stage`), Level-up-Karten mit Animation, Kisten-Glücksrad

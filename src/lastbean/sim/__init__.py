@@ -32,6 +32,9 @@ from .events import (
     EnemyShotFired,
     EnemySpawned,
     Event,
+    FloodStarted,
+    FloodWarning,
+    GateOpened,
     HazardActivated,
     ItemGained,
     LevelUp,
@@ -44,15 +47,18 @@ from .events import (
     RunStarted,
     SeedsCollected,
     ShotFired,
+    StageStarted,
     UpgradeChosen,
     UpgradeOffered,
     WaveStarted,
+    WeaponPulse,
 )
 from .rng import Rng
 from .score import RunResult, ScoreRules, compute_score
 from .upgrades import UpgradeDef
 from .waves import Scaling
-from .world import DT, TICK_HZ, PlayerInput, Snapshot, World, WorldConfig
+from .weapons import WEAPON_PREFIX, WeaponDef, WeaponState
+from .world import DT, TICK_HZ, PlayerInput, Snapshot, StageConfig, World, WorldConfig
 
 __all__ = [
     "ChestLocked",
@@ -113,6 +119,18 @@ __all__ = [
     "ShotFired",
     "Snapshot",
     "WaveStarted",
+    "WEAPON_PREFIX",
+    "WeaponDef",
+    "WeaponPulse",
+    "StageStarted",
+    "FloodStarted",
+    "FloodWarning",
+    "GateOpened",
+    "PlayerDodged",
+    "PlayerRevived",
+    "Zap",
+    "StageConfig",
+    "WeaponState",
     "World",
     "WorldConfig",
 ]

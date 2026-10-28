@@ -13,8 +13,8 @@ def quiet(make_config, **kw) -> World:
 
 def test_new_values_from_data(make_config):
     cfg = make_config()
-    assert cfg.character.speed == 180 and cfg.character.attack_rate == 2.0 and cfg.character.pickup_radius == 220
-    assert dict(next(m for m in cfg.mobs if m.id == "batswarm").biome_weights)["forest"] == 0.5
+    assert cfg.character.speed == 225 and cfg.character.attack_rate == 2.0 and cfg.character.pickup_radius == 220
+    assert dict(next(m for m in cfg.mobs if m.id == "slug").biome_weights)["seedbed"] == 1
 
 
 def test_magnet_pulls_every_orb_on_the_map(make_config):

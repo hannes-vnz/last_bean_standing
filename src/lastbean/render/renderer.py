@@ -6,16 +6,19 @@ dark outlines, own projectiles warm yellow, XP orbs mint, white text with dark o
 
 from __future__ import annotations
 
+import math
 from collections import OrderedDict
 
 import pygame
 
 from ..data.schema import Content
 from ..sim.tuning import BOSS_RADIUS
-from ..sim.waves import biome_at
+from ..sim.weapons import WEAPON_PREFIX
 from ..sim.world import Snapshot, WorldConfig
 from .effects import Effects
-from .sprites import SpriteBank
+from .icons import SIZE as ICON_SIZE
+from .icons import IconBank
+from .sprites import ASSETS_DIR, SpriteBank
 
 CANVAS_W, CANVAS_H = 640, 360
 # World units per canvas pixel (DESIGN.md section 16: 1 tile = 32 units = 16 px).
@@ -59,20 +62,18 @@ class Renderer:
         self.palettes = {b.id: b.palette for b in content.biomes}
         self.ink = hex_rgb(style.ink)
         self.player_body = hex_rgb(style.player["body"])
-        forest = self.palettes["forest"]
-        # Placeholder colours until sprites exist (M6): style.json where it has one, biome palettes otherwise.
+        # Colours for particles, the boss bar and the fallback shapes when a sprite is missing.
         self.enemy_colors = {
-            "slimeling": hex_rgb(style.enemy["slime"]),
-            "batswarm": hex_rgb(style.enemy["bat"]),
-            "rootguard": hex_rgb(forest.get("trunk") or "#8a6a4a"),
-            "sporeshooter": (212, 138, 224),
-            "ildra": (200, 80, 106),
-        }
+            "slug": (217, 179, 106), "aphid": (155, 226, 127), "snail": (201, 141, 106), "mold": (183, 166, 224),
+            "potato_beetle": (255, 212, 94), "toxic_carrot": (255, 154, 74), "spray_cucumber": (111, 191, 90),
+            "pest_tomato": (255, 107, 107), "vole": (165, 138, 122), "spray_shroom": (200, 240, 106),
+            "snail_queen": (208, 122, 160), "beetle_king": (232, 130, 58), "reaper": (90, 70, 120),
+        }  # fmt: skip
         self.enemy_default = hex_rgb(style.enemy["slime"])
         self.enemy_shot = hex_rgb(style.enemy_projectile["core"])
         self.telegraph = hex_rgb(style.telegraph)
         self.poison = (196, 120, 220)  # violet like enemy projectiles, stands out on green ground
-        self.grip = hex_rgb(forest.get("trunk") or "#8a6a4a")
+        self.grip = (230, 210, 240)  # slime trail: pale and glossy
         self.boss_names = {b.id: b.name for b in content.bosses}
         self.shot_core = hex_rgb(style.player_projectile["core"])
         self.shot_halo = hex_rgb(style.player_projectile["halo"])
@@ -80,6 +81,14 @@ class Renderer:
         self.crit_color = hex_rgb(style.crit_text)
         self.xp_color = hex_rgb(style.xp_orb)
         self.upgrades = {u.id: u for u in content.upgrades}
+        self.stat_labels = content.stat_labels
+        self.tier_mult = {k: float(v) for k, v in content.balance.raw.get("card_tier_mult", {}).items()}
+        self.weapons = {w.id: w for w in content.weapons}
+        self.items = {i.id: i for i in content.items}
+        self.item_names = {i.id: i.name for i in content.items}
+        self.weapon_max_level = content.weapon_max_level
+        self.pollen = (250, 226, 140)  # warm pastel yellow: own area damage reads as "ours"
+        self.pumpkin = (240, 150, 70)
         self.rarity_colors = {
             "common": (236, 236, 236),
             "uncommon": hex_rgb(style.xp_orb),
@@ -88,6 +97,11 @@ class Renderer:
             "legendary": hex_rgb(style.crit_text),
         }
         self.selected = 0
+        self.icons = IconBank(content, self.ink, self.rarity_colors)
+        self.tiles = _load_tiles({b.id for b in content.biomes})
+        self.frame = 0  # counts drawn frames, for animations that run while the game is paused
+        self._offer_seen: tuple = ()
+        self._offer_frame = 0
         self.sprites = SpriteBank()
         self.character_sprite = "ranger"
         self.base_radius = {m.id: float(m.radius) for m in content.mobs}
@@ -95,10 +109,12 @@ class Renderer:
         self._last_x: dict[int, float] = {}
         self._flipped: dict[int, bool] = {}
         self._number_cache: dict = {}
+        self._arena_obstacles = None
         self.set_arena(WorldConfig.from_content(content))
         # Outside the arena: ink darkened, so the ink border and outlines stay visible.
         self.void = tuple(v * 3 // 5 for v in self.ink)
         self.font = pygame.font.Font(None, 16)
+        self.tiny_font = pygame.font.Font(None, 12)
         self.big_font = pygame.font.Font(None, 32)
         self.mid_font = pygame.font.Font(None, 22)
 
@@ -107,6 +123,9 @@ class Renderer:
     ) -> pygame.Surface:
         c = self.canvas
         c.fill(self.void)
+        self.frame += 1
+        if snap.obstacles is not self._arena_obstacles and snap.biome:
+            self.set_stage(snap.arena_w, snap.arena_h, snap.biome, snap.obstacles)
         focus = next((p for p in snap.players if p.player_id == focus_player), snap.players[0])
         # Camera: top-left corner of the view in canvas pixels, rounded to whole pixels.
         cam_x = round(focus.x / UNITS_PER_PX) - self.w // 2
@@ -141,6 +160,15 @@ class Renderer:
                     c.fill(self.xp_color, (sx, sy - 1, 1, 3))
 
         self._draw_hazards(snap, cam_x, cam_y)
+        self._draw_weapon_ground(snap, cam_x, cam_y)
+        if snap.gate is not None:
+            self._draw_gate(snap, cam_x, cam_y)
+        for e in snap.enemies:  # dash warning lines (coral, like every enemy warning)
+            if e.aim is not None:
+                sx, sy = round(e.x / UNITS_PER_PX) - cam_x, round(e.y / UNITS_PER_PX) - cam_y
+                ex, ey = sx + round(e.aim[0] * 110), sy + round(e.aim[1] * 110)
+                color = self.telegraph if (snap.tick // 6) % 2 else WHITE
+                pygame.draw.line(c, color, (sx, sy), (ex, ey), 3 if e.boss else 2)
         for kind, kx, ky in snap.pickups:
             sx, sy = round(kx / UNITS_PER_PX) - cam_x, round(ky / UNITS_PER_PX) - cam_y
             if kind == "magnet" and -8 <= sx < self.w + 8 and -8 <= sy < self.h + 8:
@@ -167,6 +195,8 @@ class Renderer:
                     pygame.draw.circle(c, color, (sx, sy), r)
                 if e.shield_frac > 0:
                     pygame.draw.circle(c, WHITE, (sx, sy), r + 2, 1)
+                if e.status:  # burning, poisoned or chilled: a small coloured mark above the head
+                    c.fill(STATUS_COLORS[e.status], (sx - 1, sy - r - 5, 3, 3))
 
         for s in snap.enemy_shots:
             sx, sy = round(s.x / UNITS_PER_PX) - cam_x, round(s.y / UNITS_PER_PX) - cam_y
@@ -200,16 +230,23 @@ class Renderer:
             sx, sy = round(pr.x / UNITS_PER_PX) - cam_x, round(pr.y / UNITS_PER_PX) - cam_y
             if 0 <= sx < self.w and 0 <= sy < self.h:
                 pygame.draw.circle(c, ink, (sx, sy), 3 if pr.crit else 2)
-                pygame.draw.circle(c, self.shot_halo, (sx, sy), 2 if pr.crit else 1)
+                halo = WHITE if pr.weapon == "dandelion" else self.shot_halo  # fluffy seeds, still yellow-cored
+                pygame.draw.circle(c, halo, (sx, sy), 2 if pr.crit else 1)
                 c.set_at((sx, sy), self.shot_core)
+        self._draw_weapon_air(snap, cam_x, cam_y)
 
         if effects:
             self._draw_effects(effects, cam_x, cam_y)
         self._draw_boss_arrow(snap, cam_x, cam_y)
+        if snap.gate is not None:
+            self._draw_edge_arrow(snap.gate[0], snap.gate[1], cam_x, cam_y, (126, 217, 87))
         self._draw_hud(snap, focus)
         self._draw_minimap(snap, focus)
         if effects and effects.banner:
-            self.text(effects.banner[0], (self.w // 2, 70), self.big_font, center=True)
+            y = max(70, self.hud_bottom + 34)
+            self.text(effects.banner[0], (self.w // 2, y), self.big_font, center=True)
+            if effects.subtitle and effects.subtitle[0]:
+                self.text(effects.subtitle[0], (self.w // 2, y + 22), center=True)
         if effects and effects.toast:  # item found: name and effect under the HUD
             for i, line in enumerate(_wrap(effects.toast[0], self.font, self.w - 30)):
                 self.text(line, (self.w // 2, self.hud_bottom + 70 + i * 14), center=True)
@@ -219,15 +256,59 @@ class Renderer:
             self.text(debug, (6, self.h - 16))
         if focus.offer and not snap.over:
             self._draw_offer(focus)
+        if effects and effects.reel is not None:
+            self._draw_reel(effects.reel)
         return c
+
+    def _draw_reel(self, reel) -> None:
+        """The chest's lucky draw: dimmed screen, a window with spinning item icons, then the find."""
+        c, ink = self.canvas, self.ink
+        dim = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        dim.fill((*ink, 150))
+        c.blit(dim, (0, 0))
+        cell = 30
+        win = pygame.Rect(0, 0, min(self.w - 20, cell * 7), 46)
+        win.center = (self.w // 2, self.h // 2)
+        color = self.rarity_colors.get(reel.rarity, WHITE) if reel.landed else self.crit_color
+        c.fill(color, win.inflate(8, 8))
+        c.fill(ink, win.inflate(4, 4))
+        c.fill((255, 250, 240), win)
+        clip = c.get_clip()
+        c.set_clip(win)
+        pos = reel.position()
+        first = int(pos) - 4
+        for k in range(first, first + 10):
+            if 0 <= k < len(reel.strip):
+                x = win.centerx + round((k - pos) * cell) - ICON_SIZE
+                icon = pygame.transform.scale(self.icons.get("item:" + reel.strip[k]), (ICON_SIZE * 2, ICON_SIZE * 2))
+                c.blit(icon, (x, win.centery - ICON_SIZE))
+        c.set_clip(clip)
+        pygame.draw.rect(c, self.telegraph, (win.centerx - 15, win.y - 2, 30, win.h + 4), 2)  # the pointer frame
+        self.text("Saatkiste!", (self.w // 2, win.y - 22), self.big_font, center=True)
+        if reel.landed:
+            name = self.item_names.get(reel.item_id, reel.item_id)
+            label = RARITY_NAMES.get(reel.rarity, reel.rarity)
+            self.text(f"{name} ({label})", (self.w // 2, win.bottom + 16), self.mid_font, center=True)
+            if reel.frame % 10 < 5 and RARITY_ORDER.index(reel.rarity) >= 2:
+                pygame.draw.rect(c, WHITE, win.inflate(14, 14), 2)
+        else:
+            self.text("Antippen zum Überspringen" if self.touch else "Taste zum Überspringen",
+                      (self.w // 2, win.bottom + 16), center=True)  # fmt: skip
 
     def _draw_hud(self, snap: Snapshot, focus) -> None:
         c, ink = self.canvas, self.ink
         c.fill(ink, (0, 0, self.w, 5))
         c.fill(self.xp_color, (0, 1, round(self.w * min(1.0, focus.xp / focus.xp_needed)), 3))
-        m, s = divmod(int(snap.time_s), 60)
-        parts = [f"{m}:{s:02d}", f"Welle {snap.wave}", f"Level {focus.level}", f"Kills {focus.kills}",
-                 f"HP {int(focus.hp)}/{int(focus.max_hp)}", f"Samen {focus.seeds}"]  # fmt: skip
+        left = snap.stage_duration_s - snap.stage_time_s
+        if snap.flood:  # counting up: how long the Plagenflut has lasted
+            m, s = divmod(int(-left), 60)
+            clock = f"FLUT +{m}:{s:02d}"
+        else:
+            m, s = divmod(int(left + 0.999), 60)
+            clock = f"{m}:{s:02d}"
+        parts = [f"Beet {snap.stage}", clock, f"Level {focus.level}", f"Kills {focus.kills}",
+                 f"HP {int(focus.hp)}/{int(focus.max_hp)}" + (f" +{int(focus.shield)}" if focus.shield >= 1 else ""),
+                 f"Samen {focus.seeds}"]  # fmt: skip
         if snap.difficulty != 1.0:
             parts.append(f"Schwierigkeit {round(snap.difficulty * 100)} %")
         line, y = "", 9
@@ -240,6 +321,7 @@ class Renderer:
                 line = trial
         self.text(line, (6, y))
         self.hud_bottom = y + 14
+        self._draw_build(focus)
         # Pause button (touch has no Esc key) and ability button, both big enough for a thumb on touch.
         size = 22 if self.touch else 0
         self.pause_rect = pygame.Rect(self.w - size - 6, 8, size, size)
@@ -264,6 +346,52 @@ class Renderer:
         if not self.touch:
             self.text("Leer", (box.centerx, box.y - 9), center=True)
 
+    def _draw_build(self, focus) -> None:
+        """Icon stack under the HUD: weapons, then upgrades, then items, each with its level or count."""
+        entries = [("weapon:start", 1)] + [("weapon:" + wid, lvl) for wid, lvl in focus.weapons]
+        entries += [(uid, lvl) for uid, lvl in focus.upgrades]
+        entries += [("item:" + iid, n) for iid, n in focus.items]
+        step = ICON_SIZE + 2
+        cols = max(4, (self.w - self.minimap_size() - 20) // step)
+        x0, y0 = 6, self.hud_bottom + 2
+        for i, (key, n) in enumerate(entries):
+            row, col = divmod(i, cols)
+            if row >= 3:  # three rows at most, so the view stays free
+                break
+            x, y = x0 + col * step, y0 + row * step
+            self.canvas.blit(self.icons.get(key), (x, y))
+            if n > 1:
+                img = self._number_cache.get(("lvl", n))
+                if img is None:
+                    img = self._outlined(str(n), self.tiny_font, WHITE)
+                    self._number_cache[("lvl", n)] = img
+                self.canvas.blit(img, (x + ICON_SIZE - img.get_width() + 2, y + ICON_SIZE - img.get_height() + 3))
+        rows = min(3, (len(entries) + cols - 1) // cols)
+        self.hud_bottom = y0 + rows * step
+
+    def _draw_gate(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
+        """Gartentor: wooden arch with a glowing green opening and flowers, bobbing gently."""
+        c, ink = self.canvas, self.ink
+        sx, sy = round(snap.gate[0] / UNITS_PER_PX) - cam_x, round(snap.gate[1] / UNITS_PER_PX) - cam_y
+        if not (-30 <= sx < self.w + 30 and -40 <= sy < self.h + 40):
+            return
+        pulse = (self.frame // 8) % 4
+        glow = pygame.Surface((44, 44), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (126, 217, 87, 70 + pulse * 15), (22, 22), 18 + pulse)
+        c.blit(glow, (sx - 22, sy - 26))
+        wood, light_wood = (160, 112, 72), (196, 146, 98)
+        for dx in (-12, 9):  # posts
+            c.fill(ink, (sx + dx - 1, sy - 22, 5, 26))
+            c.fill(wood, (sx + dx, sy - 21, 3, 24))
+        pygame.draw.arc(c, ink, (sx - 14, sy - 34, 28, 26), 0, 3.15, 5)
+        pygame.draw.arc(c, light_wood, (sx - 13, sy - 33, 26, 24), 0, 3.15, 3)
+        c.fill((160, 240, 140), (sx - 8, sy - 18, 16, 20))
+        c.fill((220, 255, 210), (sx - 4 + pulse % 2, sy - 14, 3, 12))
+        for fx, fy, col in ((-13, -26, (255, 159, 192)), (12, -27, (255, 212, 94)), (0, -36, (255, 255, 255))):
+            c.fill(ink, (sx + fx - 1, sy + fy - 1, 4, 4))
+            c.fill(col, (sx + fx, sy + fy, 2, 2))
+        self.text("Gartentor", (sx, sy + 12), center=True)
+
     def _draw_minimap(self, snap: Snapshot, focus) -> None:
         """Small map in the top right: biomes, you (white), elites (gold), the boss (coral)."""
         size = self.minimap_size()
@@ -281,6 +409,10 @@ class Renderer:
         for chx, chy, kind in snap.chests:
             dot = self.crit_color if kind != "map" else (150, 90, 50)
             c.set_at((box.x + int(chx * sx), box.y + int(chy * sy)), dot)
+        if snap.gate is not None:
+            gx, gy = box.x + int(snap.gate[0] * sx), box.y + int(snap.gate[1] * sy)
+            c.fill(self.ink, (gx - 2, gy - 2, 5, 5))
+            c.fill((126, 217, 87), (gx - 1, gy - 1, 3, 3))
         for e in snap.enemies:
             if e.boss or e.elite:
                 color = self.telegraph if e.boss else self.crit_color
@@ -295,9 +427,11 @@ class Renderer:
     def _draw_boss_arrow(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
         """Coral arrow at the screen edge pointing to a boss that is off screen."""
         boss = next((e for e in snap.enemies if e.boss), None)
-        if boss is None:
-            return
-        bx, by = boss.x / UNITS_PER_PX - cam_x, boss.y / UNITS_PER_PX - cam_y
+        if boss is not None:
+            self._draw_edge_arrow(boss.x, boss.y, cam_x, cam_y, self.telegraph)
+
+    def _draw_edge_arrow(self, wx: float, wy: float, cam_x: int, cam_y: int, color) -> None:
+        bx, by = wx / UNITS_PER_PX - cam_x, wy / UNITS_PER_PX - cam_y
         if 0 <= bx < self.w and 0 <= by < self.h:
             return
         cx, cy = self.w / 2, self.h / 2
@@ -314,7 +448,7 @@ class Renderer:
         left = (ax - uy * 7 - ux * 6, ay + ux * 7 - uy * 6)
         right = (ax + uy * 7 - ux * 6, ay - ux * 7 - uy * 6)
         pygame.draw.polygon(self.canvas, self.ink, [tip, left, right])
-        pygame.draw.polygon(self.canvas, self.telegraph, [tip, left, right], 0)
+        pygame.draw.polygon(self.canvas, color, [tip, left, right], 0)
         pygame.draw.polygon(self.canvas, self.ink, [tip, left, right], 2)
 
     def draw_stick(self, stick) -> None:
@@ -384,6 +518,15 @@ class Renderer:
 
     def _draw_effects(self, fx: Effects, cam_x: int, cam_y: int) -> None:
         c = self.canvas
+        for b in fx.bolts:  # lightning: jagged yellow-white line with a dark edge
+            pts = [(round(x / UNITS_PER_PX) - cam_x, round(y / UNITS_PER_PX) - cam_y) for x, y in b.points]
+            jag = []
+            for (x0, y0), (x1, y1) in zip(pts, pts[1:], strict=False):
+                mx, my = (x0 + x1) // 2 + (3 if b.life % 2 else -3), (y0 + y1) // 2 + (-3 if b.life % 2 else 3)
+                jag += [(x0, y0), (mx, my)]
+            jag.append(pts[-1])
+            pygame.draw.lines(c, self.ink, False, jag, 4)
+            pygame.draw.lines(c, self.shot_core, False, jag, 2)
         for g in fx.rings:
             sx, sy = round(g.x / UNITS_PER_PX) - cam_x, round(g.y / UNITS_PER_PX) - cam_y
             pygame.draw.circle(c, g.color, (sx, sy), max(1, round(g.radius / UNITS_PER_PX)), 2)
@@ -403,6 +546,70 @@ class Renderer:
                         self._number_cache.clear()
                     self._number_cache[(t.text, t.color, t.big)] = img
                 c.blit(img, (sx - img.get_width() // 2, sy - img.get_height() // 2))
+
+    def _draw_weapon_ground(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
+        """Pollen clouds and the landing marks of own bombs (yellow, unlike the coral enemy warnings)."""
+        c = self.canvas
+        if snap.auras:
+            overlay = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+            for _, ax, ay, radius in snap.auras:
+                sx, sy = round(ax / UNITS_PER_PX) - cam_x, round(ay / UNITS_PER_PX) - cam_y
+                r = round(radius / UNITS_PER_PX)
+                pygame.draw.circle(overlay, (*self.pollen, 60), (sx, sy), r)
+                pygame.draw.circle(overlay, (*self.pollen, 150), (sx, sy), r, 1)
+                for k in range(8):  # drifting pollen specks
+                    a = (snap.tick * 0.02 + k * 0.785) % 6.283
+                    px = sx + round(math.cos(a) * r * (0.35 + 0.08 * (k % 4)))
+                    py = sy + round(math.sin(a) * r * (0.35 + 0.08 * (k % 4)))
+                    overlay.fill((*self.pollen, 220), (px, py, 2, 2))
+            c.blit(overlay, (0, 0))
+        blink_on = (snap.tick // 10) % 2 == 0
+        for b in snap.bombs:
+            tx, ty = round(b.tx / UNITS_PER_PX) - cam_x, round(b.ty / UNITS_PER_PX) - cam_y
+            r = max(2, round(b.radius / UNITS_PER_PX))
+            if -r <= tx < self.w + r and -r <= ty < self.h + r:
+                pygame.draw.circle(c, self.pollen if blink_on else WHITE, (tx, ty), max(2, round(r * b.progress)), 1)
+
+    def _draw_weapon_air(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
+        """Bees and pumpkins in flight, drawn above everything on the ground."""
+        c, ink = self.canvas, self.ink
+        wing = (snap.tick // 4) % 2
+        for _, bx, by in snap.orbiters:
+            sx, sy = round(bx / UNITS_PER_PX) - cam_x, round(by / UNITS_PER_PX) - cam_y
+            if 0 <= sx < self.w and 0 <= sy < self.h:
+                c.fill(WHITE, (sx - 2, sy - 3 - wing, 2, 2))  # wings flap
+                c.fill(WHITE, (sx + 1, sy - 4 + wing, 2, 2))
+                c.fill(ink, (sx - 3, sy - 2, 7, 5))
+                c.fill(self.shot_core, (sx - 2, sy - 1, 5, 3))
+                c.fill(ink, (sx, sy - 1, 1, 3))  # stripe
+        for b in snap.bombs:
+            sx, sy = round(b.x / UNITS_PER_PX) - cam_x, round(b.y / UNITS_PER_PX) - cam_y
+            sy -= round(4 * 18 * b.progress * (1.0 - b.progress))  # arc, 18 px high
+            if 0 <= sx < self.w and 0 <= sy < self.h:
+                pygame.draw.circle(c, ink, (sx, sy), 4)
+                pygame.draw.circle(c, self.pumpkin, (sx, sy), 3)
+                c.fill((110, 170, 90), (sx, sy - 4, 1, 2))  # stalk
+
+    def _card_text(self, uid: str, u, level: int, tier: str, weapon: bool) -> str:
+        """Card text with the values of this card's rarity (Paket F: rarer cards are worth more)."""
+        mult = self.tier_mult.get(tier, 1.0)
+        if weapon:
+            base = u.text if level == 0 else u.level_text
+            return base if mult == 1.0 else f"{base} +{round((mult - 1) * 100)} % Waffenschaden."
+        parts = []
+        for e in u.effects:
+            stat, per = e.get("stat"), e.get("per_level")
+            if stat in self.stat_labels and per is not None:
+                parts.append(self.stat_labels[stat].replace("{v}", _signed(per * mult, stat)))
+        return ", ".join(parts) + "." if parts else u.text
+
+    def _card(self, uid: str):
+        """(name, rarity, definition, max level) of an offered card: upgrade or weapon."""
+        if uid.startswith(WEAPON_PREFIX):
+            w = self.weapons[uid[len(WEAPON_PREFIX) :]]
+            return w.name, w.rarity, w, self.weapon_max_level
+        u = self.upgrades[uid]
+        return u.name, u.rarity, u, u.max_level
 
     def _outlined(self, text: str, font, color) -> pygame.Surface:
         inner = font.render(text, True, color)
@@ -459,6 +666,9 @@ class Renderer:
         c.blit(dim, (0, 0))
         title = "Truhe! Wähle ein Upgrade" if focus.offer_source == "chest" else f"Level {focus.level}!"
         n = len(focus.offer)
+        if focus.offer != self._offer_seen:  # new cards: start the reveal animation
+            self._offer_seen, self._offer_frame = focus.offer, self.frame
+        age = self.frame - self._offer_frame
         self.selected = min(self.selected, n - 1)
         wide = self.w > self.h  # landscape: cards side by side; portrait: stacked
         if wide:
@@ -473,28 +683,47 @@ class Renderer:
             rects = [pygame.Rect((self.w - w) // 2, top + i * (h + gap), w, h) for i in range(n)]
         self.text(title, (self.w // 2, top - 30), self.big_font, center=True)
         self.card_rects = rects
-        for i, (uid, level) in enumerate(focus.offer):
-            u = self.upgrades[uid]
+        for i, (uid, level, tier) in enumerate(focus.offer):
+            name, _, u, max_level = self._card(uid)
+            rarity = tier
+            weapon = uid.startswith(WEAPON_PREFIX)
+            text = self._card_text(uid, u, level, tier, weapon)
+            t = (age - i * 5) / 12.0  # cards drop in one after another
+            if t <= 0:
+                continue
             card = rects[i].move(0, -4 if i == self.selected and not self.touch else 0)
+            if t < 1.0:
+                ease = 1.0 - (1.0 - t) ** 3
+                card = card.move(0, round((1.0 - ease) * -40))
+            rank = RARITY_ORDER.index(tier) if tier in RARITY_ORDER else 0
+            if rank >= 2:  # rare and better shine: a pulsing halo in the rarity colour
+                glow = 6 + (2 if (self.frame // 6) % 2 else 0) + 2 * (rank - 2)
+                c.fill(self.rarity_colors[tier], card.inflate(glow, glow))
             if i == self.selected and not self.touch:
                 c.fill(self.crit_color, card.inflate(8, 8))
             c.fill(ink, card)
             c.fill((255, 250, 240), card.inflate(-4, -4))
-            c.fill(self.rarity_colors.get(u.rarity, WHITE), (card.x + 2, card.y + 2, card.w - 4, 16))
+            if rank == 4:  # legendary: a sweep of light runs over the card
+                sweep = (self.frame * 4) % (card.w + 40) - 20
+                band = pygame.Surface((10, card.h - 4), pygame.SRCALPHA)
+                band.fill((255, 240, 160, 90))
+                c.blit(band, (card.x + sweep, card.y + 2))
+            c.fill(self.rarity_colors.get(rarity, WHITE), (card.x + 2, card.y + 2, card.w - 4, 16))
             c.fill(ink, (card.x + 2, card.y + 18, card.w - 4, 1))
-            label = RARITY_NAMES.get(u.rarity, u.rarity)
+            label = RARITY_NAMES.get(rarity, rarity) + (" · Waffe" if weapon else "")
             self.dark_text(label if self.touch else f"{i + 1}   {label}", (card.x + 8, card.y + 5))
-            stage = f"Stufe {level} -> {level + 1} / {u.max_level}"
+            c.blit(self.icons.get(uid if not weapon else uid, tier), (card.right - ICON_SIZE - 5, card.y + 3))
+            stage = "Neue Waffe" if weapon and level == 0 else f"Stufe {level} -> {level + 1} / {max_level}"
             if wide:
-                self.dark_text(u.name, (card.centerx, card.y + 28), center=True)
+                self.dark_text(name, (card.centerx, card.y + 28), center=True)
                 self.dark_text(stage, (card.centerx, card.y + 44), center=True)
-                for j, line in enumerate(_wrap(u.text, self.font, card.w - 20)):
+                for j, line in enumerate(_wrap(text, self.font, card.w - 20)):
                     self.dark_text(line, (card.x + 10, card.y + 64 + j * 13))
             else:
-                self.dark_text(u.name, (card.x + 10, card.y + 26))
+                self.dark_text(name, (card.x + 10, card.y + 26))
                 img = self.font.render(stage, True, ink)
                 c.blit(img, (card.right - 10 - img.get_width(), card.y + 26))
-                for j, line in enumerate(_wrap(u.text, self.font, card.w - 20)[:3]):
+                for j, line in enumerate(_wrap(text, self.font, card.w - 20)[:3]):
                     self.dark_text(line, (card.x + 10, card.y + 44 + j * 13))
         if self.banish_mode:
             for rect in rects:
@@ -526,20 +755,26 @@ class Renderer:
             x -= img.get_width() // 2
         self.canvas.blit(img, (x, y))
 
-    def set_arena(self, config: WorldConfig) -> None:
-        """Prepare the static map. The ground is drawn in chunks on demand (the 200 x 200 tile map would be
-        a 3200 x 3200 pixel image, too much for phones); a small overview image feeds the minimap."""
-        self.arena_px = (int(config.arena_w / UNITS_PER_PX), int(config.arena_h / UNITS_PER_PX))
-        self.arena_biomes = config.biomes
+    def set_arena(self, config: WorldConfig, stage: int = 0) -> None:
+        st = config.stages[stage]
+        self.set_stage(config.arena_w, config.arena_h, st.biome, st.obstacles)
+
+    def set_stage(self, arena_w: float, arena_h: float, biome: str, obstacles: tuple) -> None:
+        """Prepare the static map of a garden bed. The ground is drawn in chunks on demand (a whole map
+        would be a large image, too much for phones); a small overview image feeds the minimap."""
+        self._arena_obstacles = obstacles
+        self.arena_px = (int(arena_w / UNITS_PER_PX), int(arena_h / UNITS_PER_PX))
+        self.biome = biome if biome in self.palettes else next(iter(self.palettes))
         self._chunks: OrderedDict[tuple[int, int], pygame.Surface] = OrderedDict()
         self._chunk_obstacles: dict[tuple[int, int], list] = {}
         reach = 16  # obstacles are drawn a little larger than their radius
-        for o in config.obstacles:
+        for o in obstacles:
             x, y = o.x / UNITS_PER_PX, o.y / UNITS_PER_PX
             for cx in {int((x - reach) // CHUNK_PX), int((x + reach) // CHUNK_PX)}:
                 for cy in {int((y - reach) // CHUNK_PX), int((y + reach) // CHUNK_PX)}:
                     self._chunk_obstacles.setdefault((cx, cy), []).append(o)
-        self._build_overview(config)
+        self._number_cache.pop(("minimap", self.minimap_size()), None)
+        self._build_overview(arena_w, arena_h, obstacles)
 
     def _chunk(self, cx: int, cy: int) -> pygame.Surface:
         key = (cx, cy)
@@ -552,49 +787,65 @@ class Renderer:
         surf.fill(self.void)
         x0, y0 = cx * CHUNK_PX, cy * CHUNK_PX
         aw, ah = self.arena_px
-        for ty in range(y0 // tile, min(ah, y0 + CHUNK_PX) // tile):
-            for tx in range(x0 // tile, min(aw, x0 + CHUNK_PX) // tile):
-                if tx < 0 or ty < 0:
-                    continue
-                wx, wy = (tx + 0.5) * tile * UNITS_PER_PX, (ty + 0.5) * tile * UNITS_PER_PX
-                pal = self.palettes.get(biome_at(self.arena_biomes, wx, wy) or "plaza", self.palettes["plaza"])
-                color = pal["detail"] if (tx + ty) % 2 else pal["ground"]
-                surf.fill(hex_rgb(color), (tx * tile - x0, ty * tile - y0, tile, tile))
+        sheet = self.tiles.get(self.biome)
+        pal = self.palettes[self.biome]
+        for ty in range(max(0, y0 // tile), min(ah, y0 + CHUNK_PX) // tile):
+            for tx in range(max(0, x0 // tile), min(aw, x0 + CHUNK_PX) // tile):
+                dest = (tx * tile - x0, ty * tile - y0)
+                if sheet is not None:
+                    surf.blit(sheet, dest, (_tile_index(self.biome, tx, ty) * tile, 0, tile, tile))
+                else:
+                    surf.fill(hex_rgb(pal["detail"] if (tx + ty) % 2 else pal["ground"]), (*dest, tile, tile))
         for o in self._chunk_obstacles.get(key, ()):
             self._draw_obstacle(surf, o, -x0, -y0)
-        pygame.draw.rect(surf, self.ink, (-x0, -y0, aw, ah), 1)  # arena border where it crosses this chunk
+        pygame.draw.rect(surf, self.ink, (-x0, -y0, aw, ah), 1)  # map border where it crosses this chunk
         self._chunks[key] = surf
         if len(self._chunks) > MAX_CHUNKS:
             self._chunks.popitem(last=False)
         return surf
 
-    def _build_overview(self, config: WorldConfig) -> None:
-        """One pixel per tile: biome colours and darker dots for obstacles."""
-        tiles_w = int(config.arena_w // self.tile_px)
-        tiles_h = int(config.arena_h // self.tile_px)
+    def _build_overview(self, arena_w: float, arena_h: float, obstacles: tuple) -> None:
+        """One pixel per tile: ground colour and darker dots for obstacles."""
+        tiles_w, tiles_h = int(arena_w // self.tile_px), int(arena_h // self.tile_px)
         surf = pygame.Surface((tiles_w, tiles_h))
-        for b in sorted(config.biomes, key=lambda a: -a.w * a.h):  # big areas first, the clearing on top
-            surf.fill(hex_rgb(self.palettes[b.id]["ground"]),
-                      (b.x // self.tile_px, b.y // self.tile_px, b.w // self.tile_px, b.h // self.tile_px))  # fmt: skip
-        dark = hex_rgb(self.palettes["forest"].get("tree") or "#5aa05a")
-        for o in config.obstacles:
+        pal = self.palettes[self.biome]
+        surf.fill(hex_rgb(pal["ground"]))
+        dark = tuple(v * 3 // 5 for v in hex_rgb(pal["ground"]))
+        for o in obstacles:
             surf.set_at((int(o.x // self.tile_px), int(o.y // self.tile_px)), dark)
         self.overview = surf
 
     def _draw_obstacle(self, surf: pygame.Surface, o, ox: int = 0, oy: int = 0) -> None:
         x, y = round(o.x / UNITS_PER_PX) + ox, round(o.y / UNITS_PER_PX) + oy
         r = max(3, round(o.radius / UNITS_PER_PX) + 1)
-        pal = self.palettes.get("forest", {})
-        canopy = hex_rgb(pal.get("tree") or "#5aa05a")
-        trunk = hex_rgb(pal.get("trunk") or "#8a6a4a")
-        ink = self.ink
-        # Trunk below, round canopy with a light spot (light from the top left), dark outline.
-        surf.fill(ink, (x - 2, y + r - 4, 5, 7))
-        surf.fill(trunk, (x - 1, y + r - 3, 3, 5))
-        pygame.draw.circle(surf, ink, (x, y - 1), r + 1)
-        pygame.draw.circle(surf, canopy, (x, y - 1), r)
-        light = tuple(min(255, v + 40) for v in canopy)
-        pygame.draw.circle(surf, light, (x - r // 3, y - 1 - r // 3), max(1, r // 3))
+        ink, pal = self.ink, self.palettes.get(self.biome, {})
+        if o.kind == "cabbage":  # round head with leaf lines
+            green = hex_rgb(pal.get("cabbage") or "#b7e39a")
+            pygame.draw.circle(surf, ink, (x, y), r + 2)
+            pygame.draw.circle(surf, tuple(v * 4 // 5 for v in green), (x, y), r + 1)
+            pygame.draw.circle(surf, green, (x, y - 1), r - 1)
+            pygame.draw.line(surf, tuple(v * 3 // 4 for v in green), (x, y - r + 1), (x, y + r - 2))
+            pygame.draw.line(surf, tuple(v * 3 // 4 for v in green), (x - r + 2, y), (x - 1, y - r + 3))
+            surf.set_at((x - r // 2, y - r // 2), (255, 255, 255))
+        elif o.kind == "heap":  # compost mound, oozing a little poison
+            brown = hex_rgb(pal.get("heap") or "#6f5b49")
+            pygame.draw.ellipse(surf, ink, (x - r - 2, y - r, 2 * r + 4, 2 * r + 2))
+            pygame.draw.ellipse(surf, brown, (x - r - 1, y - r + 1, 2 * r + 2, 2 * r))
+            pygame.draw.ellipse(surf, tuple(min(255, v + 25) for v in brown), (x - r + 2, y - r + 2, r, r // 2 + 1))
+            surf.fill((182, 224, 90), (x + 1, y + 1, 3, 2))
+            surf.fill((160, 120, 80), (x - 3, y - 2, 2, 1))
+        else:  # "stalk" (and the old "tree"): a tall plant with two leaves and a bud
+            stem = hex_rgb(pal.get("stalk") or "#7ccf6a")
+            dark = tuple(v * 3 // 4 for v in stem)
+            surf.fill(ink, (x - 2, y - r - 6, 5, 2 * r + 8))
+            surf.fill(dark, (x - 1, y - r - 5, 3, 2 * r + 6))
+            for side in (-1, 1):
+                pts = [(x, y - 2 + side * 2), (x + side * (r + 3), y - 6 + side), (x + side * (r - 1), y + 1)]
+                pygame.draw.polygon(surf, ink, pts)
+                pygame.draw.polygon(surf, stem, [(px - side, py) for px, py in pts])
+            pygame.draw.circle(surf, ink, (x, y - r - 6), 4)
+            pygame.draw.circle(surf, (255, 212, 94), (x, y - r - 6), 3)
+            surf.set_at((x - 1, y - r - 7), (255, 255, 255))
 
     def _draw_ground(self, c: pygame.Surface, cam_x: int, cam_y: int) -> None:
         for cy in range(cam_y // CHUNK_PX, (cam_y + self.h) // CHUNK_PX + 1):
@@ -654,6 +905,44 @@ def _wrap(text: str, font: pygame.font.Font, width: int) -> list[str]:
     return [*lines, line] if line else lines
 
 
+RARITY_ORDER = ("common", "uncommon", "rare", "epic", "legendary")
+STATUS_COLORS = {"burn": (255, 140, 60), "poison": (182, 224, 90), "chill": (140, 210, 255)}
+WHOLE_STATS = frozenset({"extra_attacks", "pierce_add", "bounce_add", "revives", "rerolls", "banishes",
+                         "flat_damage_reduction"})  # fmt: skip
+
+
+def _signed(v: float, stat: str) -> str:
+    """+12, -6, +0,6 (German decimal comma); whole-number stats are rounded down like the game does."""
+    if stat in WHOLE_STATS:
+        v = float(max(1, int(v)) if v > 0 else int(v))
+    text = f"{v:+.1f}".replace(".", ",")
+    return text[:-2] if text.endswith(",0") else text
+
+
+def _tile_index(biome: str, tx: int, ty: int) -> int:
+    """Which tile of the bed's sheet goes where: rows of seedlings, rows of vegetables, scattered compost bits."""
+    h = ((tx * 73856093) ^ (ty * 19349663)) & 0xFFFF
+    if biome == "seedbed":
+        return 4 + (h % 4) if ty % 4 == 0 else h % 4
+    if biome == "veggiebed":
+        if ty % 6 == 0:  # vegetable rows: soil, now and then a carrot top
+            return 4 if h % 5 else 6
+        return (5, 7)[h % 2] if h % 23 == 0 else h % 4
+    return 4 + (h % 4) if h % 19 == 0 else h % 4
+
+
+def _load_tiles(biomes: set[str]) -> dict[str, pygame.Surface]:
+    """assets/tiles/<biome>.png from tools/sprites/tiles.py; missing sheets fall back to flat colours."""
+    out = {}
+    for b in biomes:
+        path = ASSETS_DIR / "tiles" / f"{b}.png"
+        try:
+            out[b] = pygame.image.load(str(path))
+        except (OSError, pygame.error, FileNotFoundError):
+            continue
+    return out
+
+
 def effect_palette(r: Renderer) -> tuple[dict, dict]:
     """Colours the effects use, taken from the renderer's style colours."""
     colors = {
@@ -663,6 +952,8 @@ def effect_palette(r: Renderer) -> tuple[dict, dict]:
         "shot_halo": r.shot_halo,
         "telegraph": r.telegraph,
         "poison": r.poison,
-        "leaf": hex_rgb(r.palettes["forest"].get("tree") or "#5aa05a"),
+        "pumpkin": r.pumpkin,
+        "leaf": (124, 207, 106),
+        "gate": (126, 217, 87),
     }
     return colors, dict(r.enemy_colors)

@@ -395,6 +395,222 @@
      "value": 10
     }
    ]
+  },
+  {
+   "id": "copper_wire",
+   "name": "Kupferdraht",
+   "rarity": "uncommon",
+   "text": "8 % Chance: Blitz springt auf 2 nahe Gegner.",
+   "effects": [
+    {
+     "stat": "shock_chance_pct",
+     "value": 8
+    }
+   ]
+  },
+  {
+   "id": "burning_glass",
+   "name": "Brennglas",
+   "rarity": "uncommon",
+   "text": "8 % Chance, Gegner zu entzünden.",
+   "effects": [
+    {
+     "stat": "ignite_chance_pct",
+     "value": 8
+    }
+   ]
+  },
+  {
+   "id": "nettle_brew",
+   "name": "Brennnesseljauche",
+   "rarity": "uncommon",
+   "text": "Treffer vergiften (8 % Schaden/s, stapelt).",
+   "effects": [
+    {
+     "stat": "poison_pct_per_s",
+     "value": 8
+    }
+   ]
+  },
+  {
+   "id": "frost_fleece",
+   "name": "Frostvlies",
+   "rarity": "uncommon",
+   "text": "Treffer verlangsamen um 6 %.",
+   "effects": [
+    {
+     "stat": "chill_slow_pct",
+     "value": 6
+    }
+   ]
+  },
+  {
+   "id": "bird_bath",
+   "name": "Vogelbad",
+   "rarity": "uncommon",
+   "text": "+5 % Ausweichen.",
+   "effects": [
+    {
+     "stat": "dodge_chance_pct",
+     "value": 5
+    }
+   ]
+  },
+  {
+   "id": "hedgehog_house",
+   "name": "Igelhaus",
+   "rarity": "uncommon",
+   "text": "Wirft 50 % des Nahkampfschadens zurück, +1 Rüstung.",
+   "effects": [
+    {
+     "stat": "thorns_pct",
+     "value": 50
+    },
+    {
+     "stat": "flat_damage_reduction",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "id": "ladybug",
+   "name": "Marienkäfer",
+   "rarity": "rare",
+   "text": "+2 % Lebensraub, +3 % Krit-Chance.",
+   "effects": [
+    {
+     "stat": "lifesteal_pct",
+     "value": 2
+    },
+    {
+     "stat": "crit_chance_pct",
+     "value": 3
+    }
+   ]
+  },
+  {
+   "id": "bumblebee",
+   "name": "Hummel",
+   "rarity": "rare",
+   "text": "Blutrausch: jeder Kill +2 % Angriffstempo (5 s), bis +15 %.",
+   "effects": [
+    {
+     "stat": "kill_haste_max_pct",
+     "value": 15
+    }
+   ]
+  },
+  {
+   "id": "weathervane",
+   "name": "Wetterhahn",
+   "rarity": "rare",
+   "text": "Geschosse prallen 1-mal ab.",
+   "effects": [
+    {
+     "stat": "bounce_add",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "id": "pitchfork",
+   "name": "Mistgabel",
+   "rarity": "rare",
+   "text": "+40 % Schaden gegen Gegner unter 30 % HP.",
+   "effects": [
+    {
+     "stat": "execute_damage_pct",
+     "value": 40
+    }
+   ]
+  },
+  {
+   "id": "sun_hat",
+   "name": "Sonnenhut",
+   "rarity": "uncommon",
+   "text": "+30 % Schaden bei wenig HP (unter 35 %).",
+   "effects": [
+    {
+     "stat": "low_hp_damage_pct",
+     "value": 30
+    }
+   ]
+  },
+  {
+   "id": "rain_gauge",
+   "name": "Regenmesser",
+   "rarity": "rare",
+   "text": "Alle 12 s ein Schild (30 HP).",
+   "effects": [
+    {
+     "stat": "shield_flat",
+     "value": 30
+    }
+   ]
+  },
+  {
+   "id": "garden_gnome",
+   "name": "Gartenzwerg",
+   "rarity": "epic",
+   "text": "Einmal wiederbeleben (50 % HP).",
+   "effects": [
+    {
+     "stat": "revives",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "id": "bell_jar",
+   "name": "Glasglocke",
+   "rarity": "epic",
+   "text": "+45 % Schaden, -20 % Max-HP. Hohes Risiko.",
+   "effects": [
+    {
+     "stat": "damage_pct",
+     "value": 45
+    },
+    {
+     "stat": "max_hp_pct",
+     "value": -20
+    }
+   ]
+  },
+  {
+   "id": "thunder_cloud",
+   "name": "Gewitterwolke",
+   "rarity": "epic",
+   "text": "+15 % Blitzchance, +30 % Elementarschaden.",
+   "effects": [
+    {
+     "stat": "shock_chance_pct",
+     "value": 15
+    },
+    {
+     "stat": "elemental_damage_pct",
+     "value": 30
+    }
+   ]
+  },
+  {
+   "id": "compost_heart",
+   "name": "Komposthaufen-Herz",
+   "rarity": "legendary",
+   "text": "Splitter bei 30 % der Kills, +2 HP pro Kill, +20 % Flächenradius.",
+   "effects": [
+    {
+     "stat": "shrapnel_chance_pct",
+     "value": 30
+    },
+    {
+     "stat": "heal_per_kill",
+     "value": 2
+    },
+    {
+     "stat": "area_pct",
+     "value": 20
+    }
+   ]
   }
  ],
  "economy": {

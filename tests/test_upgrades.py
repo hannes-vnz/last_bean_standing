@@ -13,12 +13,19 @@ from lastbean.sim import (
     UpgradeOffered,
     World,
 )
-from lastbean.sim.upgrades import SUPPORTED_STATS, UpgradeDef, derive_stats, modifier_sums, roll_offer
+from lastbean.sim.upgrades import (
+    INSTANT_STATS,
+    SUPPORTED_STATS,
+    UpgradeDef,
+    derive_stats,
+    modifier_sums,
+    roll_offer,
+)
 
 
-def test_phase_one_pool_has_twelve_supported_upgrades(content, make_config):
+def test_phase_one_pool_has_every_supported_upgrade(content, make_config):
     phase1 = [UpgradeDef.from_content(u) for u in content.upgrades if u.impl_phase == 1]
-    assert len(phase1) == 12 and all(u.supported for u in phase1)
+    assert len(phase1) == 46 and all(u.supported for u in phase1)
     assert {u.id for u in make_config().upgrades} == {u.id for u in phase1}
 
 
@@ -28,6 +35,8 @@ def test_every_upgrade_effect_changes_stats(make_config):
     for u in cfg.upgrades:
         for stat, _ in u.effects:
             assert stat in SUPPORTED_STATS
+        if all(stat in INSTANT_STATS for stat, _ in u.effects):
+            continue  # rerolls and banishes are granted on pick, not a stat
         changed = derive_stats(cfg.character, modifier_sums({u.id: 1}, {u.id: u}))
         assert changed != base, u.id
 
@@ -97,7 +106,8 @@ def test_several_levels_at_once_queue_offers(make_config):
         assert w.paused
         evs = w.step([PlayerInput(0, choice=0)])
         assert any(isinstance(e, UpgradeChosen) for e in evs)
-    assert not w.paused and sum(p.upgrades.values()) == 3
+    # cards can be upgrades or weapons (Paket C2)
+    assert not w.paused and sum(p.upgrades.values()) + sum(st.level for st in p.weapons) == 3
     assert sum(isinstance(e, UpgradeOffered) for e in events) == 1
 
 

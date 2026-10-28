@@ -1,6 +1,6 @@
 # Last Bean Standing: Designdokument und Plan
 
-Titel: **Last Bean Standing**. Stop-and-Shoot-Roguelite (Spielgefühl wie Archero) mit zeitbasierten, endlos härter werdenden Wellen (Schwierigkeit und Bosse nach Megabonk-Vorbild, ohne Portale) in einer endlichen Arena mit Biomen. **Der Inhalt ist fest** (siehe `docs/CONTENT.md` und `data/*.json`): 10 Charaktere, 50 Upgrades, 10 Mob-Typen, 5 Bosse (4 Biom-Bosse plus der Schnitter), 5 Zonen, 55 Challenges, 20 Skins. Dazu Meta-Progression (Freischaltungen über Challenges, Playstyles, Skins) im Stil von Roguelites wie Megabonk. Am Ende trainiert ein RL-Agent auf derselben Simulation.
+Titel: **Last Bean Standing**. Roguelite mit Auto-Feuer (auch im Laufen) in **drei Beeten zu je 5:00** (Paket F, 28.10.2026, ersetzt die eine Arena ohne Portale): Saatbeet, Gemüsebeet, Komposthaufen. In jedem Beet kommt bei 3:30 ein Boss; besiegt öffnet er das Gartentor ins nächste Beet, läuft die Zeit ab, beginnt die endlose Plagenflut. Der Schnitter im dritten Beet beendet den Lauf mit einem Sieg, ein Lauf dauert höchstens etwa 15 Minuten. **Der Inhalt ist fest** (siehe `docs/CONTENT.md` und `data/*.json`): 10 Charaktere, 50 Upgrades, 46 Items, 6 Waffen, 10 Gartenplagen, 3 Bosse, 3 Beete, 53 Challenges, 20 Skins. Dazu Meta-Progression (Freischaltungen über Challenges, Playstyles, Skins) im Stil von Roguelites wie Megabonk. Am Ende trainiert ein RL-Agent auf derselben Simulation.
 
 Inspiration ja, Kopie nein: Namen, Grafiken, Sounds und Texte anderer Spiele werden nicht übernommen.
 
@@ -25,7 +25,9 @@ Inspiration ja, Kopie nein: Namen, Grafiken, Sounds und Texte anderer Spiele wer
   - **Lava:** Schaden über Zeit, dafür bessere XP-Drops.
 - Jedes Biom hat eine Mob-Liste mit Gewichten. Ein Gegner spawnt in der Zone, in der er erscheint, und bekommt deren Mob-Typ.
 
-## 4. Läufe, Schwierigkeit und Bosse (an Megabonk orientiert, ohne Portale)
+## 4. Läufe, Schwierigkeit und Bosse (an Megabonk orientiert)
+
+> **Seit Paket F (28.10.2026) gilt:** drei Beete à 5:00 statt einer Arena, Boss je Beet bei 3:30, Gartentor nach dem Bosssieg, endlose Plagenflut nach Ablauf der Zeit (alle 10 s +40 % Gegner, +15 % HP, +8 % Schaden), Sieg mit dem Schnitter. Level-up-Karten haben eine eigene Seltenheit, die ihren Wert vervielfacht (x1 bis x3). Werte stehen in `data/stages.json` und `data/balance.json`. Der folgende Text beschreibt den ursprünglichen Plan und gilt nur, wo er dem nicht widerspricht.
 Vorbild ist der Schwierigkeitsaufbau von Megabonk: Die Schwierigkeit wächst mit der Zeit **und** mit den Entscheidungen des Spielers, Bosse sind Höhepunkte, und am Ende steht eine Flut, die nie aufhört. Übernommen werden nur die Mechanik-Ideen, nicht Namen, Werte oder Grafik. **Es gibt keine Portale und keine Stufenwechsel:** Alles passiert in einer Arena, die über die Zeit "wächst" (neue Mob-Arten, Biom-Bosse, Schwarmflut).
 
 - **Lauf:** Ein Lauf lohnt sich schon nach etwa 5 Minuten (erster Biom-Boss bei 5:00, Highscore). Welle alle **30 s**, ohne Pause, Level-ups pausieren das Spiel.

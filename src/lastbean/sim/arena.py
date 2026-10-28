@@ -15,8 +15,14 @@ from .waves import BiomeArea
 
 # Collision radius of an obstacle in world units (a tile is 32). Not in data/ yet.
 OBSTACLE_RADIUS = 14.0
-# Kinds that exist in the data and how they behave. Phase-2/3 kinds are added with their biome.
-OBSTACLE_KINDS = {"tree": {"solid": True, "blocks_projectiles": True}}
+# Kinds that exist in the data and how they behave.
+OBSTACLE_KINDS = {
+    "tree": {"solid": True, "blocks_projectiles": True},
+    "stalk": {"solid": True, "blocks_projectiles": True},  # Saatbeet: tall plants give cover
+    "cabbage": {"solid": True, "blocks_projectiles": False},  # Gemüsebeet: shots fly over
+    "heap": {"solid": True, "blocks_projectiles": False},  # Komposthaufen
+}
+START_CLEAR_TILES = 12  # square around the map centre kept free of obstacles (start and gate arrival)
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,20 +58,20 @@ def generate_obstacles(
     return tuple(out)
 
 
-def obstacles_from_content(content, max_phase: int) -> tuple[Obstacle, ...]:
-    from .waves import biome_areas_from_content
+def obstacles_for_biome(content, biome_id: str) -> tuple[Obstacle, ...]:
+    """Obstacles of one garden bed: the whole map is that bed, the start square in the middle stays free."""
+    from .waves import BiomeArea
 
     tile = float(content.balance.tile_px)
-    areas = {a.id: a for a in biome_areas_from_content(content)}
-    # Areas without obstacles (the central clearing) stay free.
-    keep_free = tuple(areas[b.id] for b in content.biomes if "obstacles" not in b.extra)
-    out: list[Obstacle] = []
-    for b in content.biomes:
-        spec = b.extra.get("obstacles")
-        if not spec or b.impl_phase > max_phase or spec["type"] not in OBSTACLE_KINDS:
-            continue  # later phases and kinds without implemented behaviour
-        out.extend(generate_obstacles(areas[b.id], spec["type"], spec["count"], spec["seed"], tile, keep_free))
-    return tuple(out)
+    b = content.biome(biome_id)
+    spec = b.extra.get("obstacles")
+    if not spec or spec["type"] not in OBSTACLE_KINDS:
+        return ()
+    x, y, w, h = (v * tile for v in b.rect_tiles)
+    tw, th = content.balance.arena_tiles
+    half = START_CLEAR_TILES / 2 * tile
+    free = BiomeArea("start", tw * tile / 2 - half, th * tile / 2 - half, 2 * half, 2 * half)
+    return generate_obstacles(BiomeArea(b.id, x, y, w, h), spec["type"], spec["count"], spec["seed"], tile, (free,))
 
 
 class ObstacleMap:

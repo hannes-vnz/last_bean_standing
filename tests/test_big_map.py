@@ -1,31 +1,30 @@
-"""Paket B: 200 x 200 map, chunked ground, boss near the player, minimap."""
+"""Paket B/F: a map per garden bed (120 x 120), chunked ground, boss near the player, minimap."""
 
 import pytest
 
 from lastbean.sim import TICK_HZ, World
 from lastbean.sim import tuning as T
-from lastbean.sim.waves import biome_at
 
 pygame = pytest.importorskip("pygame")
 
 
-def test_map_is_big(make_config):
+def test_map_size_and_start_in_the_middle(make_config):
     cfg = make_config()
-    assert cfg.arena_w == cfg.arena_h == 200 * 32
+    assert cfg.arena_w == cfg.arena_h == 120 * 32
     p = World(1, cfg).players[0]
-    assert biome_at(cfg.biomes, p.x, p.y) == "plaza"  # start in the clearing in the middle
+    assert (p.x, p.y) == (cfg.arena_w / 2, cfg.arena_h / 2)
 
 
-def test_boss_spawns_near_the_player_in_its_biome(make_config):
+def test_boss_spawns_near_the_player(make_config):
     for seed in range(1, 6):
         w = World(seed, make_config(enemy_target=0, character={"attack_rate": 0.001, "hp": 10**6}))
-        w.tick = 300 * TICK_HZ
+        w.tick = w.stage_tick = 210 * TICK_HZ
         w.step()
         boss = next(e for e in w.enemies if e.boss)
+        assert boss.boss == "snail_queen"
         p = w.players[0]
         d = ((boss.x - p.x) ** 2 + (boss.y - p.y) ** 2) ** 0.5
-        assert T.BOSS_MIN_SPAWN_DISTANCE <= d <= 2.5 * w.config.spawn_distance[1]
-        assert biome_at(w.config.biomes, boss.x, boss.y) == "forest"
+        assert T.BOSS_MIN_SPAWN_DISTANCE <= d <= 1.5 * w.config.spawn_distance[1]
 
 
 @pytest.fixture
@@ -56,9 +55,9 @@ def test_minimap_and_menu_backdrop(renderer, make_config):
     from lastbean.ui import screens
 
     w = World(3, make_config(enemy_target=0, character={"attack_rate": 0.001, "hp": 10**6}))
-    w.tick = 300 * TICK_HZ
+    w.tick = w.stage_tick = 210 * TICK_HZ
     w.step()
     renderer.touch = True
     renderer.draw(w.snapshot())  # boss far away: arrow at the edge, dot on the minimap
-    assert renderer.overview.get_size() == (200, 200)
+    assert renderer.overview.get_size() == (120, 120)
     screens.draw_menu(renderer, new_profile(), web=True)

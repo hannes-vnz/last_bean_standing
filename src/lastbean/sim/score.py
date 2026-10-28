@@ -43,6 +43,7 @@ class RunResult:
     swarm_mult: float
     damage_taken: float
     score: int
+    stage: int = 1  # garden bed reached (Paket F)
 
     def to_dict(self) -> dict:
         return asdict(self)
