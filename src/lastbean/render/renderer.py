@@ -17,7 +17,7 @@ from ..data.schema import Content
 from ..sim.tuning import BOSS_RADIUS
 from ..sim.weapons import WEAPON_PREFIX
 from ..sim.world import Snapshot, WorldConfig
-from .effects import CORPSE_FRAMES, Effects
+from .effects import CORPSE_FRAMES, INTRO_FRAMES, Effects
 from .icons import SIZE as ICON_SIZE
 from .icons import IconBank
 from .pixelfont import body_font, tiny_font
@@ -143,8 +143,14 @@ class Renderer:
             self.set_stage(snap.arena_w, snap.arena_h, snap.biome, snap.obstacles)
         focus = next((p for p in snap.players if p.player_id == focus_player), snap.players[0])
         # Camera: top-left corner of the view in canvas pixels, rounded to whole pixels.
-        cam_x = round(focus.x / UNITS_PER_PX) - self.w // 2
-        cam_y = round(focus.y / UNITS_PER_PX) - self.h // 2
+        look_x, look_y = focus.x, focus.y
+        intro_k = self._intro_ease(effects)
+        if intro_k > 0:  # boss entrance: the camera swings over to the boss and back
+            boss = next((e for e in snap.enemies if e.boss and e.kind == effects.intro[0]), None)
+            if boss is not None:
+                look_x, look_y = look_x + (boss.x - look_x) * intro_k, look_y + (boss.y - look_y) * intro_k
+        cam_x = round(look_x / UNITS_PER_PX) - self.w // 2
+        cam_y = round(look_y / UNITS_PER_PX) - self.h // 2
         if effects:
             dx, dy = effects.shake()
             cam_x, cam_y = cam_x + dx, cam_y + dy
@@ -336,6 +342,8 @@ class Renderer:
             self._draw_boss_bar(snap.boss_bar)
         if debug:
             self.text(debug, (6, self.h - 16))
+        if intro_k > 0:
+            self._draw_intro(effects, intro_k)
         if focus.offer and not snap.over:
             self._draw_offer(focus)
         if effects and effects.reel is not None:
@@ -635,6 +643,36 @@ class Renderer:
         c.fill(ink, (sx - 3, sy + 1, 7, 7))
         c.fill(WHITE, (sx - 6, sy + 2, 3, 3))
         c.fill(WHITE, (sx + 4, sy + 2, 3, 3))
+
+    @staticmethod
+    def _intro_ease(effects) -> float:
+        """0..1 over a boss entrance: swing over in 25 frames, hold, swing back in the last 25."""
+        if not effects or effects.intro is None:
+            return 0.0
+        left = effects.intro[2]
+        since = INTRO_FRAMES - left
+        k = min(1.0, since / 25, left / 25)
+        return k * k * (3 - 2 * k)
+
+    def _draw_intro(self, effects, k: float) -> None:
+        """Letterbox bars, the boss's name sliding in, and what its first phase does."""
+        c = self.canvas
+        bar = round(30 * k)
+        c.fill(self.ink, (0, 0, self.w, bar))
+        c.fill(self.ink, (0, self.h - bar, self.w, bar))
+        boss_id, name, left = effects.intro
+        since = INTRO_FRAMES - left
+        slide = min(1.0, since / 18)
+        x = round(-self.w // 2 + (self.w // 2 + self.w // 2) * (1 - (1 - slide) ** 3))
+        first, _, title = name.partition(", ")
+        y = self.h - bar - 70
+        self.text(first, (x, y), self.big_font, center=True)
+        if title:
+            self.text(title, (x, y + 24), self.mid_font, center=True)
+        patterns = effects.boss_phases.get(boss_id, [])
+        if patterns and since > 30:
+            for i, line in enumerate(_wrap(patterns[0], self.font, self.w - 40)[:2]):
+                self.text(line, (self.w // 2, y + 42 + i * 12), center=True)
 
     def _draw_shrine(self, kind: str, sx: int, sy: int, r: int, charge: float, tick: int) -> None:
         """Stone shrine with a floating seed; the dashed circle fills up clockwise while charging."""

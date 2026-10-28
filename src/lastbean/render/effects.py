@@ -18,6 +18,7 @@ FLASH_FRAMES = 2
 HURT_FRAMES = 6  # enemy squashes and is pushed back a pixel
 CORPSE_FRAMES = 14  # dying enemy pops, flattens and fades
 MAX_CORPSES = 80
+INTRO_FRAMES = 110  # boss entrance: the camera swings over, the name slides in
 HINT_FRAMES = 330  # a first-run tip stays 5.5 s
 
 
@@ -114,6 +115,8 @@ class Effects:
         self.show_numbers = True  # settings: damage numbers
         self.shake_on = True  # settings: screen shake
         self.hints: list[str] = []  # first run: tips shown one after another
+        self.boss_phases: dict[str, list[str]] = {}  # boss id -> pattern text per phase, set by the app
+        self.intro: list | None = None  # [boss id, name, frames left] while a boss makes its entrance
         self.hint: tuple[str, int] | None = None
 
     def reset(self) -> None:
@@ -129,6 +132,7 @@ class Effects:
         self.sweeps.clear()
         self.reel, self.subtitle = None, None
         self.hints, self.hint = [], None
+        self.intro = None
 
     # ------------------------------------------------------------------ events
 
@@ -161,7 +165,14 @@ class Effects:
             elif isinstance(e, ev.BossSpawned):
                 self.trauma = min(1.0, self.trauma + 0.6)
                 name = (boss_names or {}).get(e.boss, e.boss)
-                self.banner = (f"{name} erscheint!", 150)
+                self.intro = [e.boss, name, INTRO_FRAMES]  # the run waits while the boss is shown
+            elif isinstance(e, ev.BossPhase):  # new attack pattern: say what is coming, so it can be learnt
+                patterns = self.boss_phases.get(e.boss, [])
+                self.banner = (f"Phase {e.phase + 1}!", 120)
+                if e.phase < len(patterns):
+                    self.subtitle = (patterns[e.phase], 150)
+                self.trauma = min(1.0, self.trauma + 0.4)
+                self.hitstop = max(self.hitstop, 4)
             elif isinstance(e, ev.BossKilled):
                 self.hitstop = max(self.hitstop, 3)
                 self.trauma = 1.0
@@ -339,6 +350,11 @@ class Effects:
         for b in self.bolts:
             b.life -= 1
         self.bolts = [b for b in self.bolts if b.life > 0]
+        if self.intro is not None:
+            self.intro[2] -= 1
+            if self.intro[2] <= 0:
+                self.intro = None
+                self.trauma = min(1.0, self.trauma + 0.5)
         if self.reel is not None:
             self.reel.frame += 1
             if self.reel.frame == Reel.SPIN:  # landing pop
