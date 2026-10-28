@@ -20,7 +20,16 @@ import pygame
 from .audio import Audio
 from .data import load_content
 from .meta import challenges, workshop
-from .meta.profile import ProfileStore, default_store, new_profile, record_run, set_nickname, valid_nickname
+from .meta.profile import (
+    ProfileStore,
+    default_store,
+    new_profile,
+    normalize,
+    record_run,
+    set_nickname,
+    valid_nickname,
+)
+from .online.account import Account, browser_id_token, merge
 from .online.leaderboard import REFRESH_S, Leaderboard
 from .render.effects import Effects
 from .render.interp import interpolate
@@ -161,6 +170,11 @@ class Game:
         self.recording = True  # stress-test runs are not recorded
         self.workshop_tab = "workshop"
         self.leaderboard = Leaderboard()
+        self.account = Account()
+        self.acc_form = {"acc_name": "", "acc_pw": ""}
+        self.acc_status = ""
+        self.acc_config: dict = {}
+        self.text_target = "nickname"  # what the text entry fills: nickname, acc_name or acc_pw
         self.online: tuple[str, int | None, int | None] = ("", None, None)
         self.board: dict = {"period": "all", "mode": "normal", "entries": None, "loading": False, "fetched_at": 0.0}
         self._tasks: dict[str, asyncio.Future] = {}
@@ -277,6 +291,7 @@ class Game:
                 self.online = ("sending", None, None)
             self.save()
             self.start_sync()
+            self.start_cloud_push()
         self.state = "results"
 
     # ------------------------------------------------------------------ online leaderboard
@@ -321,6 +336,114 @@ class Game:
         task = self._tasks.get(name)
         return task is not None and not task.done()
 
+    # ------------------------------------------------------------------ account and cloud save
+
+    @property
+    def signed_in(self) -> bool:
+        return bool(self.profile.get("account", {}).get("session"))
+
+    def open_account(self) -> None:
+        self.state, self.acc_status = "account", ""
+        if self.account.enabled and not self.acc_config and not self._busy("acc_config"):
+            self._tasks["acc_config"] = asyncio.ensure_future(self._load_acc_config())
+
+    async def _load_acc_config(self) -> None:
+        self.acc_config = await self.account.config()
+
+    def start_text_entry(self, target: str) -> None:
+        """Type the account name or password (same screen as the nickname, with the on-screen keyboard)."""
+        self.text_target = target
+        self.name_buffer = self.acc_form.get(target, "")
+        self.name_upper = target == "acc_name" and not self.name_buffer
+        self.state = "name"
+        if not WEB:
+            pygame.key.start_text_input()
+
+    def account_action(self, action: str) -> None:
+        if self._busy("account"):
+            return
+        if action in ("acc_login", "acc_register"):
+            name, pw = self.acc_form["acc_name"].strip(), self.acc_form["acc_pw"]
+            if not valid_nickname(name) or len(pw) < 6:
+                self.acc_status = "Name (2 bis 16 Zeichen) und Passwort (ab 6 Zeichen) eingeben"
+                return
+            kind = "login" if action == "acc_login" else "register"
+            body = {"name": name, "password": pw}
+            self._tasks["account"] = asyncio.ensure_future(self._sign_in(kind, body, "password"))
+        elif action in ("acc_google", "acc_apple"):
+            provider = action[4:]
+            self._tasks["account"] = asyncio.ensure_future(self._sign_in_with(provider))
+        elif action == "acc_sync":
+            self._tasks["account"] = asyncio.ensure_future(self._push_cloud(report=True))
+        elif action == "acc_logout":
+            self._tasks["account"] = asyncio.ensure_future(self._sign_out())
+
+    async def _sign_in_with(self, provider: str) -> None:
+        client_id = self.acc_config.get(f"{provider}_client_id", "")
+        if not client_id:
+            self.acc_status = "Diese Anmeldung ist noch nicht eingerichtet"
+            return
+        self.acc_status = "Anmeldefenster ist offen ..."
+        token = await browser_id_token(provider, client_id)
+        if not token:
+            self.acc_status = "Anmeldung abgebrochen"
+            return
+        await self._sign_in("oauth", {"provider": provider, "id_token": token}, provider)
+
+    async def _sign_in(self, kind: str, body: dict, provider: str) -> None:
+        self.acc_status = "Verbinde ..."
+        data, error = await self.account.sign_in(kind, body)
+        if data is None:
+            self.acc_status = error
+            return
+        self.profile["account"] = {"session": data["session"], "name": data.get("name"), "provider": provider,
+                                   "synced_at": 0}  # fmt: skip
+        self.acc_form["acc_pw"] = ""
+        status, cloud = await self.account.load(data["session"])
+        if cloud is not None:  # this device and the cloud become one profile
+            account = self.profile["account"]
+            self.profile = normalize(merge(self.profile, cloud))
+            self.profile["account"] = account
+            self.after_profile_change()
+        await self._push_cloud()
+        self.acc_status = "Angemeldet, Spielstand ist in der Cloud"
+
+    async def _push_cloud(self, report: bool = False) -> None:
+        acc = self.profile.get("account")
+        if not acc:
+            return
+        status = await self.account.store(acc["session"], self.profile)
+        if status == 200:
+            acc["synced_at"] = int(time.time())
+            self.save()
+            if report:
+                self.acc_status = "Gesichert"
+        elif status == 401:  # session ended on the server
+            self.profile.pop("account", None)
+            self.save()
+            self.acc_status = "Bitte neu anmelden"
+        elif report:
+            self.acc_status = "Server nicht erreichbar, später nochmal"
+
+    async def _sign_out(self) -> None:
+        acc = self.profile.pop("account", None)
+        self.save()
+        if acc:
+            await self.account.sign_out(acc["session"])
+        self.acc_status = "Abgemeldet (der Spielstand bleibt auf diesem Gerät)"
+
+    def start_cloud_push(self) -> None:
+        if self.signed_in and self.account.enabled and not self._busy("cloud"):
+            self._tasks["cloud"] = asyncio.ensure_future(self._push_cloud())
+
+    def after_profile_change(self) -> None:
+        """Bonuses, skin and bean may have changed (cloud save merged in)."""
+        self.save()
+        if self.character not in {c.id for c in self.characters}:
+            self.character = "ranger"
+        self.apply_workshop()
+        self.apply_skin()
+
     def save(self) -> None:
         try:
             self.store.save(self.profile)
@@ -335,6 +458,11 @@ class Game:
             pygame.key.start_text_input()
 
     def confirm_name(self) -> None:
+        if self.text_target != "nickname":  # account name or password
+            self.acc_form[self.text_target] = self.name_buffer
+            self.text_target, self.state = "nickname", "account"
+            pygame.key.stop_text_input()
+            return
         if valid_nickname(self.name_buffer):
             set_nickname(self.profile, self.name_buffer)
             self.save()
@@ -349,7 +477,7 @@ class Game:
         elif key == "back":
             self.name_buffer = self.name_buffer[:-1]
             self.name_upper = not self.name_buffer
-        elif len(self.name_buffer) < 16:
+        elif len(self.name_buffer) < (32 if self.text_target == "acc_pw" else 16):
             self.name_buffer += key
             self.name_upper = key == " "  # after a space the next word starts with a capital
 
@@ -364,14 +492,15 @@ class Game:
 
     def handle_name_event(self, event) -> None:
         if event.type == pygame.TEXTINPUT:
-            self.name_buffer = (self.name_buffer + event.text)[:16]
+            self.name_buffer = (self.name_buffer + event.text)[: 32 if self.text_target == "acc_pw" else 16]
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_BACKSPACE:
                 self.name_buffer = self.name_buffer[:-1]
             elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                 self.confirm_name()
             elif event.key == pygame.K_ESCAPE and not self.first_name:
-                self.state = "menu"
+                self.state = "menu" if self.text_target == "nickname" else "account"
+                self.text_target = "nickname"
                 pygame.key.stop_text_input()
 
 
@@ -584,9 +713,18 @@ async def run(
                 game.state = "menu"
             else:
                 game.start_name_entry()
+        elif action == "cancel" and game.text_target != "nickname":
+            game.state, game.text_target = "account", "nickname"
+            pygame.key.stop_text_input()
         elif action in ("cancel", "menu", "back"):
             game.state = "menu"
             pygame.key.stop_text_input()
+        elif action == "account":
+            game.open_account()
+        elif action.startswith("acc_field:"):
+            game.start_text_entry(action.split(":", 1)[1])
+        elif action.startswith("acc_"):
+            game.account_action(action)
         elif action == "resume":
             game.state, acc = "play", 0.0
         elif action == "mute":
@@ -895,10 +1033,22 @@ async def run(
                     game.refresh_board()
                 buttons = screens.draw_board(renderer, game.board, game.profile, game.leaderboard.enabled)
             else:
-                valid = valid_nickname(game.name_buffer)
-                buttons = screens.draw_name_entry(
-                    renderer, game.name_buffer, valid, game.first_name, keyboard=renderer.touch, upper=game.name_upper
-                )
+                if game.text_target == "nickname":
+                    valid = valid_nickname(game.name_buffer)
+                    buttons = screens.draw_name_entry(
+                        renderer, game.name_buffer, valid, game.first_name, keyboard=renderer.touch,
+                        upper=game.name_upper,
+                    )  # fmt: skip
+                else:
+                    password = game.text_target == "acc_pw"
+                    valid = len(game.name_buffer) >= 6 if password else valid_nickname(game.name_buffer)
+                    buttons = screens.draw_name_entry(
+                        renderer, game.name_buffer, valid, False, keyboard=renderer.touch, upper=game.name_upper,
+                        title="Passwort" if password else "Kontoname", mask=password,
+                    )  # fmt: skip
+            if game.state == "account":
+                buttons = screens.draw_account(renderer, game.profile, game.acc_form, game.acc_status,
+                                               game.acc_config, game.account.enabled, WEB)  # fmt: skip
             if touch_debug is not None:
                 for i, line in enumerate((touch_debug or "Tippe irgendwo hin").split("\n")):
                     renderer.text(line, (4, renderer.h - 34 + i * 14))
