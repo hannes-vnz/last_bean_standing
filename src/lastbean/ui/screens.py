@@ -112,7 +112,7 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
         r.dark_text("Noch kein Rekord.", (cx, panel.y + 38), center=True)
     t = profile["totals"]
     r.dark_text(f"Läufe {t['runs']}   Kills gesamt {t['kills']}", (cx, panel.y + 70), center=True)
-    items = [("Spielen", "play"), ("Bestenliste", "board"), ("Name ändern", "name")]
+    items = [("Spielen", "play"), ("Bestenliste", "board"), ("Name ändern", "name"), ("Einstellungen", "settings")]
     if not web:
         items.append(("Beenden", "quit"))
     buttons = _button_column(r, panel.bottom + 16, items)
@@ -183,6 +183,22 @@ PROLOGUE = (
     "Seine Fäulnis verdirbt Plagen und Beete.",
     "Du bist eine Bohne. Halte die Saat, so lange du kannst.",
 )
+
+
+def draw_settings(r: Renderer, settings: dict[str, Any]) -> list[Button]:
+    """Volume, damage numbers, screen shake; first-run tips again."""
+    _backdrop(r)
+    cx = r.w // 2
+    top = _top(r, 250)
+    r.text("Einstellungen", (cx, top + 14), r.big_font, center=True)
+    items = [
+        (f"Lautstärke: {settings['volume']} %", "set:volume"),
+        ("Schadenszahlen: " + ("an" if settings["numbers"] else "aus"), "set:numbers"),
+        ("Bildschirmwackeln: " + ("an" if settings["shake"] else "aus"), "set:shake"),
+        ("Tipps wieder zeigen", "set:hints"),
+        ("Zurück", "settings_back"),
+    ]
+    return _button_column(r, top + 40, items, width=220)
 
 
 def draw_prologue(r: Renderer) -> list[Button]:
@@ -427,6 +443,7 @@ def draw_pause(r: Renderer, snap, muted: bool) -> list[Button]:
         ("Neuer Lauf", "again"),
         ("Menü", "menu"),
         ("Ton an" if muted else "Ton aus", "mute"),
+        ("Optionen", "settings"),
     ]
     if r.w > r.h:  # landscape: one row, so it fits the 360 pixel height
         return _button_row(r, panel.bottom + 16, items, width=110)

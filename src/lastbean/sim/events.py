@@ -181,6 +181,15 @@ class ChestLocked(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class ShrineActivated(Event):
+    kind: str  # "greed" or "courage"
+    name: str
+    x: float
+    y: float
+    difficulty: float  # D after the activation
+
+
+@dataclass(frozen=True, slots=True)
 class PotBroken(Event):
     x: float
     y: float

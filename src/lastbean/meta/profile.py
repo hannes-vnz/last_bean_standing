@@ -56,7 +56,14 @@ def normalize(data: Any) -> dict[str, Any]:
     out["online"] = {"best_rank": best_rank if isinstance(best_rank, int) and best_rank > 0 else None}
     settings = data.get("settings") if isinstance(data.get("settings"), dict) else {}
     zoom = settings.get("zoom")
-    out["settings"] = {"zoom": zoom if isinstance(zoom, int) and 100 <= zoom <= 1000 else None}
+    volume = settings.get("volume")
+    out["settings"] = {
+        "zoom": zoom if isinstance(zoom, int) and 100 <= zoom <= 1000 else None,
+        "volume": volume if isinstance(volume, int) and not isinstance(volume, bool) and 0 <= volume <= 100 else 100,
+        "numbers": settings.get("numbers") is not False,  # damage numbers
+        "shake": settings.get("shake") is not False,  # screen shake
+    }
+    out["hints_seen"] = bool(data.get("hints_seen", False))
     out["prologue_seen"] = bool(data.get("prologue_seen", False))
     character = data.get("character")
     out["character"] = character if isinstance(character, str) and character.isidentifier() else "ranger"

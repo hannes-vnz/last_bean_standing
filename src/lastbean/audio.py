@@ -91,6 +91,7 @@ class Audio:
     def __init__(self) -> None:
         self.sounds: dict[str, pygame.mixer.Sound] = {}
         self.muted = False
+        self.volume = 1.0  # 0..1, from the settings
         self._last: dict[str, int] = {}
         self._frame = 0
         try:
@@ -110,7 +111,9 @@ class Audio:
         if cd and self._frame - self._last.get(name, -cd) < cd:
             return
         self._last[name] = self._frame
-        self.sounds[name].play()
+        sound = self.sounds[name]
+        sound.set_volume(self.volume)
+        sound.play()
 
     def handle(self, events: list) -> None:
         self._frame += 1

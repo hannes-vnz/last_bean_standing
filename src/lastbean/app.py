@@ -147,6 +147,7 @@ class Game:
         else:
             self.state = "menu" if self.profile.get("nickname") else "name"
         self.first_name = not self.profile.get("nickname")
+        self.settings_return = "menu"
         self.leaderboard = Leaderboard()
         self.online: tuple[str, int | None, int | None] = ("", None, None)
         self.board: dict = {"period": "all", "entries": None, "loading": False, "fetched_at": 0.0}
@@ -161,6 +162,17 @@ class Game:
         self.save()
         self.normal = self.config = WorldConfig.from_content(self.content, cid)
         self.renderer.character_sprite = cid
+
+    def change_setting(self, key: str) -> None:
+        """Settings screen buttons: volume steps 100-75-50-25-0, switches toggle."""
+        s = self.profile["settings"]
+        if key == "volume":
+            s["volume"] = (s["volume"] - 25) % 125
+        elif key in ("numbers", "shake"):
+            s[key] = not s[key]
+        elif key == "hints":
+            self.profile["hints_seen"] = False
+        self.save()
 
     def new_run(self) -> None:
         self.seed = self.seed + 1 if self.fixed_seed is not None else secrets.randbelow(2**31)
@@ -435,10 +447,21 @@ async def run(
     prev_positions = None
     next_fit = 0.0
 
+    def apply_settings() -> None:
+        s = game.profile["settings"]
+        audio.volume = s["volume"] / 100
+        effects.show_numbers, effects.shake_on = s["numbers"], s["shake"]
+
+    apply_settings()
+
     def new_run() -> None:
         nonlocal acc, prev_positions
         game.new_run()
         effects.reset()
+        if not game.profile.get("hints_seen"):  # first run: a few tips, one after another
+            effects.hints = first_run_hints(renderer.touch)
+            game.profile["hints_seen"] = True
+            game.save()
         touch.reset()
         acc, prev_positions = 0.0, None
 
@@ -479,6 +502,14 @@ async def run(
             game.state, acc = "play", 0.0
         elif action == "mute":
             audio.muted = not audio.muted
+        elif action == "settings":
+            game.settings_return = game.state
+            game.state = "settings"
+        elif action == "settings_back":
+            game.state = game.settings_return
+        elif action.startswith("set:"):
+            game.change_setting(action[4:])
+            apply_settings()
         elif action == "quit":
             running = False
         elif action.startswith("period:"):
@@ -618,6 +649,9 @@ async def run(
                         do("again")
                     elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_ESCAPE):
                         do("menu")
+                elif game.state == "settings":
+                    if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER):
+                        do("settings_back")
                 elif game.state == "pause":
                     if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE, pygame.K_p):
                         do("resume")
@@ -704,6 +738,8 @@ async def run(
                 buttons = screens.draw_characters(renderer, game.characters, game.character, best)
             elif game.state == "prologue":
                 buttons = screens.draw_prologue(renderer)
+            elif game.state == "settings":
+                buttons = screens.draw_settings(renderer, game.profile["settings"])
             elif game.state == "board":
                 if time.monotonic() - game.board["fetched_at"] > REFRESH_S:
                     game.refresh_board()
@@ -730,6 +766,19 @@ async def run(
     finally:
         pygame.quit()
     return game.world
+
+
+def first_run_hints(touch: bool) -> list[str]:
+    """Tips for the very first run (and again on request in the settings)."""
+    move = "Zieh mit dem Daumen, um zu laufen." if touch else "Laufen mit WASD oder den Pfeiltasten."
+    ability = "Der Knopf unten rechts löst deine Fähigkeit aus." if touch else "Leertaste: deine Fähigkeit."
+    return [
+        f"{move} Deine Bohne schießt von selbst.",
+        "Sammle die Funken der Plagen: Jedes Level bringt eine neue Karte.",
+        ability,
+        "Schreine: Bleib im Kreis stehen. Mehr Belohnung, aber die Plagen werden stärker.",
+        "Bei 3:30 kommt der Boss. Besiegt öffnet er das Gartentor ins nächste Beet.",
+    ]
 
 
 def combine_input(keys: PlayerInput, stick: tuple[int, int], touch_ability: bool) -> PlayerInput:
