@@ -8,6 +8,11 @@ from __future__ import annotations
 
 from typing import Any
 
+# Run statistics of the creative challenges (Paket K), straight from RunResult.stats.
+CREATIVE_STATS = ("golden_snails", "gnomes", "ladybugs", "longest_still_s", "flawless_bosses", "distance_m",
+                  "max_item_stack", "shrine_kinds", "max_kills_10s", "weapons_owned")  # fmt: skip
+# Stats that a challenge wants below a value (op "<"), and where the run stores them.
+LESS_THAN_STATS = {"stage2_reached_s": "stage2_s", "first_boss_s": "first_boss_s"}
 # Lifetime sums kept in profile["lifetime"], from RunResult.stats / fields.
 LIFETIME_FROM_STATS = {
     "crits": "crits_total",
@@ -38,8 +43,10 @@ def run_value(stat: str, cond: dict, result: dict[str, Any]) -> float:
     stats = result.get("stats") or {}
     if stat == "minutes_survived":
         return result["seconds"] / 60.0
-    if stat == "stage2_reached_s":  # "zweites Beet in unter N s" (op "<"): counts when bed 2 came in time
-        reached = stats.get("stage2_s")
+    if cond.get("mode") and cond["mode"] != result.get("mode", "normal"):
+        return 0.0
+    if cond.get("op") == "<":  # "faster than": counts (as the full target) when the time was reached in time
+        reached = stats.get(LESS_THAN_STATS.get(stat, stat))
         return cond["value"] if reached is not None and reached < cond["value"] else 0.0
     return float({
         "flawless_wave": stats.get("flawless_wave", 0.0),
@@ -49,7 +56,7 @@ def run_value(stat: str, cond: dict, result: dict[str, Any]) -> float:
         "swarm_seconds": result.get("swarm_seconds", 0),
         "shrines_activated": result.get("shrines", 0),
         "damage_taken_run": result.get("damage_taken", 0.0),
-    }.get(stat, 0.0))  # fmt: skip
+    }.get(stat, stats.get(stat, 0.0)))  # fmt: skip
 
 
 def record_lifetime(profile: dict[str, Any], result: dict[str, Any]) -> None:
@@ -68,7 +75,7 @@ def record_lifetime(profile: dict[str, Any], result: dict[str, Any]) -> None:
         bosses[b] = bosses.get(b, 0) + 1
     best = life.setdefault("best", {})
     for stat in ("minutes_survived", "flawless_wave", "level_reached", "stage_reached", "kills_in_run",
-                 "swarm_seconds", "shrines_activated", "damage_taken_run"):  # fmt: skip
+                 "swarm_seconds", "shrines_activated", "damage_taken_run", *CREATIVE_STATS):  # fmt: skip
         best[stat] = max(best.get(stat, 0.0), run_value(stat, {}, result))
         char_best = best.setdefault("by_character", {}).setdefault(result["character"], {})
         char_best[stat] = max(char_best.get(stat, 0.0), run_value(stat, {}, result))
@@ -107,7 +114,7 @@ def progress(ch, profile: dict[str, Any], characters_playable: int, result: dict
     best = _store(profile).get("best", {})
     if cond.get("character"):
         best = best.get("by_character", {}).get(cond["character"], {})
-    if cond["stat"] == "stage2_reached_s":
+    if cond.get("op") == "<":
         return 0.0, target
     return float(best.get(cond["stat"], 0.0)), target
 
@@ -122,6 +129,21 @@ def evaluate(profile: dict[str, Any], result: dict[str, Any], challenges, charac
         if ch.id in done:
             continue
         current, target = progress(ch, profile, characters_playable, result)
+        if current >= target:
+            new.append(ch)
+            grant(profile, ch)
+    return new
+
+
+def evaluate_profile(profile: dict[str, Any], challenges, characters_playable: int) -> list:
+    """Challenges that only depend on profile sums (e.g. squished menu slugs): checked outside a run."""
+    _store(profile)
+    done = set(profile["challenges_done"])
+    new = []
+    for ch in challenges:
+        if ch.id in done or ch.condition.type != "profile_stat":
+            continue
+        current, target = progress(ch, profile, characters_playable)
         if current >= target:
             new.append(ch)
             grant(profile, ch)

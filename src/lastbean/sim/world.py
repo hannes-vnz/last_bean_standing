@@ -23,7 +23,16 @@ from typing import NamedTuple
 
 from .arena import Obstacle, ObstacleMap, obstacles_for_biome
 from .economy import Economy, ItemDef, MapChest, Pot, pick_weighted, roll_item, scatter
-from .enemies import BEHAVIORS, BOSS_BEHAVIORS, COMPASS_16, apply_affixes, damage_enemy, tick_affixes
+from .enemies import (
+    BEHAVIORS,
+    BOSS_BEHAVIORS,
+    COMPASS_16,
+    apply_affixes,
+    damage_enemy,
+    move_towards,
+    speed_of,
+    tick_affixes,
+)
 from .entities import (
     BossStats,
     CharacterStats,
@@ -46,6 +55,7 @@ from .events import (
     ChestDropped,
     ChestLocked,
     ChestOpened,
+    Critter,
     EliteSpawned,
     EnemyHit,
     EnemyKilled,
@@ -307,6 +317,7 @@ class WorldConfig:
     # Mode (modes.json): "normal" or e.g. "eternal_night" with its enemy HP, XP and score factors.
     # Funkelstein drops (shop.json currency.run_drops): normal_kill_chance_pct, elite, biome_boss, final_boss, chest
     sparkle_drops: tuple[tuple[str, float], ...] = ()
+    critters: dict = field(default_factory=dict)  # balance.json critters (golden snail, gnome, ladybug)
     mode: str = "normal"
     mode_hp_mult: float = 1.0
     mode_xp_mult: float = 1.0
@@ -389,6 +400,7 @@ class WorldConfig:
             max_alive_enemies=bal.max_alive_enemies,
             player_count=player_count,
             score=ScoreRules.from_content(content),
+            critters=dict(bal.raw.get("critters", {})),
             sparkle_drops=tuple(
                 (k, float(v)) for k, v in content.shop.raw.get("currency", {}).get("run_drops", {}).items()
             ),
@@ -434,6 +446,7 @@ class PlayerView(NamedTuple):
     inferno: bool = False  # Mira's ring of fire is burning
     storm: bool = False  # Vex's thunderstorm is raging
     sparkles: int = 0  # Funkelsteine found in this run
+    lucky: bool = False  # ladybug buff
 
 
 class EnemyView(NamedTuple):
@@ -622,6 +635,12 @@ class World:
         self._wave_hurt = False
         self._run_wave = 0
         self._courage_active = False
+        self._boss_hurt = False  # damage taken since the current boss arrived
+        self._shrine_kinds: set[str] = set()
+        self._kill_ticks: list[int] = []  # recent kills (kills within 10 s)
+        self._snail_tick = 0  # when this bed's golden snail shows up
+        gnome_beds = max(1, min(2, len(cfg.stages)))
+        self._gnome_bed = Rng(self.seed ^ 0x6E0E).randint(0, gnome_beds - 1) if "gnome" in cfg.critters else -1
         if cfg.economy is not None:
             for p in self.players:
                 p.rerolls = cfg.economy.rerolls + int(meta.get("rerolls", 0.0))
@@ -659,6 +678,51 @@ class World:
             spots = scatter(Rng(self.seed ^ 0x5A17E ^ (self.stage * 0x9E3779B1)), len(kinds), cfg.arena_w,
                             cfg.arena_h, self.obstacles, start, SHRINE_START_CLEARANCE)  # fmt: skip
             self.shrines = [Shrine(s, x, y) for s, (x, y) in zip(kinds, spots, strict=False)]
+            self._place_critters(start)
+
+    def _place_critters(self, start: tuple[float, float]) -> None:
+        """Gimmicks of a bed, from their own random stream: the golden snail's time, the hidden gnome."""
+        crit = self.config.critters
+        layout = Rng(self.seed ^ 0xC217 ^ (self.stage * 0x9E3779B1))
+        snail = crit.get("golden_snail")
+        if snail:
+            lo, hi = snail["spawn_window_s"]
+            self._snail_tick = int(layout.uniform(float(lo), float(hi)) * TICK_HZ)
+        gnome = crit.get("gnome")
+        if gnome and self.stage == self._gnome_bed:
+            spots = scatter(layout, 1, self.config.arena_w, self.config.arena_h, self.obstacles, start, 500.0)
+            if spots:
+                hits = float(gnome["hits"])
+                e = Enemy(self._next_eid, "gnome", spots[0][0], spots[0][1], hits, hits, 0.0, 0.0,
+                          float(gnome["radius"]), 0.0, "still", critter="gnome")  # fmt: skip
+                self._next_eid += 1
+                self.enemies.append(e)
+
+    def _spawn_golden_snail(self, events: list[Event]) -> None:
+        spec = self.config.critters["golden_snail"]
+        alive = [p for p in self.players if p.alive]
+        if not alive:
+            return
+        x, y = self._spawn_point(alive)
+        hp = float(spec["hp"])
+        e = Enemy(self._next_eid, "golden_snail", x, y, hp, hp, float(spec["speed"]), 0.0, float(spec["radius"]), 0.0,
+                  "flee", critter="golden_snail", life=float(spec["life_s"]))  # fmt: skip
+        self._next_eid += 1
+        self.enemies.append(e)
+        events.append(Critter(self.tick, None, "golden_snail", "appeared", x, y))
+
+    def _move_critter(self, e: Enemy, p: Player, d: float, events: list[Event]) -> bool:
+        """The golden snail runs from the nearest bean and slips away after a while. False: it is gone."""
+        if e.critter != "golden_snail":
+            return True
+        e.life -= DT
+        if e.life <= 0:
+            events.append(Critter(self.tick, None, e.critter, "escaped", e.x, e.y))
+            return False
+        if d > 1e-9:
+            away_x, away_y = e.x + (e.x - p.x) / d * 100.0, e.y + (e.y - p.y) / d * 100.0
+            move_towards(e, away_x, away_y, 100.0, speed_of(e))
+        return True
 
     @property
     def stage_cfg(self) -> StageConfig:
@@ -748,6 +812,8 @@ class World:
 
         self.tick += 1
         self._track_run_stats()
+        if self._snail_tick and self.stage_tick + 1 == self._snail_tick and self.config.enemy_target is None:
+            self._spawn_golden_snail(events)
         self.stage_tick += 1
         st = self.stage_cfg
         if self.stage_tick > st.duration_s * TICK_HZ:
@@ -1008,6 +1074,8 @@ class World:
         p.still_t = p.still_t + DT if p.standing else 0.0
         if p.focus_t > 0:
             p.focus_t -= DT
+        if p.lucky_t > 0:
+            p.lucky_t -= DT
         if p.ghosts_t > 0:
             p.ghosts_t -= DT
         ch = self.config.character
@@ -1040,6 +1108,8 @@ class World:
             m *= s.standing_damage_mult
         if self._low_hp(p):
             m *= 1.0 + s.low_hp_damage_pct / 100.0
+        if p.lucky_t > 0:  # ladybug
+            m *= 1.0 + float(self.config.critters["ladybug"]["damage_pct"]) / 100.0
         if s.nearby_damage_pct:  # Kaz's "Nervenkitzel": braver the closer they get
             r2 = s.nearby_radius * s.nearby_radius
             near = sum(
@@ -1249,7 +1319,7 @@ class World:
         p.hp = max(0.0, p.hp - dmg)
         p.damage_taken += dmg
         if dmg > 0:
-            self._wave_hurt = True
+            self._wave_hurt = self._boss_hurt = True
         if use_i_frames:
             p.i_frames = self.config.character.i_frames_s * s.i_frames_mult
             events.append(PlayerHit(self.tick, p.player_id, dmg, p.hp))
@@ -1405,6 +1475,7 @@ class World:
             self.enemies.append(e)
             self._next_eid += 1
             events.append(BossSpawned(self.tick, None, e.eid, b.id))
+            self._boss_hurt = False
         self.curse_pending = 0
 
     def _boss_spawn_point(self, b: BossStats, p: Player) -> tuple[float, float]:
@@ -1452,15 +1523,22 @@ class World:
     def _move_enemies(self, events: list[Event]) -> None:
         if not any(p.alive for p in self.players):
             return
+        gone: set[int] = set()
         for e in self.enemies:
             p, d2 = self._nearest_player(e.x, e.y)
             d = math.sqrt(d2)
+            if e.critter:
+                if not self._move_critter(e, p, d, events):
+                    gone.add(e.eid)
+                continue
             if e.boss:
                 BOSS_BEHAVIORS[e.boss](self, e, p.x, p.y, d, events)
             else:
                 BEHAVIORS.get(e.behavior, BEHAVIORS["chaser"])(self, e, p.x, p.y, d, events)
             if e.elite:
                 tick_affixes(e)
+        if gone:
+            self.enemies = [e for e in self.enemies if e.eid not in gone]
         self._separate()
         obstacles = self.obstacles
         for e in self.enemies:
@@ -1509,7 +1587,7 @@ class World:
             return
         far2 = RECYCLE_DISTANCE * RECYCLE_DISTANCE
         for e in self.enemies:
-            if e.boss or e.elite:
+            if e.boss or e.elite or e.critter:
                 continue
             if all((e.x - p.x) ** 2 + (e.y - p.y) ** 2 > far2 for p in alive):
                 x, y = self._spawn_point(alive)
@@ -1518,6 +1596,21 @@ class World:
     def _kill(self, e: Enemy, killer: int | None, events: list[Event]) -> None:
         events.append(EnemyKilled(self.tick, killer, e.eid, e.kind, e.x, e.y))
         self._count(f"kills_{self.stage_cfg.biome}")
+        if e.critter:
+            self._catch_critter(e, killer, events)
+            return
+        self._count(f"kind_{e.kind}")
+        self._kill_ticks = [t for t in self._kill_ticks if t > self.tick - 10 * TICK_HZ]
+        self._kill_ticks.append(self.tick)
+        if len(self._kill_ticks) > self.run_stats.get("max_kills_10s", 0):
+            self.run_stats["max_kills_10s"] = len(self._kill_ticks)
+        if e.boss and not self._boss_hurt:
+            self._count("flawless_bosses")
+        if e.boss and self.stage == 0 and "first_boss_s" not in self.run_stats:
+            self.run_stats["first_boss_s"] = self.stage_time_s
+        lady = self.config.critters.get("ladybug")
+        if lady and self.rng.random() * 100.0 < float(lady["drop_pct"]):
+            self.pickups.append(Pickup("ladybug", e.x, e.y))
         if e.boss:
             self.bosses_defeated.append(e.boss)
         if e.elite:
@@ -1578,6 +1671,21 @@ class World:
                 self.gate = (gx, gy)
                 self._gate_ready_tick = self.tick + int(GATE_DELAY_S * TICK_HZ)
                 events.append(GateOpened(self.tick, None, gx, gy))
+
+    def _catch_critter(self, e: Enemy, killer: int | None, events: list[Event]) -> None:
+        """Golden snail: a heap of Funkelsteine and seeds. Gnome: a free chest and a few Funkelsteine."""
+        spec = self.config.critters.get(e.critter, {})
+        events.append(Critter(self.tick, killer, e.critter, "caught", e.x, e.y))
+        self._count("golden_snails" if e.critter == "golden_snail" else "gnomes")
+        if spec.get("sparkles"):
+            self.orbs.append(XpOrb(e.x, e.y - 6.0, float(spec["sparkles"]), kind="sparkle"))
+        if spec.get("seeds"):
+            self.orbs.append(XpOrb(e.x + 6.0, e.y, float(spec["seeds"]), kind="seeds"))
+        if spec.get("chest"):
+            self._drop_chest(e.x, e.y + 10.0, spec["chest"], events)
+        for p in self.players:
+            if p.player_id == killer:
+                p.kills += 1
 
     def _drop_sparkles(self, e: Enemy, events: list[Event]) -> None:
         """Funkelsteine glitter on the ground: rarely from pests, always from elites and bosses."""
@@ -1923,6 +2031,8 @@ class World:
 
         `procs` is False for damage that on-hit effects caused themselves (explosions, lightning, poison),
         so effects never chain into each other."""
+        if e.critter == "gnome":  # the gnome takes ten hits, however hard they are
+            dmg, crit, procs = 1.0, False, False
         s = owner.stats if owner is not None else None
         if s is not None:
             if e.elite or e.boss:
@@ -2433,7 +2543,7 @@ class World:
                 continue
             for e in g.query(p.x, p.y, reach):
                 r = e.radius + PLAYER_RADIUS
-                if (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r * r:
+                if not e.critter and (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r * r:
                     before = p.hp
                     self._hurt(p, e.damage, events)
                     if "vampiric" in e.affixes:
@@ -2472,6 +2582,10 @@ class World:
                 if k.kind == "magnet":
                     for o in self.orbs:
                         o.magnet_to = owner.player_id
+                elif k.kind == "ladybug":  # luck: more damage for a while
+                    owner.lucky_t = float(self.config.critters["ladybug"]["buff_s"])
+                    self._count("ladybugs")
+                    events.append(Critter(self.tick, owner.player_id, "ladybug", "caught", k.x, k.y))
             self.pickups = remaining_pickups
         if not self.orbs:
             return
@@ -2548,6 +2662,10 @@ class World:
         for p in self.players:
             if p.alive and p.hp < CHALLENGE_LOW_HP_SHARE * p.max_hp:
                 self._count("low_hp_s", DT)
+            if p.alive and not p.standing:  # in tiles of 32 units ("metres")
+                self._count("distance_m", math.sqrt(p.vx * p.vx + p.vy * p.vy) * DT / 32.0)
+            if p.still_t > self.run_stats.get("longest_still_s", 0.0):
+                self.run_stats["longest_still_s"] = p.still_t
         wave = int(self.time_s // LEADERBOARD_WAVE_S) + 1
         if wave != self._run_wave:
             if self._run_wave and not self._wave_hurt:
@@ -2588,6 +2706,8 @@ class World:
                 for _ in range(ELITE_SHRINE_COUNT):
                     self._spawn_elite(events)
             events.append(ShrineActivated(self.tick, owner.player_id, r.id, r.name, sh.x, sh.y, self.difficulty))
+            self._shrine_kinds.add(r.id)
+            self.run_stats["shrine_kinds"] = len(self._shrine_kinds)
         self.shrines = remaining
 
     def _break_pots(self, alive: list[Player], events: list[Event]) -> None:
@@ -2649,7 +2769,9 @@ class World:
             elites=self.elites_killed,
             chests=self.chests_opened,
             shrines=p.shrines_activated,
-            stats=dict(self.run_stats),
+            stats=dict(
+                self.run_stats, max_item_stack=max(p.items.values(), default=0), weapons_owned=len(p.weapons)
+            ),  # fmt: skip
             sparkles=p.sparkles,
             mode=self.config.mode,
             boss_ids=list(self.bosses_defeated),
@@ -2706,6 +2828,7 @@ class World:
                     p.inferno_t > 0,
                     p.storm_t > 0,
                     p.sparkles,
+                    p.lucky_t > 0,
                 )
                 for p in self.players
             ),

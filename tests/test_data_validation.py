@@ -30,7 +30,7 @@ def test_counts(content):
     assert len(content.shrines) == 4
     assert len(content.biomes) == 3
     assert len(content.stages) == 3
-    assert len(content.challenges) == 53
+    assert len(content.challenges) == 67  # 53 + 14 creative ones (Paket K)
     assert len(content.skins) == 20
 
 

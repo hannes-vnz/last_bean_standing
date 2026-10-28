@@ -209,6 +209,14 @@ class Renderer:
                 pygame.draw.line(c, color, (sx, sy), (ex, ey), 3 if e.boss else 2)
         for kind, kx, ky in snap.pickups:
             sx, sy = round(kx / UNITS_PER_PX) - cam_x, round(ky / UNITS_PER_PX) - cam_y
+            if kind == "ladybug" and -8 <= sx < self.w + 8 and -8 <= sy < self.h + 8:  # Glückskäfer
+                bob = 1 if (snap.tick // 12) % 2 else 0
+                c.fill(ink, (sx - 4, sy - 3 - bob, 9, 7))
+                c.fill((230, 60, 60), (sx - 3, sy - 2 - bob, 7, 5))
+                c.fill(ink, (sx, sy - 2 - bob, 1, 5))
+                c.fill(ink, (sx - 2, sy - 1 - bob, 1, 1))
+                c.fill(ink, (sx + 2, sy - bob, 1, 1))
+                c.fill(ink, (sx - 1, sy - 5 - bob, 3, 2))
             if kind == "magnet" and -8 <= sx < self.w + 8 and -8 <= sy < self.h + 8:
                 bob = 1 if (snap.tick // 15) % 2 else 0  # little float so it catches the eye
                 self._draw_magnet(sx, sy - bob)
@@ -226,6 +234,9 @@ class Renderer:
                 if e.elite:  # golden halo so elites stand out in a crowd
                     pygame.draw.circle(c, self.crit_color, (sx, sy), r + 4)
                 flip = self._facing(e.eid, e.x)
+                if e.kind == "gnome":  # the hidden garden gnome: red hat, white beard, hits counted down
+                    self._draw_gnome(sx, sy, e.hp_frac, e.eid in flash, snap.tick)
+                    continue
                 scale = self._sprite_scale(e)
                 if e.eid in hurt:  # hit: squashed flat and pushed a pixel away from the bean
                     squash = -1
@@ -234,12 +245,18 @@ class Renderer:
                     squash = 0
                 else:  # waddle: stretch, rest, squash, rest (offset per enemy so crowds don't march in step)
                     squash = WALK_SQUASH[((snap.tick + e.eid * 5) // 7) % 4]
-                img = self.sprites.get(e.kind, scale, flip, e.eid in flash, squash)
+                if e.kind == "golden_snail":  # a snail made of gold, glittering
+                    img = self.sprites.get("snail", 0.9, flip, e.eid in flash, squash, (255, 214, 94))
+                    if (snap.tick // 5 + e.eid) % 4 == 0:
+                        c.fill(WHITE, (sx + 5, sy - 10, 1, 3))
+                        c.fill(WHITE, (sx + 4, sy - 9, 3, 1))
+                else:
+                    img = self.sprites.get(e.kind, scale, flip, e.eid in flash, squash)
                 if img is not None and e.status == "frozen":  # frozen solid: icy blue
                     img = img.copy()
                     img.fill((90, 160, 255, 0), special_flags=pygame.BLEND_RGBA_ADD)
                 if img is not None:
-                    rest = self.sprites.get(e.kind, scale, flip)
+                    rest = img if e.kind == "golden_snail" else self.sprites.get(e.kind, scale, flip)
                     bottom = sy + rest.get_height() // 2  # feet stay on the ground while squashing
                     c.blit(img, (sx - img.get_width() // 2, bottom - img.get_height()))
                 else:
@@ -292,6 +309,11 @@ class Renderer:
                     fx_, fy_ = sx + round(math.cos(a) * r), sy + round(math.sin(a) * r)
                     c.fill(self.ink, (fx_ - 2, fy_ - 3, 5, 6))
                     c.fill((255, 140, 60) if k % 2 else (255, 212, 94), (fx_ - 1, fy_ - 2, 3, 4))
+            if p.lucky:  # ladybug luck: a little clover over the bean
+                c.fill(ink, (sx - 4, sy - 25, 9, 7))
+                c.fill((126, 217, 87), (sx - 3, sy - 24, 3, 2))
+                c.fill((126, 217, 87), (sx + 1, sy - 24, 3, 2))
+                c.fill((126, 217, 87), (sx - 1, sy - 22, 3, 2))
             if p.shield >= 1:  # shield bubble ("Bollwerk", "Notschild")
                 pygame.draw.circle(c, (180, 220, 255), (sx, sy), 13, 1)
             if p.storm and (snap.tick // 5) % 2:  # Vex's storm: a little cloud above him
@@ -327,6 +349,7 @@ class Renderer:
 
         if effects:
             self._draw_effects(effects, cam_x, cam_y)
+        self._draw_ambience(snap, cam_x, cam_y)
         if snap.mode == "eternal_night":  # night: a deep blue veil over the bed, the HUD stays bright
             veil = self._number_cache.get(("veil", self.w, self.h))
             if veil is None:
@@ -574,7 +597,7 @@ class Renderer:
             c.fill(self.ink, (gx - 2, gy - 2, 5, 5))
             c.fill((126, 217, 87), (gx - 1, gy - 1, 3, 3))
         for e in snap.enemies:
-            if e.boss or e.elite:
+            if e.boss or e.elite or e.kind == "golden_snail":
                 color = self.telegraph if e.boss else self.crit_color
                 c.fill(self.ink, (box.x + int(e.x * sx) - 2, box.y + int(e.y * sy) - 2, 5, 5))
                 c.fill(color, (box.x + int(e.x * sx) - 1, box.y + int(e.y * sy) - 1, 3, 3))
@@ -690,6 +713,52 @@ class Renderer:
         if patterns and since > 30:
             for i, line in enumerate(_wrap(patterns[0], self.font, self.w - 40)[:2]):
                 self.text(line, (self.w // 2, y + 42 + i * 12), center=True)
+
+    def _draw_gnome(self, sx: int, sy: int, hp_frac: float, hit: bool, tick: int) -> None:
+        c, ink = self.canvas, self.ink
+        wobble = 1 if hit else 0
+        sx += wobble
+        c.fill(ink, (sx - 5, sy - 14, 11, 21))
+        c.fill(WHITE if hit else (230, 70, 70), (sx - 4, sy - 13, 9, 7))  # hat
+        c.fill(WHITE if hit else (230, 70, 70), (sx - 2, sy - 16, 5, 3))
+        c.fill(ink, (sx - 1, sy - 18, 3, 3))
+        c.fill((255, 200, 170), (sx - 4, sy - 6, 9, 4))  # face
+        c.fill(ink, (sx - 2, sy - 5, 1, 1))
+        c.fill(ink, (sx + 2, sy - 5, 1, 1))
+        c.fill((250, 250, 250), (sx - 4, sy - 2, 9, 4))  # beard
+        c.fill((90, 140, 220), (sx - 4, sy + 2, 9, 4))  # coat
+        hits = round(hp_frac * 10)
+        for k in range(10):  # ten hits until it is free
+            c.fill((255, 212, 94) if k < hits else (90, 80, 100), (sx - 10 + k * 2, sy + 9, 1, 2))
+        if (tick // 30) % 4 == 0:
+            self.text("!", (sx + 7, sy - 22))
+
+    def _draw_ambience(self, snap, cam_x: int, cam_y: int) -> None:
+        """Per bed: butterflies over the seedbed, a shower now and then in the vegetable bed, fireflies on
+        the compost. Pure decoration, from the tick alone."""
+        c, t = self.canvas, snap.tick
+        if snap.biome == "seedbed":
+            for k in range(4):
+                x = (k * 173 + t // 2 + round(30 * math.sin(t / 50 + k))) % (self.w + 40) - 20
+                y = (k * 97 + round(20 * math.sin(t / 37 + k * 2))) % (self.h - 60) + 40
+                wing = (t // 6 + k) % 2
+                color = ((255, 159, 192), (255, 212, 94), (150, 210, 255), WHITE)[k]
+                c.fill(color, (x - 2, y - wing, 2, 2))
+                c.fill(color, (x + 1, y - wing, 2, 2))
+                c.fill(self.ink, (x, y, 1, 2))
+        elif snap.biome == "veggiebed" and (t // 900) % 3 == 1:  # every few seconds of rain
+            for k in range(40):
+                x = (k * 53 + t * 3) % self.w
+                y = (k * 31 + t * 7) % self.h
+                c.fill((170, 190, 230), (x, y, 1, 4))
+        elif snap.biome == "compost":
+            for k in range(7):
+                if (t // 20 + k * 3) % 5 == 0:
+                    continue
+                x = (k * 211 + round(40 * math.sin(t / 70 + k))) % self.w
+                y = (k * 131 + round(30 * math.cos(t / 60 + k))) % self.h
+                c.fill((255, 240, 150), (x, y, 2, 2))
+                c.fill((255, 255, 220), (x, y, 1, 1))
 
     def _draw_poison_zone(self, kind: str, sx: int, sy: int, r: int, life: float, tick: int) -> None:
         """Lilu's poison: a green puddle (vial) or a big drifting cloud, bubbling, fading at the end."""

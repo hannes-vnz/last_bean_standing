@@ -311,6 +311,7 @@ class Player:
     minion_turn: int = 0  # which ghost attacks next
     mine_t: float = 0.0  # Orm's "Minenleger"
     gravity_t: float = 0.0  # "Schwerkraftbrunnen" timer
+    lucky_t: float = 0.0  # ladybug luck: more damage for a while
     blades: object = None  # WeaponState of "Kreisende Klingen", made on first use
     storm_t: float = 0.0
     temp_shield: float = 0.0
@@ -334,6 +335,8 @@ class Enemy:
     radius: float
     xp: float = 0.0
     behavior: str = "chaser"
+    critter: str = ""  # golden_snail, gnome: a garden critter, not a pest (no contact damage, own behaviour)
+    life: float = 0.0  # critters that run off after a while
     timer: float = 0.0
     keep_distance: float = 0.0
     shot_interval: float = 0.0

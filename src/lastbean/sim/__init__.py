@@ -71,6 +71,7 @@ __all__ = [
     "PotBroken",
     "SeedsCollected",
     "SparklesCollected",
+    "Critter",
     "AbilityUsed",
     "Pickup",
     "PickupCollected",

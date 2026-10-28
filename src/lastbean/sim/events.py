@@ -202,6 +202,16 @@ class SeedsCollected(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class Critter(Event):
+    """A garden critter (balance.json critters): golden snail, gnome, ladybug appeared, escaped or was caught."""
+
+    kind: str
+    what: str  # "appeared", "escaped", "caught"
+    x: float
+    y: float
+
+
+@dataclass(frozen=True, slots=True)
 class SparklesCollected(Event):
     """Funkelsteine picked up in the run (meta currency, shop.json run_drops)."""
 

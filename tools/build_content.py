@@ -30,6 +30,16 @@ BALANCE = {
     "target_median_death_minutes": {"beginner": [3, 5], "skilled": [8, 12], "expert": [14, 18], "swarm_reached": "extrem selten"},
 }
 
+# Paket K (Hannes: "kleine Gimmicks in alle Ebenen"): seltene Gartenbewohner, keine Plagen.
+CRITTERS = {
+    "golden_snail": dict(name="Goldschnecke", hp=60, speed=150, radius=14, spawn_window_s=[25, 100], life_s=25,
+                         sparkles=15, seeds=20, text="Einmal je Beet taucht sie auf und flieht. Wer sie erwischt, wird reich."),
+    "gnome": dict(name="Gartenzwerg", hits=10, radius=12, sparkles=5, chest="elite",
+                  text="Steht irgendwo in Beet 1 oder 2 versteckt. Zehn Treffer, dann ist er frei und schenkt dir eine Truhe."),
+    "ladybug": dict(name="Glückskäfer", drop_pct=0.4, buff_s=15, damage_pct=30,
+                    text="Fällt selten von Plagen: 15 s lang +30 % Schaden."),
+}
+BALANCE["critters"] = CRITTERS
 BALANCE.update({
     "mini_boss_times_s": [120, 750],
     "final_boss": {"id": "reaper", "summon": "altar", "altar_unlock_s": 600, "base_hp": 30000, "hp_scaling": "base_hp * hp_mult(minute_at_summon)",
@@ -394,6 +404,22 @@ chal("reach_swarm", "Überlebe 30 s Plagenflut.", RS("swarm_seconds", 30), dict(
 chal("boss_reaper", "Besiege den Schnitter.", PS("boss_defeated", 1, boss="reaper"), dict(type="title", id="Sensenmeister"))
 chal("shrines_5", "Aktiviere 5 Schreine in einem Run.", RS("shrines_activated", 5), dict(type="title", id="Wagemutig"))
 chal("swarm_5min", "Überlebe 3 Minuten Plagenflut.", RS("swarm_seconds", 180), dict(type="title", id="Flutreiter"))
+# Paket K (Hannes: "wirklich kreative Challenges"): Geheimnisse, Spielweisen, Unsinn.
+T = lambda title: dict(type="title", id=title)
+chal("golden_snail_1", "Fang eine Goldschnecke.", RS("golden_snails", 1), T("Goldgräber"))
+chal("golden_snail_3", "Fang drei Goldschnecken in einem Lauf.", RS("golden_snails", 3), T("Schneckenbaron"))
+chal("gnome_free", "Finde und befreie den Gartenzwerg.", RS("gnomes", 1), T("Zwergenfreund"))
+chal("ladybugs_3", "Sammle drei Glückskäfer in einem Lauf.", RS("ladybugs", 3), T("Glückspilz"))
+chal("still_life", "Stehe 30 Sekunden am Stück still.", RS("longest_still_s", 30), T("Stillleben"))
+chal("flawless_boss", "Besiege einen Boss, ohne getroffen zu werden.", RS("flawless_bosses", 1), T("Unantastbar"))
+chal("marathon", "Laufe in einem Lauf 2000 Meter.", RS("distance_m", 2000), T("Marathonbohne"))
+chal("hoarder", "Besitze fünf Kopien desselben Items.", RS("max_item_stack", 5), T("Hamsterbohne"))
+chal("pilgrim", "Aktiviere alle vier Schreinarten in einem Lauf.", RS("shrine_kinds", 4), T("Pilgerbohne"))
+chal("menu_squish", "Zerdrücke zehn Schnecken im Hauptmenü.", PS("menu_squished", 10), T("Pausenclown"))
+chal("express_boss", "Besiege Schleimrun vor 2:30.", RS("first_boss_s", 150, op="<"), T("Schneckenpost"))
+chal("chain_reaction", "Besiege 60 Gegner innerhalb von 10 Sekunden.", RS("max_kills_10s", 60), T("Kettenreaktion"))
+chal("night_owl", "Erreiche in der Ewigen Nacht das zweite Beet.", RS("stage_reached", 2, mode="eternal_night"), T("Nachteule"))
+chal("arsenal", "Fülle alle Waffenplätze in einem Lauf.", RS("weapons_owned", 3), T("Waffennarr"))
 
 # ---------------------------------------------------------------------------- Pruefung
 def validate():
