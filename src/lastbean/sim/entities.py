@@ -326,6 +326,10 @@ class Projectile:
     radius: float = PROJECTILE_RADIUS
     bounces_left: int = 0
     procs: bool = True  # False for shrapnel: no chain reactions
+    turn: float = 0.0  # homing: how fast it turns towards the nearest enemy (radians per second, roughly)
+    return_at: int = 0  # boomerang: turns back to its owner when ticks_left reaches this
+    returning: bool = False
+    flies: bool = False  # flies over obstacles (boomerangs, homing shots, turret spines)
 
 
 @dataclass(frozen=True, slots=True)

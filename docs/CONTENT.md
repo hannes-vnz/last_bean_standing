@@ -183,7 +183,7 @@ Pro Lauf liegen die Schreine mit festem Seed in den Zonen (jede Zone mindestens 
 | 2. Gemüsebeet | 5:00 | Knollgrimm, der Käferkönig | 2.6 | 1.7 | 1.35 |
 | 3. Komposthaufen | 5:00 | Der Schnitter | 6 | 2.6 | 1.7 |
 
-Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Das Gartentor bleibt offen, sobald der Boss besiegt ist. Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Hineinlaufen bringt dich ins nächste Beet (volle Heilung).
+Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Das Gartentor bleibt offen, sobald der Boss besiegt ist. Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Hineinlaufen bringt dich ins nächste Beet (volle Heilung).
 
 ### Bosse
 
@@ -256,18 +256,27 @@ Samenkörner fallen von Gegnern (35 % je normaler Gegner, Elite 10, Boss 40) und
 | `thunder_cloud` | Gewitterwolke | epic | +15 % Blitzchance, +30 % Elementarschaden. |
 | `compost_heart` | Komposthaufen-Herz | legendary | Splitter bei 30 % der Kills, +2 HP pro Kill, +20 % Flächenradius. |
 
-## Waffen (6, Karten beim Level-up)
+## Waffen (15, Karten beim Level-up)
 
 4 Waffenplätze (die Startwaffe belegt einen). Neue Waffen erscheinen als Karten beim Level-up, solange ein Platz frei ist; eine Waffe erneut wählen hebt ihre Stufe (höchstens 5). Waffen nutzen Schaden, Angriffstempo und Krit des Spielers.
 
-| ID | Name | Art | Seltenheit | Wirkung | je Stufe |
-|---|---|---|---|---|---|
-| `thorn_twig` | Dornenzweig | fan | common | Wirft alle 1,2 s einen Fächer aus 3 Dornen auf den nächsten Gegner. | +2 Schaden, +1 Dorn je 2 Stufen. |
-| `dandelion` | Pusteblume | fan | uncommon | Alle 2 s fliegen 8 Schirmchen in alle Richtungen, durchbohren 1 Gegner. | +2 Schaden, +2 Schirmchen. |
-| `pollen_cloud` | Pollenwolke | aura | common | Eine Wolke um dich (Radius 70) macht alle 0,5 s 4 Schaden. | +1,5 Schaden, +8 Radius. |
-| `bees` | Bienenschwarm | orbit | uncommon | 2 Bienen kreisen um dich (Radius 64) und stechen für 10 Schaden. | +3 Schaden, +1 Biene. |
-| `sun_pulse` | Sonnenpuls | nova | uncommon | Alle 3 s ein Lichtring um dich (Radius 110, 14 Schaden). | +5 Schaden, +10 Radius, -0,2 s Abklingzeit. |
-| `pumpkin_bomb` | Kürbisbombe | lobbed | rare | Wirft alle 2,5 s einen Kürbis auf einen Gegner (bis 320 px), der nach 0,9 s platzt (Radius 70, 30 Schaden). | +10 Schaden, +6 Radius, +1 Kürbis je 2 Stufen. |
+| ID | Name | Art | Spielweise | Seltenheit | Wirkung | je Stufe |
+|---|---|---|---|---|---|---|
+| `thorn_twig` | Dornenzweig | fan | Fernkampf | common | Wirft alle 1,2 s einen Fächer aus 3 Dornen auf den nächsten Gegner. | +2 Schaden, +1 Dorn je 2 Stufen. |
+| `dandelion` | Pusteblume | fan | Rundum | uncommon | Alle 2 s fliegen 8 Schirmchen in alle Richtungen, durchbohren 1 Gegner. | +2 Schaden, +2 Schirmchen. |
+| `pollen_cloud` | Pollenwolke | aura | Nahkampf | common | Eine Wolke um dich (Radius 70) macht alle 0,5 s 4 Schaden. | +1,5 Schaden, +8 Radius. |
+| `bees` | Bienenschwarm | orbit | Nahkampf | uncommon | 2 Bienen kreisen um dich (Radius 64) und stechen für 10 Schaden. | +3 Schaden, +1 Biene. |
+| `sun_pulse` | Sonnenpuls | nova | Fläche | uncommon | Alle 3 s ein Lichtring um dich (Radius 110, 14 Schaden). | +5 Schaden, +10 Radius, -0,2 s Abklingzeit. |
+| `pumpkin_bomb` | Kürbisbombe | lobbed | Fläche | rare | Wirft alle 2,5 s einen Kürbis auf einen Gegner (bis 320 px), der nach 0,9 s platzt (Radius 70, 30 Schaden). | +10 Schaden, +6 Radius, +1 Kürbis je 2 Stufen. |
+| `firefly` | Glühwürmchen | chain | Kette | rare | Alle 1,4 s ein Leuchtblitz, der über 3 Gegner springt (9 Schaden, je Sprung 85 %). | +3 Schaden, +1 Sprung. |
+| `leaf_boomerang` | Ahornbumerang | boomerang | Durchschlag | uncommon | Alle 1,6 s fliegt ein Ahornblatt hinaus und kehrt zurück; trifft auf beiden Wegen (12 Schaden). | +4 Schaden, +1 Blatt je 2 Stufen. |
+| `nettle_trail` | Brennnesselspur | trail | Bewegung | common | Im Laufen wachsen hinter dir Brennnesseln (Radius 26, 2,5 s, 5 Schaden alle 0,5 s). | +2 Schaden, +0,5 s Dauer, +3 Radius. |
+| `cactus` | Kaktuswächter | turret | Stellung | uncommon | Pflanzt alle 4 s einen Kaktus (12 s), der Stacheln auf Gegner bis 260 px schießt (8 Schaden, 0,7 s). | +3 Schaden, +1 Kaktus je 2 Stufen, schneller. |
+| `sunbeam` | Brennglasstrahl | beam | Durchschlag | rare | Alle 2,2 s ein Lichtstrahl durch alle Gegner in einer Linie (360 px, 22 Schaden). | +7 Schaden, +3 Breite, -0,15 s Abklingzeit. |
+| `garlic_mine` | Knoblauchminen | mine | Bewegung | common | Im Laufen legst du jede Sekunde eine Knoblauchzehe (höchstens 4), die bei Berührung platzt (Radius 60, 26 Schaden). | +8 Schaden, +1 Zehe. |
+| `seed_shotgun` | Saatflinte | fan | Nahkampf | uncommon | Alle 1,5 s eine Ladung aus 7 Samen auf kurze Distanz (170 px, je 6 Schaden). | +2 Schaden, +1 Samen. |
+| `dragonfly` | Libellenschwarm | homing | Zielsuche | rare | Alle 1,8 s fliegen 2 Libellen los und suchen sich selbst ein Ziel (10 Schaden). | +3 Schaden, +1 Libelle je 2 Stufen. |
+| `sickle` | Sichel | sweep | Nahkampf | common | Alle 1,1 s ein Hieb im Halbkreis vor dir (Radius 80, 16 Schaden). | +5 Schaden, +6 Radius. |
 
 ## Punkte
 

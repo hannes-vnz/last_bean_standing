@@ -220,6 +220,289 @@
    "....aaaaaaaaa..."
   ]
  },
+ "weapon:firefly": {
+  "w": 16,
+  "h": 16,
+  "pal": {
+   "a": "#4a3358",
+   "b": "#ffffff",
+   "c": "#fff9d1",
+   "d": "#fff7c0",
+   "e": "#fff4c0",
+   "f": "#edf7ff",
+   "g": "#e6f4ff",
+   "h": "#b3bec6",
+   "i": "#7c6c86",
+   "j": "#fff1a8",
+   "k": "#392744",
+   "l": "#ffe08b",
+   "m": "#ffd45e",
+   "n": "#c6bb83",
+   "o": "#c6c095",
+   "p": "#c6a549"
+  },
+  "rows": [
+   "................",
+   "...a..aaaaa.....",
+   "..abaaccccdaa.a.",
+   "...acccccddddaba",
+   "..accceefggddda.",
+   "..acceefggghdda.",
+   ".acceiaagghjjdda",
+   ".acciaaaklmjjdda",
+   ".acceaaklmmmndoa",
+   ".acdjjlmmmmmpooa",
+   ".addjjjmmmmpnooa",
+   "..addjjjmppnooa.",
+   "..adddjjnnnoooa.",
+   "...adddddooooba.",
+   "....aaddoooaaa..",
+   "......aaaaa....."
+  ]
+ },
+ "weapon:leaf_boomerang": {
+  "w": 16,
+  "h": 16,
+  "pal": {
+   "a": "#4a3358",
+   "b": "#ff9a3c",
+   "c": "#c0602a",
+   "d": "#ffffff"
+  },
+  "rows": [
+   "................",
+   "................",
+   ".....aaa........",
+   "..aaabbba.......",
+   ".abbbbbba...aa..",
+   ".abbcbbba..abba.",
+   ".abbdcbbcaabcba.",
+   ".abbbbcbcaccbba.",
+   ".abbbbbccccbbba.",
+   ".abbbbbbcbbbbba.",
+   "..aabbbbcbbbba..",
+   "....abbbcbbba...",
+   ".....abbcbba....",
+   "......abcba.....",
+   ".......aca......",
+   "........a......."
+  ]
+ },
+ "weapon:nettle_trail": {
+  "w": 16,
+  "h": 16,
+  "pal": {
+   "a": "#4a3358",
+   "b": "#4f9a5a",
+   "c": "#ffffff",
+   "d": "#5fb85a",
+   "e": "#a0784f"
+  },
+  "rows": [
+   "................",
+   "................",
+   "........a.......",
+   "......aaba......",
+   ".....acabaa.....",
+   "...a..aabada....",
+   "..aba..addaaa...",
+   "..abaa.abdacba..",
+   "..abadaaba.abaa.",
+   "..adda.aba.abada",
+   "..abda.aba.adda.",
+   "..aba..aba.abda.",
+   "..aba..aba.aba..",
+   "..abaa.aba.abaa.",
+   ".aabaeaabaaabaea",
+   "aeabaa.abaeabaa."
+  ]
+ },
+ "weapon:cactus": {
+  "w": 16,
+  "h": 16,
+  "pal": {
+   "a": "#4a3358",
+   "b": "#ff9fc0",
+   "c": "#6fbf5a",
+   "d": "#fff1d6",
+   "e": "#d9805a"
+  },
+  "rows": [
+   "................",
+   ".......aa.......",
+   "......abba......",
+   ".....acccca.....",
+   ".....accccaaaa..",
+   "..aaaacdccaccca.",
+   ".acccaccccacdca.",
+   ".acdcacccccccca.",
+   ".acccccccccccca.",
+   ".accccccdcaaaa..",
+   "..aaaacccca.....",
+   ".....acccca.....",
+   "....aacdccaa....",
+   "...aeeeeeeeea...",
+   "...aeeeeeeeea...",
+   "...aeeeeeeeea..."
+  ]
+ },
+ "weapon:sunbeam": {
+  "w": 16,
+  "h": 16,
+  "pal": {
+   "a": "#4a3358",
+   "b": "#fff1a8",
+   "c": "#ffffff",
+   "d": "#ffc83d",
+   "e": "#b6c0d1",
+   "f": "#9aa8c0",
+   "g": "#dcefff",
+   "h": "#cfeaff",
+   "i": "#a1b6c6",
+   "j": "#788395"
+  },
+  "rows": [
+   "...............a",
+   "............a.ab",
+   "..........aacabd",
+   ".........acaabda",
+   "..........aabda.",
+   "..........abdaca",
+   ".........abda.a.",
+   "........abda....",
+   "...aaa.abda.....",
+   "..aeefabda......",
+   ".aeegfbda.......",
+   "aeeghhffa.......",
+   "aeghhhija.......",
+   "affhhijja.......",
+   ".affijja........",
+   "..afjja........."
+  ]
+ },
+ "weapon:garlic_mine": {
+  "w": 16,
+  "h": 16,
+  "pal": {
+   "a": "#4a3358",
+   "b": "#a7e08a",
+   "c": "#fff8ef",
+   "d": "#fff6ea",
+   "e": "#f3ebe0",
+   "f": "#efe4d4",
+   "g": "#ffffff",
+   "h": "#c6bfb6",
+   "i": "#bab1a5",
+   "j": "#d8c8a8"
+  },
+  "rows": [
+   ".......a.a......",
+   "......ababa.....",
+   ".......aba......",
+   ".......aba......",
+   ".......aba......",
+   ".....aaabaaa....",
+   "....accccddda...",
+   "...acefcddefda..",
+   "..acefgfdefffda.",
+   "..acefffdefffda.",
+   "..acffffdffffha.",
+   "..adfffidfffiha.",
+   "..adfffidfffiha.",
+   "...adfidddfiha..",
+   "....adjdjhjha...",
+   ".....aaahaaa...."
+  ]
+ },
+ "weapon:seed_shotgun": {
+  "w": 16,
+  "h": 16,
+  "pal": {
+   "a": "#4a3358",
+   "b": "#ffc83d",
+   "c": "#9aa8c0",
+   "d": "#a0784f",
+   "e": "#c9a06a"
+  },
+  "rows": [
+   "............a..a",
+   "...........abaab",
+   "............a.aa",
+   "............aacc",
+   "..........aaccca",
+   ".........acccaa.",
+   "........accdaaba",
+   ".......addda.aa.",
+   "......addda.aba.",
+   "....aaddaa...a..",
+   "...addda........",
+   "..addda.........",
+   ".aeeea..........",
+   ".aeeea..........",
+   ".aeeea..........",
+   "..aaa..........."
+  ]
+ },
+ "weapon:dragonfly": {
+  "w": 16,
+  "h": 16,
+  "pal": {
+   "a": "#4a3358",
+   "b": "#88c9ff",
+   "c": "#5ab4ff",
+   "d": "#468cc6",
+   "e": "#edf7ff",
+   "f": "#e6f4ff",
+   "g": "#b3bec6"
+  },
+  "rows": [
+   "................",
+   "............a...",
+   "...........aba..",
+   "..........abcaa.",
+   "....aaaaaabcccda",
+   "...aeefffaaccda.",
+   "..aefffffgccda..",
+   "...afffggccaa...",
+   "....aaaaccaaa...",
+   "......aceefffa..",
+   ".....acefffffga.",
+   "....accafffgga..",
+   "...acca.aaaaa...",
+   "..acca..........",
+   "...aa...........",
+   "................"
+  ]
+ },
+ "weapon:sickle": {
+  "w": 16,
+  "h": 16,
+  "pal": {
+   "a": "#4a3358",
+   "b": "#dfe7f2",
+   "c": "#ffffff",
+   "d": "#9aa8c0",
+   "e": "#a0784f"
+  },
+  "rows": [
+   "................",
+   ".......aaaaa....",
+   "......abbcbbaa..",
+   ".....addadddaba.",
+   "....adaa.aaadaba",
+   "...abda.....adba",
+   "....aa......ada.",
+   ".............a..",
+   "....aa..........",
+   "...aeea.........",
+   "...aeea.........",
+   "..aeea..........",
+   "..aeea..........",
+   "..aeea..........",
+   ".aeea...........",
+   ".aeea..........."
+  ]
+ },
  "item:watering_can": {
   "w": 16,
   "h": 16,

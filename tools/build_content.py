@@ -286,15 +286,16 @@ PALETTES = {
 # zum nächsten Beet (der Build bleibt). Läuft die Zeit ab, beginnt die Plagenflut: endlos, immer dichter und härter.
 # Nach dem Schnitter im dritten Beet ist der Lauf gewonnen. Gegnerwerte: Grundwert x Beet-Faktor x Zeitfaktor im Beet.
 STAGES = [
- dict(id="seedbed", index=1, name="Saatbeet", biome="seedbed", duration_s=300, boss="snail_queen", hp_mult=1.0, damage_mult=1.0, budget_mult=1.0,
+ dict(id="seedbed", index=1, name="Saatbeet", biome="seedbed", duration_s=300, boss="snail_queen", hp_mult=1.0, damage_mult=1.0, budget_mult=1.0, head_start_s=0,
       tagline="Die Keimlinge brauchen dich!"),
- dict(id="veggiebed", index=2, name="Gemüsebeet", biome="veggiebed", duration_s=300, boss="beetle_king", hp_mult=2.6, damage_mult=1.7, budget_mult=1.35,
+ dict(id="veggiebed", index=2, name="Gemüsebeet", biome="veggiebed", duration_s=300, boss="beetle_king", hp_mult=2.6, damage_mult=1.7, budget_mult=1.35, head_start_s=150,
       tagline="Das Gemüse ist vergiftet. Halte durch!"),
- dict(id="compost", index=3, name="Komposthaufen", biome="compost", duration_s=300, boss="reaper", hp_mult=6.0, damage_mult=2.6, budget_mult=1.7,
+ dict(id="compost", index=3, name="Komposthaufen", biome="compost", duration_s=300, boss="reaper", hp_mult=6.0, damage_mult=2.6, budget_mult=1.7, head_start_s=180,
       tagline="Der Schnitter wartet im Kompost."),
 ]
-FLOOD = dict(name="Plagenflut", warning_s=10, budget_growth_per_10s=0.4, hp_growth_per_10s=0.15, damage_growth_per_10s=0.08,
-             text="Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Das Gartentor bleibt offen, sobald der Boss besiegt ist.")
+# head_start_s (Paket G): spätere Beete beginnen mit so viel Wellen-Vorsprung (Gegnermenge und -arten), sonst laufen sie zu langsam an.
+FLOOD = dict(name="Plagenflut", warning_s=10, budget_growth_per_10s=0.4, hp_growth_per_10s=0.15, damage_growth_per_10s=0.08, reward_growth_per_10s=0.25,
+             text="Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Das Gartentor bleibt offen, sobald der Boss besiegt ist.")
 GATE = dict(radius_px=40, text="Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Hineinlaufen bringt dich ins nächste Beet (volle Heilung).")
 
 STYLE = dict(
@@ -422,7 +423,7 @@ def validate():
     if set(i["rarity"] for i in ITEMS) - set(BALANCE["rarity_weights"]): errs.append("Items: unbekannte Seltenheit")
     if len(set(ids(WEAPONS))) != len(WEAPONS): errs.append("doppelte IDs in weapons")
     for w_ in WEAPONS:
-        if w_["kind"] not in ("fan", "nova", "aura", "orbit", "lobbed"): errs.append(f"Waffe {w_['id']}: unbekannte Art")
+        if w_["kind"] not in WEAPON_KINDS: errs.append(f"Waffe {w_['id']}: unbekannte Art")
         if w_["rarity"] not in BALANCE["rarity_weights"]: errs.append(f"Waffe {w_['id']}: unbekannte Seltenheit")
         if set(w_["per_level"]) - set(w_["base"]): errs.append(f"Waffe {w_['id']}: per_level ohne Grundwert")
         if "damage" not in w_["base"] or w_["base"].get("cooldown_s", 0) <= 0: errs.append(f"Waffe {w_['id']}: Schaden und Abklingzeit nötig")
@@ -522,21 +523,42 @@ ECONOMY = dict(
 # Angriffstempo-Boni des Spielers, Krit gilt auch für Waffen. Entwurf, braucht Hannes' Freigabe.
 WEAPON_RULES = dict(slots=4, max_level=5,
                     text="4 Waffenplätze (die Startwaffe belegt einen). Neue Waffen erscheinen als Karten beim Level-up, solange ein Platz frei ist; eine Waffe erneut wählen hebt ihre Stufe (höchstens 5). Waffen nutzen Schaden, Angriffstempo und Krit des Spielers.")
-def weapon(id, name, kind, rar, text, level_text, base, per_level):
-    return dict(id=id, name=name, kind=kind, rarity=rar, text=text, level_text=level_text, base=base, per_level=per_level, impl_phase=1)
+def weapon(id, name, kind, rar, text, level_text, base, per_level, style="Fernkampf"):
+    return dict(id=id, name=name, kind=kind, rarity=rar, style=style, text=text, level_text=level_text, base=base, per_level=per_level, impl_phase=1)
+WEAPON_KINDS = ("fan", "nova", "aura", "orbit", "lobbed", "chain", "boomerang", "trail", "turret", "beam", "mine", "homing", "sweep")
+# Paket G (28.10.2026): 15 Waffen für eigene Spielweisen. `style` steht auf der Karte:
+# Fernkampf, Rundum, Nahkampf, Fläche, Kette, Bewegung (wirkt nur im Laufen), Stellung (belohnt Stehen), Zielsuche, Durchschlag.
 WEAPONS = [
  weapon("thorn_twig", "Dornenzweig", "fan", "common", "Wirft alle 1,2 s einen Fächer aus 3 Dornen auf den nächsten Gegner.", "+2 Schaden, +1 Dorn je 2 Stufen.",
         dict(damage=7, cooldown_s=1.2, count=3, spread_deg=30, speed=520, range=300, pierce=0), dict(damage=2, count=0.5)),
  weapon("dandelion", "Pusteblume", "fan", "uncommon", "Alle 2 s fliegen 8 Schirmchen in alle Richtungen, durchbohren 1 Gegner.", "+2 Schaden, +2 Schirmchen.",
-        dict(damage=6, cooldown_s=2.0, count=8, spread_deg=360, speed=360, range=260, pierce=1), dict(damage=2, count=2)),
+        dict(damage=6, cooldown_s=2.0, count=8, spread_deg=360, speed=360, range=260, pierce=1), dict(damage=2, count=2), "Rundum"),
  weapon("pollen_cloud", "Pollenwolke", "aura", "common", "Eine Wolke um dich (Radius 70) macht alle 0,5 s 4 Schaden.", "+1,5 Schaden, +8 Radius.",
-        dict(damage=4, cooldown_s=0.5, radius=70), dict(damage=1.5, radius=8)),
+        dict(damage=4, cooldown_s=0.5, radius=70), dict(damage=1.5, radius=8), "Nahkampf"),
  weapon("bees", "Bienenschwarm", "orbit", "uncommon", "2 Bienen kreisen um dich (Radius 64) und stechen für 10 Schaden.", "+3 Schaden, +1 Biene.",
-        dict(damage=10, cooldown_s=0.5, count=2, radius=64, hit_radius=10, turns_per_s=0.7), dict(damage=3, count=1)),
+        dict(damage=10, cooldown_s=0.5, count=2, radius=64, hit_radius=10, turns_per_s=0.7), dict(damage=3, count=1), "Nahkampf"),
  weapon("sun_pulse", "Sonnenpuls", "nova", "uncommon", "Alle 3 s ein Lichtring um dich (Radius 110, 14 Schaden).", "+5 Schaden, +10 Radius, -0,2 s Abklingzeit.",
-        dict(damage=14, cooldown_s=3.0, radius=110), dict(damage=5, radius=10, cooldown_s=-0.2)),
+        dict(damage=14, cooldown_s=3.0, radius=110), dict(damage=5, radius=10, cooldown_s=-0.2), "Fläche"),
  weapon("pumpkin_bomb", "Kürbisbombe", "lobbed", "rare", "Wirft alle 2,5 s einen Kürbis auf einen Gegner (bis 320 px), der nach 0,9 s platzt (Radius 70, 30 Schaden).", "+10 Schaden, +6 Radius, +1 Kürbis je 2 Stufen.",
-        dict(damage=30, cooldown_s=2.5, count=1, radius=70, range=320, flight_s=0.9), dict(damage=10, radius=6, count=0.5)),
+        dict(damage=30, cooldown_s=2.5, count=1, radius=70, range=320, flight_s=0.9), dict(damage=10, radius=6, count=0.5), "Fläche"),
+ weapon("firefly", "Glühwürmchen", "chain", "rare", "Alle 1,4 s ein Leuchtblitz, der über 3 Gegner springt (9 Schaden, je Sprung 85 %).", "+3 Schaden, +1 Sprung.",
+        dict(damage=9, cooldown_s=1.4, jumps=3, range=280, jump_range=140, falloff=0.85), dict(damage=3, jumps=1), "Kette"),
+ weapon("leaf_boomerang", "Ahornbumerang", "boomerang", "uncommon", "Alle 1,6 s fliegt ein Ahornblatt hinaus und kehrt zurück; trifft auf beiden Wegen (12 Schaden).", "+4 Schaden, +1 Blatt je 2 Stufen.",
+        dict(damage=12, cooldown_s=1.6, count=1, speed=420, range=260), dict(damage=4, count=0.5), "Durchschlag"),
+ weapon("nettle_trail", "Brennnesselspur", "trail", "common", "Im Laufen wachsen hinter dir Brennnesseln (Radius 26, 2,5 s, 5 Schaden alle 0,5 s).", "+2 Schaden, +0,5 s Dauer, +3 Radius.",
+        dict(damage=5, cooldown_s=0.3, radius=26, duration_s=2.5), dict(damage=2, duration_s=0.5, radius=3), "Bewegung"),
+ weapon("cactus", "Kaktuswächter", "turret", "uncommon", "Pflanzt alle 4 s einen Kaktus (12 s), der Stacheln auf Gegner bis 260 px schießt (8 Schaden, 0,7 s).", "+3 Schaden, +1 Kaktus je 2 Stufen, schneller.",
+        dict(damage=8, cooldown_s=4.0, count=1, fire_s=0.7, range=260, life_s=12, speed=480), dict(damage=3, count=0.5, fire_s=-0.05), "Stellung"),
+ weapon("sunbeam", "Brennglasstrahl", "beam", "rare", "Alle 2,2 s ein Lichtstrahl durch alle Gegner in einer Linie (360 px, 22 Schaden).", "+7 Schaden, +3 Breite, -0,15 s Abklingzeit.",
+        dict(damage=22, cooldown_s=2.2, length=360, width=14), dict(damage=7, width=3, cooldown_s=-0.15), "Durchschlag"),
+ weapon("garlic_mine", "Knoblauchminen", "mine", "common", "Im Laufen legst du jede Sekunde eine Knoblauchzehe (höchstens 4), die bei Berührung platzt (Radius 60, 26 Schaden).", "+8 Schaden, +1 Zehe.",
+        dict(damage=26, cooldown_s=1.0, count=4, radius=60, trigger=26, life_s=20), dict(damage=8, count=1), "Bewegung"),
+ weapon("seed_shotgun", "Saatflinte", "fan", "uncommon", "Alle 1,5 s eine Ladung aus 7 Samen auf kurze Distanz (170 px, je 6 Schaden).", "+2 Schaden, +1 Samen.",
+        dict(damage=6, cooldown_s=1.5, count=7, spread_deg=50, speed=600, range=170, pierce=0), dict(damage=2, count=1), "Nahkampf"),
+ weapon("dragonfly", "Libellenschwarm", "homing", "rare", "Alle 1,8 s fliegen 2 Libellen los und suchen sich selbst ein Ziel (10 Schaden).", "+3 Schaden, +1 Libelle je 2 Stufen.",
+        dict(damage=10, cooldown_s=1.8, count=2, speed=300, range=420, turn=7), dict(damage=3, count=0.5), "Zielsuche"),
+ weapon("sickle", "Sichel", "sweep", "common", "Alle 1,1 s ein Hieb im Halbkreis vor dir (Radius 80, 16 Schaden).", "+5 Schaden, +6 Radius.",
+        dict(damage=16, cooldown_s=1.1, radius=80, arc_deg=140), dict(damage=5, radius=6), "Nahkampf"),
 ]
 
 # ---------------------------------------------------------------------------- Balance-Modell
@@ -648,9 +670,9 @@ def md():
     P("")
     P(f"## Waffen ({len(WEAPONS)}, Karten beim Level-up)\n")
     P(WEAPON_RULES["text"] + "\n")
-    P("| ID | Name | Art | Seltenheit | Wirkung | je Stufe |\n|---|---|---|---|---|---|")
+    P("| ID | Name | Art | Spielweise | Seltenheit | Wirkung | je Stufe |\n|---|---|---|---|---|---|---|")
     for w_ in WEAPONS:
-        P(f"| `{w_['id']}` | {w_['name']} | {w_['kind']} | {w_['rarity']} | {w_['text']} | {w_['level_text']} |")
+        P(f"| `{w_['id']}` | {w_['name']} | {w_['kind']} | {w_['style']} | {w_['rarity']} | {w_['text']} | {w_['level_text']} |")
     P("")
     P("## Punkte\n")
     P("`Punkte = 2 x Sekunden + 5 x Kills + 20 x Level + 500 x Bosse` (Sieg über den Schnitter +20000; in der Schwarmflut +1000 je 10 s mal Flut-Multiplikator, der Schwierigkeitsfaktor erhöht die Punkte). Highscore je Charakter und gesamt, lokal gespeichert. Modus „Ewige Nacht“ (nach Challenge „Erreiche 20:00“): Gegner-HP x1,5, XP x1,25, Punkte x1,5.\n")

@@ -31,12 +31,14 @@ def _run(w, seconds):
     return [e for _ in range(int(seconds * TICK_HZ)) for e in w.step([PlayerInput(0)])]
 
 
-def test_content_has_six_weapons_and_four_slots(content, make_config):
+def test_content_has_fifteen_weapons_and_four_slots(content, make_config):
+    from lastbean.sim.world import WEAPON_KINDS
+
     cfg = make_config()
-    assert len(cfg.weapons) == 6 and cfg.weapon_slots == 4
-    assert {w.kind for w in cfg.weapons} == {"fan", "nova", "aura", "orbit", "lobbed"}
+    assert len(cfg.weapons) == 15 and cfg.weapon_slots == 4
+    assert {w.kind for w in cfg.weapons} == set(WEAPON_KINDS) | {"orbit"}  # every kind is used
     for w in content.weapons:
-        assert w.name and w.text and w.level_text
+        assert w.name and w.text and w.level_text and w.style
 
 
 def test_cos_sin_matches_math_and_is_exact_at_zero():
@@ -61,7 +63,11 @@ def test_levels_add_per_level_values(make_config):
     assert bees.at(1)["count"] == 2 and bees.at(3)["count"] == 4 and bees.at(3)["damage"] == 16
 
 
-@pytest.mark.parametrize("wid", ["thorn_twig", "dandelion", "pollen_cloud", "bees", "sun_pulse", "pumpkin_bomb"])
+ALL_WEAPONS = ["thorn_twig", "dandelion", "pollen_cloud", "bees", "sun_pulse", "pumpkin_bomb", "firefly",
+               "leaf_boomerang", "cactus", "sunbeam", "seed_shotgun", "dragonfly", "sickle"]  # fmt: skip
+
+
+@pytest.mark.parametrize("wid", ALL_WEAPONS)
 def test_every_weapon_damages_an_enemy_next_to_the_player(make_config, wid):
     w = _world(make_config)
     _give(w, wid)
@@ -69,6 +75,42 @@ def test_every_weapon_damages_an_enemy_next_to_the_player(make_config, wid):
     events = _run(w, 4)
     assert e.hp < e.max_hp, wid
     assert any(isinstance(ev, EnemyHit) and ev.enemy_id == e.eid for ev in events)
+
+
+@pytest.mark.parametrize("wid", ["nettle_trail", "garlic_mine"])
+def test_walking_weapons_work_only_while_walking(make_config, wid):
+    w = _world(make_config)
+    _give(w, wid)
+    _run(w, 2)
+    assert not w.zones and not w.mines  # standing still: nothing
+    p = w.players[0]
+    e = _dummy(w, -60.0, 0.0)  # behind: it walks into what we leave
+    for _ in range(3 * TICK_HZ):
+        w.step([PlayerInput(0, 1 if (w.tick // 40) % 2 else -1, 0)])
+        e.x, e.y = p.x - 20.0, p.y  # an enemy right on our heels
+    assert e.hp < e.max_hp
+
+
+def test_boomerang_comes_back(make_config):
+    w = _world(make_config)
+    _give(w, "leaf_boomerang")
+    _dummy(w, 200.0, 0.0)
+    w.step([PlayerInput(0)])
+    pr = next(pr for pr in w.projectiles if pr.weapon == "leaf_boomerang")
+    _run(w, 0.8)
+    assert pr.returning
+    _run(w, 1.5)
+    assert pr not in w.projectiles  # caught again
+
+
+def test_cacti_are_planted_and_wither(make_config):
+    w = _world(make_config)
+    _give(w, "cactus")
+    _dummy(w, 150.0, 0.0)
+    w.step([PlayerInput(0)])
+    assert len(w.turrets) == 1 and w.snapshot().turrets
+    _run(w, 13)
+    assert len(w.turrets) == 1  # the old one withered, a new one grew (count 1)
 
 
 def test_weapons_stay_quiet_without_enemies(make_config):

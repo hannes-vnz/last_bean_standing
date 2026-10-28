@@ -236,10 +236,23 @@ class Renderer:
         for pr in snap.projectiles:
             sx, sy = round(pr.x / UNITS_PER_PX) - cam_x, round(pr.y / UNITS_PER_PX) - cam_y
             if 0 <= sx < self.w and 0 <= sy < self.h:
+                if pr.weapon == "dragonfly":  # blue body, flickering wings
+                    wing = (snap.tick // 3) % 2
+                    c.fill(ink, (sx - 2, sy - 2, 5, 5))
+                    c.fill((90, 180, 255), (sx - 1, sy - 1, 3, 3))
+                    c.fill(WHITE, (sx - 3, sy - 2 - wing, 2, 1))
+                    c.fill(WHITE, (sx + 2, sy - 2 - wing, 2, 1))
+                    continue
+                if pr.weapon == "leaf_boomerang":  # spinning maple leaf
+                    spin = (snap.tick // 3) % 2
+                    c.fill(ink, (sx - 4, sy - 4, 9, 9) if spin else (sx - 3, sy - 5, 7, 11))
+                    c.fill((255, 154, 60), (sx - 3, sy - 3, 7, 7) if spin else (sx - 2, sy - 4, 5, 9))
+                    c.set_at((sx, sy), (192, 96, 42))
+                    continue
                 pygame.draw.circle(c, ink, (sx, sy), 3 if pr.crit else 2)
                 halo = WHITE if pr.weapon == "dandelion" else self.shot_halo  # fluffy seeds, still yellow-cored
                 pygame.draw.circle(c, halo, (sx, sy), 2 if pr.crit else 1)
-                c.set_at((sx, sy), self.shot_core)
+                c.set_at((sx, sy), (167, 224, 138) if pr.weapon == "cactus" else self.shot_core)
         self._draw_weapon_air(snap, cam_x, cam_y)
 
         if effects:
@@ -574,6 +587,23 @@ class Renderer:
 
     def _draw_effects(self, fx: Effects, cam_x: int, cam_y: int) -> None:
         c = self.canvas
+        for x, y, x2, y2, width, life in fx.beams:  # light beam: white core, golden glow, thinning out
+            a = (round(x / UNITS_PER_PX) - cam_x, round(y / UNITS_PER_PX) - cam_y)
+            b = (round(x2 / UNITS_PER_PX) - cam_x, round(y2 / UNITS_PER_PX) - cam_y)
+            w = max(1, round(width / UNITS_PER_PX * life / 10))
+            pygame.draw.line(c, self.ink, a, b, w + 4)
+            pygame.draw.line(c, self.crit_color, a, b, w + 2)
+            pygame.draw.line(c, WHITE, a, b, max(1, w - 1))
+        for x, y, dx, dy, radius, arc, life in fx.sweeps:  # sickle: a silver arc that fades
+            cx, cy = round(x / UNITS_PER_PX) - cam_x, round(y / UNITS_PER_PX) - cam_y
+            r = round(radius / UNITS_PER_PX)
+            mid = math.atan2(dy, dx)
+            half = math.radians(arc) / 2
+            pts = [(cx + math.cos(mid - half + k * 2 * half / 8) * r, cy + math.sin(mid - half + k * 2 * half / 8) * r)
+                   for k in range(9)]  # fmt: skip
+            if len(pts) > 1:
+                pygame.draw.lines(c, self.ink, False, pts, 4 if life > 4 else 3)
+                pygame.draw.lines(c, (223, 231, 242) if life > 4 else (154, 168, 192), False, pts, 2)
         for b in fx.bolts:  # lightning: jagged yellow-white line with a dark edge
             pts = [(round(x / UNITS_PER_PX) - cam_x, round(y / UNITS_PER_PX) - cam_y) for x, y in b.points]
             jag = []
@@ -619,6 +649,36 @@ class Renderer:
                     py = sy + round(math.sin(a) * r * (0.35 + 0.08 * (k % 4)))
                     overlay.fill((*self.pollen, 220), (px, py, 2, 2))
             c.blit(overlay, (0, 0))
+        ink = self.ink
+        for _, zx, zy, radius, life in snap.zones:  # nettle patches: a ring of little nettles
+            sx, sy = round(zx / UNITS_PER_PX) - cam_x, round(zy / UNITS_PER_PX) - cam_y
+            r = max(3, round(radius / UNITS_PER_PX))
+            if -r <= sx < self.w + r and -r <= sy < self.h + r:
+                fade = min(1.0, life)
+                for k in range(6):
+                    a = k * 1.047 + (zx % 7)
+                    px, py = sx + round(math.cos(a) * r * 0.6), sy + round(math.sin(a) * r * 0.6)
+                    c.fill(ink, (px - 1, py - 3, 3, 4))
+                    c.fill((95, 184, 90) if fade > 0.4 else (150, 190, 120), (px, py - 2, 1, 3))
+        for _, mx, my in snap.mines:  # garlic cloves
+            sx, sy = round(mx / UNITS_PER_PX) - cam_x, round(my / UNITS_PER_PX) - cam_y
+            if 0 <= sx < self.w and 0 <= sy < self.h:
+                c.fill(ink, (sx - 3, sy - 3, 7, 7))
+                c.fill((255, 246, 234), (sx - 2, sy - 2, 5, 5))
+                c.fill((167, 224, 138), (sx, sy - 5, 1, 2))
+        for _, tx_, ty_, life in snap.turrets:  # cacti, blinking shortly before they wither
+            sx, sy = round(tx_ / UNITS_PER_PX) - cam_x, round(ty_ / UNITS_PER_PX) - cam_y
+            if not (-10 <= sx < self.w + 10 and -14 <= sy < self.h + 14) or (life < 2 and (snap.tick // 6) % 2):
+                continue
+            c.fill(ink, (sx - 3, sy - 11, 7, 14))
+            c.fill(ink, (sx - 7, sy - 7, 5, 6))
+            c.fill(ink, (sx + 3, sy - 9, 5, 6))
+            green = (111, 191, 90)
+            c.fill(green, (sx - 2, sy - 10, 5, 12))
+            c.fill(green, (sx - 6, sy - 6, 3, 4))
+            c.fill(green, (sx + 4, sy - 8, 3, 4))
+            c.fill((217, 128, 90), (sx - 3, sy + 1, 7, 3))
+            c.set_at((sx, sy - 11), (255, 159, 192))
         blink_on = (snap.tick // 10) % 2 == 0
         for b in snap.bombs:
             tx, ty = round(b.tx / UNITS_PER_PX) - cam_x, round(b.ty / UNITS_PER_PX) - cam_y
@@ -671,7 +731,7 @@ class Renderer:
         old, self.canvas = self.canvas, surf  # reuse the text helpers on the card surface
         try:
             self.text(name if self.font.size(name)[0] < panel.right - tx - 4 else name[:16] + "…", (tx, panel.y + 4))
-            label = RARITY_NAMES.get(tier, tier) + (" · Waffe" if weapon else "")
+            label = RARITY_NAMES.get(tier, tier) + (f" · {u.style or 'Waffe'}" if weapon else "")
             if not self.touch:
                 label = f"{i + 1}  {label}"
             lbl = self._outlined(label, self.font, color)

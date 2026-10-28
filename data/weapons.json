@@ -8,6 +8,7 @@
    "name": "Dornenzweig",
    "kind": "fan",
    "rarity": "common",
+   "style": "Fernkampf",
    "text": "Wirft alle 1,2 s einen Fächer aus 3 Dornen auf den nächsten Gegner.",
    "level_text": "+2 Schaden, +1 Dorn je 2 Stufen.",
    "base": {
@@ -30,6 +31,7 @@
    "name": "Pusteblume",
    "kind": "fan",
    "rarity": "uncommon",
+   "style": "Rundum",
    "text": "Alle 2 s fliegen 8 Schirmchen in alle Richtungen, durchbohren 1 Gegner.",
    "level_text": "+2 Schaden, +2 Schirmchen.",
    "base": {
@@ -52,6 +54,7 @@
    "name": "Pollenwolke",
    "kind": "aura",
    "rarity": "common",
+   "style": "Nahkampf",
    "text": "Eine Wolke um dich (Radius 70) macht alle 0,5 s 4 Schaden.",
    "level_text": "+1,5 Schaden, +8 Radius.",
    "base": {
@@ -70,6 +73,7 @@
    "name": "Bienenschwarm",
    "kind": "orbit",
    "rarity": "uncommon",
+   "style": "Nahkampf",
    "text": "2 Bienen kreisen um dich (Radius 64) und stechen für 10 Schaden.",
    "level_text": "+3 Schaden, +1 Biene.",
    "base": {
@@ -91,6 +95,7 @@
    "name": "Sonnenpuls",
    "kind": "nova",
    "rarity": "uncommon",
+   "style": "Fläche",
    "text": "Alle 3 s ein Lichtring um dich (Radius 110, 14 Schaden).",
    "level_text": "+5 Schaden, +10 Radius, -0,2 s Abklingzeit.",
    "base": {
@@ -110,6 +115,7 @@
    "name": "Kürbisbombe",
    "kind": "lobbed",
    "rarity": "rare",
+   "style": "Fläche",
    "text": "Wirft alle 2,5 s einen Kürbis auf einen Gegner (bis 320 px), der nach 0,9 s platzt (Radius 70, 30 Schaden).",
    "level_text": "+10 Schaden, +6 Radius, +1 Kürbis je 2 Stufen.",
    "base": {
@@ -124,6 +130,202 @@
     "damage": 10,
     "radius": 6,
     "count": 0.5
+   },
+   "impl_phase": 1
+  },
+  {
+   "id": "firefly",
+   "name": "Glühwürmchen",
+   "kind": "chain",
+   "rarity": "rare",
+   "style": "Kette",
+   "text": "Alle 1,4 s ein Leuchtblitz, der über 3 Gegner springt (9 Schaden, je Sprung 85 %).",
+   "level_text": "+3 Schaden, +1 Sprung.",
+   "base": {
+    "damage": 9,
+    "cooldown_s": 1.4,
+    "jumps": 3,
+    "range": 280,
+    "jump_range": 140,
+    "falloff": 0.85
+   },
+   "per_level": {
+    "damage": 3,
+    "jumps": 1
+   },
+   "impl_phase": 1
+  },
+  {
+   "id": "leaf_boomerang",
+   "name": "Ahornbumerang",
+   "kind": "boomerang",
+   "rarity": "uncommon",
+   "style": "Durchschlag",
+   "text": "Alle 1,6 s fliegt ein Ahornblatt hinaus und kehrt zurück; trifft auf beiden Wegen (12 Schaden).",
+   "level_text": "+4 Schaden, +1 Blatt je 2 Stufen.",
+   "base": {
+    "damage": 12,
+    "cooldown_s": 1.6,
+    "count": 1,
+    "speed": 420,
+    "range": 260
+   },
+   "per_level": {
+    "damage": 4,
+    "count": 0.5
+   },
+   "impl_phase": 1
+  },
+  {
+   "id": "nettle_trail",
+   "name": "Brennnesselspur",
+   "kind": "trail",
+   "rarity": "common",
+   "style": "Bewegung",
+   "text": "Im Laufen wachsen hinter dir Brennnesseln (Radius 26, 2,5 s, 5 Schaden alle 0,5 s).",
+   "level_text": "+2 Schaden, +0,5 s Dauer, +3 Radius.",
+   "base": {
+    "damage": 5,
+    "cooldown_s": 0.3,
+    "radius": 26,
+    "duration_s": 2.5
+   },
+   "per_level": {
+    "damage": 2,
+    "duration_s": 0.5,
+    "radius": 3
+   },
+   "impl_phase": 1
+  },
+  {
+   "id": "cactus",
+   "name": "Kaktuswächter",
+   "kind": "turret",
+   "rarity": "uncommon",
+   "style": "Stellung",
+   "text": "Pflanzt alle 4 s einen Kaktus (12 s), der Stacheln auf Gegner bis 260 px schießt (8 Schaden, 0,7 s).",
+   "level_text": "+3 Schaden, +1 Kaktus je 2 Stufen, schneller.",
+   "base": {
+    "damage": 8,
+    "cooldown_s": 4.0,
+    "count": 1,
+    "fire_s": 0.7,
+    "range": 260,
+    "life_s": 12,
+    "speed": 480
+   },
+   "per_level": {
+    "damage": 3,
+    "count": 0.5,
+    "fire_s": -0.05
+   },
+   "impl_phase": 1
+  },
+  {
+   "id": "sunbeam",
+   "name": "Brennglasstrahl",
+   "kind": "beam",
+   "rarity": "rare",
+   "style": "Durchschlag",
+   "text": "Alle 2,2 s ein Lichtstrahl durch alle Gegner in einer Linie (360 px, 22 Schaden).",
+   "level_text": "+7 Schaden, +3 Breite, -0,15 s Abklingzeit.",
+   "base": {
+    "damage": 22,
+    "cooldown_s": 2.2,
+    "length": 360,
+    "width": 14
+   },
+   "per_level": {
+    "damage": 7,
+    "width": 3,
+    "cooldown_s": -0.15
+   },
+   "impl_phase": 1
+  },
+  {
+   "id": "garlic_mine",
+   "name": "Knoblauchminen",
+   "kind": "mine",
+   "rarity": "common",
+   "style": "Bewegung",
+   "text": "Im Laufen legst du jede Sekunde eine Knoblauchzehe (höchstens 4), die bei Berührung platzt (Radius 60, 26 Schaden).",
+   "level_text": "+8 Schaden, +1 Zehe.",
+   "base": {
+    "damage": 26,
+    "cooldown_s": 1.0,
+    "count": 4,
+    "radius": 60,
+    "trigger": 26,
+    "life_s": 20
+   },
+   "per_level": {
+    "damage": 8,
+    "count": 1
+   },
+   "impl_phase": 1
+  },
+  {
+   "id": "seed_shotgun",
+   "name": "Saatflinte",
+   "kind": "fan",
+   "rarity": "uncommon",
+   "style": "Nahkampf",
+   "text": "Alle 1,5 s eine Ladung aus 7 Samen auf kurze Distanz (170 px, je 6 Schaden).",
+   "level_text": "+2 Schaden, +1 Samen.",
+   "base": {
+    "damage": 6,
+    "cooldown_s": 1.5,
+    "count": 7,
+    "spread_deg": 50,
+    "speed": 600,
+    "range": 170,
+    "pierce": 0
+   },
+   "per_level": {
+    "damage": 2,
+    "count": 1
+   },
+   "impl_phase": 1
+  },
+  {
+   "id": "dragonfly",
+   "name": "Libellenschwarm",
+   "kind": "homing",
+   "rarity": "rare",
+   "style": "Zielsuche",
+   "text": "Alle 1,8 s fliegen 2 Libellen los und suchen sich selbst ein Ziel (10 Schaden).",
+   "level_text": "+3 Schaden, +1 Libelle je 2 Stufen.",
+   "base": {
+    "damage": 10,
+    "cooldown_s": 1.8,
+    "count": 2,
+    "speed": 300,
+    "range": 420,
+    "turn": 7
+   },
+   "per_level": {
+    "damage": 3,
+    "count": 0.5
+   },
+   "impl_phase": 1
+  },
+  {
+   "id": "sickle",
+   "name": "Sichel",
+   "kind": "sweep",
+   "rarity": "common",
+   "style": "Nahkampf",
+   "text": "Alle 1,1 s ein Hieb im Halbkreis vor dir (Radius 80, 16 Schaden).",
+   "level_text": "+5 Schaden, +6 Radius.",
+   "base": {
+    "damage": 16,
+    "cooldown_s": 1.1,
+    "radius": 80,
+    "arc_deg": 140
+   },
+   "per_level": {
+    "damage": 5,
+    "radius": 6
    },
    "impl_phase": 1
   }

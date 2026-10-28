@@ -125,3 +125,6 @@ SHRAPNEL_RANGE = 160.0
 DODGE_I_FRAMES_S = 0.3
 REVIVE_HP_SHARE = 0.5  # (text)
 REVIVE_I_FRAMES_S = 2.0  # (text)
+
+# Paket G weapons
+HOMING_RANGE = 260.0  # homing shots look for targets this close
