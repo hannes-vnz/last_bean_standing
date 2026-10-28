@@ -134,7 +134,12 @@ class Game:
         self.result: dict = {}
         self.flags: dict = {}
         self.name_buffer = ""
-        self.state = "play" if autostart else ("menu" if self.profile.get("nickname") else "name")
+        if autostart:
+            self.state = "play"
+        elif not self.profile.get("prologue_seen"):
+            self.state = "prologue"  # first start: the short story, then the name
+        else:
+            self.state = "menu" if self.profile.get("nickname") else "name"
         self.first_name = not self.profile.get("nickname")
         self.leaderboard = Leaderboard()
         self.online: tuple[str, int | None, int | None] = ("", None, None)
@@ -373,6 +378,13 @@ async def run(
             game.type_name()
         elif action == "ok":
             game.confirm_name()
+        elif action == "prologue_done":
+            game.profile["prologue_seen"] = True
+            game.save()
+            if game.profile.get("nickname"):
+                game.state = "menu"
+            else:
+                game.start_name_entry()
         elif action in ("cancel", "menu", "back"):
             game.state = "menu"
             pygame.key.stop_text_input()
@@ -444,6 +456,8 @@ async def run(
                     tap(screen.to_canvas(event))
                 elif game.state == "name":
                     game.handle_name_event(event)
+                elif game.state == "prologue" and event.type == pygame.KEYDOWN:
+                    do("prologue_done")
                 elif event.type != pygame.KEYDOWN:
                     continue
                 elif event.key == pygame.K_m:
@@ -545,6 +559,8 @@ async def run(
                     buttons = screens.draw_results(renderer, game.result, game.flags, game.profile, line)
             elif game.state == "menu":
                 buttons = screens.draw_menu(renderer, game.profile, WEB)
+            elif game.state == "prologue":
+                buttons = screens.draw_prologue(renderer)
             elif game.state == "board":
                 if time.monotonic() - game.board["fetched_at"] > REFRESH_S:
                     game.refresh_board()

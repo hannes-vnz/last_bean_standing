@@ -90,7 +90,7 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
     cx = r.w // 2
     top = _top(r, 300)
     r.text("Last Bean Standing", (cx, top + 16), r.big_font, center=True)
-    r.text("Laufen, ausweichen, wachsen.", (cx, top + 42), center=True)
+    r.text("Der Schnitter kommt zur Ernte.", (cx, top + 42), center=True)
     panel = pygame.Rect(cx - min(150, r.w // 2 - 10), top + 60, min(300, r.w - 20), 92)
     _panel(r, panel)
     r.dark_text(f"Hallo, {profile.get('nickname') or '?'}!", (cx, panel.y + 10), center=True)
@@ -110,6 +110,38 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool) -> list[Button]:
     if not r.touch and r.w >= 500:  # keyboard hints only where a keyboard is likely and there is room
         r.text("Enter spielen · L Bestenliste · N Name · Leertaste Fähigkeit", (cx, r.h - 18), center=True)
     return buttons
+
+
+PROLOGUE = (
+    "Auf der Lichtung keimt die letzte Saat des Gartens.",
+    "Der Schnitter will die große Ernte einfahren.",
+    "Seine Fäulnis verdirbt Plagen und Beete.",
+    "Du bist eine Bohne. Halte die Saat, so lange du kannst.",
+)
+
+
+def draw_prologue(r: Renderer) -> list[Button]:
+    """Shown once on the very first start (docs/STORY.md)."""
+    _backdrop(r)
+    cx = r.w // 2
+    top = _top(r, 60 + len(PROLOGUE) * 34 + 60)
+    r.text("Die große Ernte", (cx, top + 14), r.big_font, center=True)
+    for i, line in enumerate(PROLOGUE):
+        for j, part in enumerate(_wrap_lines(r, line, r.w - 30)):
+            r.text(part, (cx, top + 56 + i * 34 + j * 14), center=True)
+    return _button_column(r, top + 56 + len(PROLOGUE) * 34 + 10, [("Los geht's", "prologue_done")])
+
+
+def _wrap_lines(r: Renderer, text: str, width: int) -> list[str]:
+    lines, line = [], ""
+    for word in text.split():
+        trial = f"{line} {word}".strip()
+        if r.font.size(trial)[0] <= width:
+            line = trial
+        else:
+            lines.append(line)
+            line = word
+    return [*lines, line] if line else lines
 
 
 def draw_name_entry(r: Renderer, current: str, valid: bool, first_time: bool) -> list[Button]:

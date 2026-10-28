@@ -57,6 +57,7 @@ def normalize(data: Any) -> dict[str, Any]:
     settings = data.get("settings") if isinstance(data.get("settings"), dict) else {}
     zoom = settings.get("zoom")
     out["settings"] = {"zoom": zoom if isinstance(zoom, int) and 100 <= zoom <= 1000 else None}
+    out["prologue_seen"] = bool(data.get("prologue_seen", False))
     return out
 
 
