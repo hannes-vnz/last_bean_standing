@@ -12,7 +12,7 @@ authors = [{ name = "Hannes Vincenz" }]
 dependencies = ["pygame-ce>=2.5"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.5"]
+dev = ["pytest>=8", "ruff>=0.5", "pillow>=10"]
 web = ["pygbag==0.9.3"]
 
 [project.scripts]

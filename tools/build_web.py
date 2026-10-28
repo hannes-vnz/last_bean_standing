@@ -26,6 +26,7 @@ def stage() -> None:
     ignore = shutil.ignore_patterns("__pycache__", "*.pyc")
     shutil.copytree(ROOT / "src" / "lastbean", STAGE / "lastbean", ignore=ignore)
     shutil.copytree(ROOT / "data", STAGE / "data", ignore=ignore)
+    shutil.copytree(ROOT / "assets", STAGE / "assets", ignore=ignore)
     # Optional extras (RL, bots) stay out of the web build when they grow dependencies.
 
 
@@ -34,7 +35,16 @@ def main() -> None:
     ap.add_argument("--serve", action="store_true")
     args = ap.parse_args()
     stage()
-    cmd = [sys.executable, "-m", "pygbag", "--title", "Last Bean Standing"]
+    # web/template.tmpl is pygbag's default page (0.9.3) with the canvas kept at 16:9 instead of stretched.
+    cmd = [
+        sys.executable,
+        "-m",
+        "pygbag",
+        "--title",
+        "Last Bean Standing",
+        "--template",
+        str(ROOT / "web" / "template.tmpl"),
+    ]
     cmd += [] if args.serve else ["--build"]
     subprocess.run([*cmd, str(STAGE)], check=True, cwd=ROOT)
     print("web build:", STAGE / "build" / "web")

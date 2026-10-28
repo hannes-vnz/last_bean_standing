@@ -30,10 +30,10 @@ Stop-and-Shoot-Roguelite: zeitbasierte, endlos härter werdende Wellen in einer 
 - Benchmark Simulation: `python tools/bench.py` (Schritte pro Sekunde, Ergebnis messen und notieren)
 - Web: `python tools/build_web.py [--serve]` (pygbag; `web/main.py` muss pygame direkt importieren); Push auf `main` deployt GitHub Pages
 
-## Struktur (Stand M5)
+## Struktur (Stand M6)
 - `sim/world.py`: `World(seed, WorldConfig.from_content(...))`, `step(inputs) -> events`, `snapshot()`, `state_hash()`; `PlayerInput(player_id, move_x, move_y, choice)`; Level-up pausiert nur im Einzelspiel
 - `sim/waves.py` (Budget, Skalierung, XP-Kurve, Biome), `sim/upgrades.py` (Stat-Summen, Kartenwahl), `sim/arena.py` (Hindernisse, Deckung), `sim/enemies.py` (Verhalten je `behavior`, Elite-Affixe, Boss-Muster), `sim/entities.py`, `sim/spatial.py`; neue Verhalten in `BEHAVIORS`/`BOSS_BEHAVIORS`, Hindernisarten in `OBSTACLE_KINDS`
 - `sim/tuning.py`: Zahlen, die noch nicht in `data/` stehen (Annahmen, mit Hannes klären und dann ins JSON)
 - `bots.py`: Heuristik-Spieler; `tools/balance.py` misst Todeszeiten über viele Seeds
 - `data/loader.py`: `load_content()` liefert typisierte `Content` (`data/schema.py`), sammelt alle Fehler in `ContentError`
-- `meta/profile.py`: Profil (Spitzname, Token, Highscores, Export-Code), Speicher Datei/localStorage; `sim/score.py`: Punkte (synchron mit `server/app.py`); `ui/screens.py`: Menü, Name, Ergebnis; `render/renderer.py`: 640x360-Fläche, ganzzahlig skaliert, Karte einmal vorgerendert (`set_arena`), Level-up-Karten
+- `meta/profile.py`: Profil (Spitzname, Token, Highscores, Export-Code), Speicher Datei/localStorage; `sim/score.py`: Punkte (synchron mit `server/app.py`); `ui/screens.py`: Menü, Name, Ergebnis; `render/effects.py` (Partikel, Blitz, Zahlen, Wackeln, Hit-Stop aus Ereignissen), `render/sprites.py` (`assets/sprites/sprites.json`, erzeugt von `tools/sprites/mobs.py`), `audio.py` (synthetische Töne); `render/renderer.py`: 640x360-Fläche, ganzzahlig skaliert, Karte einmal vorgerendert (`set_arena`), Level-up-Karten

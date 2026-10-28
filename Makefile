@@ -1,6 +1,6 @@
 PY ?= python
 
-.PHONY: install test lint format content check run bench balance web web-serve server-test
+.PHONY: install test lint format content check run bench balance web web-serve gif server-test
 
 install:
 	$(PY) -m pip install -e ".[dev]"
@@ -36,6 +36,9 @@ web:
 
 web-serve:
 	$(PY) tools/build_web.py --serve
+
+gif:
+	$(PY) tools/make_gif.py
 
 server-test:
 	cd server && $(PY) -m pytest -q
