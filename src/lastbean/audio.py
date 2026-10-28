@@ -1,4 +1,6 @@
-"""Sound effects, synthesised at start-up in pure Python (own work, no files, no licences).
+"""Sound effects, synthesised at start-up in pure Python (own work, no files, no licences),
+and background music: one OGG loop per garden bed plus one for bosses and the flood
+(assets/music, made by tools/music.py).
 
 Each sound is a short envelope over a few oscillators or noise, rendered to 16-bit PCM in the
 mixer's format. Sounds react to simulation events; frequent ones are rate-limited.
@@ -8,14 +10,18 @@ If no audio device is available (CI, some browsers before a click) everything st
 from __future__ import annotations
 
 import array
+import contextlib
 import math
 import random
 
 import pygame
 
+from .render.sprites import ASSETS_DIR
 from .sim import events as ev
 
 VOLUME = 0.35
+MUSIC_SHARE = 0.5  # music plays at half the effects volume
+MUSIC_DIR = ASSETS_DIR / "music"
 
 
 def _render(rate: int, channels: int, seconds: float, sample) -> bytes:
@@ -80,18 +86,25 @@ def _definitions(rng: random.Random) -> dict:
         "boss": blip(110, 55, 0.7, "square"),
         "explosion": noise_burst(0.35, 0.25),
         "blocked": noise_burst(0.05, 0.6),
+        "shrine": arpeggio([659, 784, 988, 1319], 0.08),
+        "gate": arpeggio([392, 523, 659, 784, 1046], 0.06),
+        "flood": blip(180, 120, 0.5, "square"),
+        "seeds": blip(1500, 2100, 0.05),
     }
 
 
 # Minimum frames between two plays of the same sound, so crowds do not turn into noise.
-COOLDOWN = {"shoot": 3, "hit": 3, "kill": 3, "blocked": 4, "explosion": 6}
+COOLDOWN = {"shoot": 3, "hit": 3, "kill": 3, "blocked": 4, "explosion": 6, "seeds": 4}
 
 
 class Audio:
     def __init__(self) -> None:
         self.sounds: dict[str, pygame.mixer.Sound] = {}
-        self.muted = False
-        self.volume = 1.0  # 0..1, from the settings
+        self._muted = False
+        self._volume = 1.0  # 0..1, from the settings
+        self.bed_tracks: dict[int, str] = {}  # garden bed number -> music track (its biome), set by the app
+        self._track: str | None = None
+        self._bed_track: str | None = None
         self._last: dict[str, int] = {}
         self._frame = 0
         try:
@@ -103,6 +116,43 @@ class Audio:
         except (pygame.error, TypeError, ValueError) as exc:
             print("Ton aus:", exc)
             self.sounds = {}
+
+    @property
+    def muted(self) -> bool:
+        return self._muted
+
+    @muted.setter
+    def muted(self, value: bool) -> None:
+        self._muted = value
+        self._music_volume()
+
+    @property
+    def volume(self) -> float:
+        return self._volume
+
+    @volume.setter
+    def volume(self, value: float) -> None:
+        self._volume = value
+        self._music_volume()
+
+    def _music_volume(self) -> None:
+        with contextlib.suppress(pygame.error):
+            pygame.mixer.music.set_volume(0.0 if self._muted else self._volume * MUSIC_SHARE)
+
+    def music(self, track: str | None) -> None:
+        """Switch the looping background track (None: fade out). Missing files stay silent."""
+        if track == self._track:
+            return
+        self._track = track
+        try:
+            if track is None:
+                pygame.mixer.music.fadeout(500)
+                return
+            pygame.mixer.music.load(str(MUSIC_DIR / f"{track}.ogg"))
+            pygame.mixer.music.play(-1, fade_ms=600)
+            self._music_volume()
+        except (pygame.error, FileNotFoundError) as exc:
+            print("Musik aus:", exc)
 
     def play(self, name: str) -> None:
         if self.muted or name not in self.sounds:
@@ -134,6 +184,21 @@ class Audio:
                 self.play("blocked")
             elif isinstance(e, ev.BossSpawned):
                 self.play("boss")
+                self.music("boss")
+            elif isinstance(e, ev.StageStarted):
+                self._bed_track = self.bed_tracks.get(e.stage)
+                self.music(self._bed_track)
+            elif isinstance(e, ev.BossKilled):
+                self.music(self._bed_track)
+            elif isinstance(e, ev.FloodStarted):
+                self.play("flood")
+                self.music("boss")
+            elif isinstance(e, ev.ShrineActivated):
+                self.play("shrine")
+            elif isinstance(e, ev.GateOpened):
+                self.play("gate")
+            elif isinstance(e, ev.SeedsCollected):
+                self.play("seeds")
             elif isinstance(e, ev.WeaponPulse) or (isinstance(e, ev.HazardActivated) and e.kind == "explosion"):
                 self.play("explosion")
             elif isinstance(e, ev.ProjectileBlocked):

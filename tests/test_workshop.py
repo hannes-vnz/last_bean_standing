@@ -42,3 +42,10 @@ def test_payout_follows_shop_json(content):
     assert parts == {"Punkte": 42, "Gegner": 15, "Elite": 6, "Bosse": 40, "Truhen": 12}
     won = workshop.payout(dict(result, bosses=3, difficulty=1.25), content.shop, final_boss_won=True)
     assert won["Punkte"] == 50 and won["Bosse"] == 40 and won["Schnitter"] == 200
+
+
+def test_every_bed_has_its_music(content):
+    from lastbean.audio import MUSIC_DIR
+
+    for track in {st.biome for st in content.stages} | {"boss"}:
+        assert (MUSIC_DIR / f"{track}.ogg").stat().st_size > 10_000
