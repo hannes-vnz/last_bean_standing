@@ -11,6 +11,9 @@ def heuristic_input(w: World, player_id: int = 0) -> PlayerInput:
     if p.offer:
         return PlayerInput(player_id, choice=0)
     d2 = [((e.x - p.x) ** 2 + (e.y - p.y) ** 2, e) for e in w.enemies]
+    crowded = sum(1 for d, _ in d2 if d < 250**2) >= 6
+    if crowded and p.ability_cooldown <= 0:
+        return PlayerInput(player_id, ability=True)
     nearest = min((d for d, _ in d2), default=float("inf"))
     near = [e for d, e in d2 if d < 120**2]
     if near:  # flee from the centre of mass of close enemies, away from walls

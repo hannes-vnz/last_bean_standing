@@ -15,7 +15,7 @@ Play in the browser: https://hannes-vnz.github.io/last_bean_standing/
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Python 3.11+
 pip install -e ".[dev]"
-python -m lastbean        # WASD/arrows move (you shoot while standing), 1/2/3 pick upgrades, M mute, L leaderboard, Esc menu
+python -m lastbean        # WASD/arrows move (auto-fire), Space ability, 1/2/3 pick upgrades, M mute, L leaderboard, Esc pause
 pytest                    # tests
 ruff check                # lint
 ```
@@ -49,7 +49,7 @@ Measured with `python tools/bench.py --render` (Apple Silicon, Python 3.12, head
 | 350 (cap) | 2.6 ms | 2.2 ms | 4.8 ms |
 | 200, browser (pygbag 0.9.3, F5) | 1.7 ms | 2.4 ms | 4.1 ms |
 
-Balancing (`python tools/balance.py --seeds 20`, heuristic bot as ranger): median death 3:01 (1:58 to 4:04), median level 3. A real run peaks at about 350 enemies and 2.9 ms simulation per step around 5:30.
+Balancing (`python tools/balance.py --seeds 20`, heuristic bot as ranger): median death 3:51 (2:52 to 5:36), median level 7; an immortal bot is level 8 to 9 at 5:00. A real run peaks at about 350 enemies and 2.9 ms simulation per step around 5:30.
 
 ## Assets
 

@@ -115,6 +115,11 @@ class Renderer:
                 c.fill(self.xp_color, (sx, sy - 1, 1, 3))
 
         self._draw_hazards(snap, cam_x, cam_y)
+        for kind, kx, ky in snap.pickups:
+            sx, sy = round(kx / UNITS_PER_PX) - cam_x, round(ky / UNITS_PER_PX) - cam_y
+            if kind == "magnet" and -8 <= sx < CANVAS_W + 8 and -8 <= sy < CANVAS_H + 8:
+                bob = 1 if (snap.tick // 15) % 2 else 0  # little float so it catches the eye
+                self._draw_magnet(sx, sy - bob)
         for cx, cy in snap.chests:
             sx, sy = round(cx / UNITS_PER_PX) - cam_x, round(cy / UNITS_PER_PX) - cam_y
             c.fill(ink, (sx - 6, sy - 5, 13, 11))
@@ -198,6 +203,24 @@ class Renderer:
         if snap.difficulty != 1.0:
             hud += f"   Schwierigkeit {round(snap.difficulty * 100)} %"
         self.text(hud, (6, 9))
+        # Ability button: fills up while recharging, glows when ready.
+        box = pygame.Rect(CANVAS_W - 36, CANVAS_H - 36, 28, 28)
+        c.fill(ink, box.inflate(4, 4))
+        c.fill((90, 60, 100), box)
+        filled = round(box.h * min(1.0, focus.ability_ready))
+        c.fill(self.crit_color if focus.ability_ready >= 1.0 else self.shot_halo,
+               (box.x, box.bottom - filled, box.w, filled))  # fmt: skip
+        self.text("Leer", (box.centerx, box.y - 9), center=True)
+
+    def _draw_magnet(self, sx: int, sy: int) -> None:
+        """Horseshoe magnet: coral bow with white tips and dark outline (no sprite yet)."""
+        c, ink = self.canvas, self.ink
+        pygame.draw.circle(c, ink, (sx, sy), 7)
+        pygame.draw.circle(c, self.telegraph, (sx, sy), 6)
+        pygame.draw.circle(c, ink, (sx, sy + 1), 3)
+        c.fill(ink, (sx - 3, sy + 1, 7, 7))
+        c.fill(WHITE, (sx - 6, sy + 2, 3, 3))
+        c.fill(WHITE, (sx + 4, sy + 2, 3, 3))
 
     def _facing(self, key: int, x: float) -> bool:
         """True when the entity last moved left (sprites face right)."""

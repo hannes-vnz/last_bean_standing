@@ -159,3 +159,24 @@ def online_line(status: str, rank: int | None, rank_character: int | None) -> st
     if status == "no_name":
         return ""
     return status
+
+
+def draw_pause(r: Renderer, snap, muted: bool) -> None:
+    """Pause overlay with the current build (upgrades and their levels)."""
+    dim = pygame.Surface((CANVAS_W, CANVAS_H), pygame.SRCALPHA)
+    dim.fill((*r.ink, 160))
+    r.canvas.blit(dim, (0, 0))
+    r.text("Pause", (CX, 60), r.big_font, center=True)
+    panel = pygame.Rect(CX - 150, 84, 300, 170)
+    _panel(r, panel)
+    focus = snap.players[0]
+    r.dark_text(
+        f"Level {focus.level}   Kills {focus.kills}   {_mmss(int(snap.time_s))}", (CX, panel.y + 10), center=True
+    )
+    ups = [(r.upgrades[uid].name, lvl) for uid, lvl in focus.upgrades if uid in r.upgrades]
+    if not ups:
+        r.dark_text("Noch keine Upgrades", (CX, panel.y + 40), center=True)
+    for i, (name, lvl) in enumerate(ups[:16]):
+        col, row = i % 2, i // 2
+        r.dark_text(f"{name} {lvl}", (panel.x + 16 + col * 146, panel.y + 34 + row * 16))
+    r.text("Esc: weiter   R: neuer Lauf   Q: Menü   M: Ton " + ("an" if muted else "aus"), (CX, 272), center=True)

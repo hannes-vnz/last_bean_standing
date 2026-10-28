@@ -35,7 +35,8 @@ def read_input(player_id: int = 0) -> PlayerInput:
     keys = pygame.key.get_pressed()
     mx = (keys[pygame.K_d] or keys[pygame.K_RIGHT]) - (keys[pygame.K_a] or keys[pygame.K_LEFT])
     my = (keys[pygame.K_s] or keys[pygame.K_DOWN]) - (keys[pygame.K_w] or keys[pygame.K_UP])
-    return PlayerInput(player_id, int(mx), int(my))
+    ability = bool(keys[pygame.K_SPACE] or keys[pygame.K_e])
+    return PlayerInput(player_id, int(mx), int(my), ability=ability)
 
 
 def card_choice(key: int, renderer: Renderer) -> int | None:
@@ -253,6 +254,8 @@ async def run(
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                elif event.type == pygame.WINDOWFOCUSLOST and game.state == "play" and not game.world.paused:
+                    game.state = "pause"  # switching tabs or windows must not cost the run
                 elif game.state == "name":
                     game.handle_name_event(event)
                 elif event.type != pygame.KEYDOWN:
@@ -290,8 +293,18 @@ async def run(
                         acc = 0.0
                     elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_ESCAPE):
                         game.state = "menu"
-                elif event.key == pygame.K_ESCAPE:
-                    game.state = "menu"  # abandon the run, it is not recorded
+                elif game.state == "pause":
+                    if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE, pygame.K_p):
+                        game.state = "play"
+                        acc = 0.0
+                    elif event.key == pygame.K_r:
+                        game.new_run()
+                        effects.reset()
+                        acc = 0.0
+                    elif event.key == pygame.K_q:
+                        game.state = "menu"  # abandon the run, it is not recorded
+                elif event.key in (pygame.K_ESCAPE, pygame.K_p) and not game.world.paused:
+                    game.state = "pause"
                 elif event.key == pygame.K_F4:
                     game.config = game.normal if game.config is not game.normal else stress_config(game.normal)
                     game.new_run()
@@ -330,9 +343,11 @@ async def run(
                 acc = 0.0
             choice = None
             t1 = time.perf_counter()
-            if game.state in ("play", "results"):
+            if game.state in ("play", "results", "pause"):
                 debug = f"{timer.text(world)}  {bench_result}" if show_timings else None
                 renderer.draw(world.snapshot(), debug=debug, effects=effects)
+                if game.state == "pause":
+                    screens.draw_pause(renderer, game.world.snapshot(), audio.muted)
                 if game.state == "results":
                     line = screens.online_line(*game.online)
                     screens.draw_results(renderer, game.result, game.flags, game.profile, line)
