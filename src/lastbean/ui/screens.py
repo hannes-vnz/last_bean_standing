@@ -654,6 +654,9 @@ def draw_account(r: Renderer, profile: dict[str, Any], form: dict, status: str, 
         r.dark_text("Dein Fortschritt ist auf jedem Gerät da.", (cx, panel.y + 42), center=True)
         items = [("Jetzt sichern", "acc_sync"), ("Abmelden", "acc_logout"), ("Zurück", "menu")]
         y = panel.bottom + 16
+        if web:  # a passkey on this device: next time Face ID / Touch ID / fingerprint instead of the password
+            buttons += _button_row(r, y, [("Face ID hinzufügen", "acc_pk_add")], width=200)
+            y += 40
     else:
         r.dark_text("Melde dich an, dann ist dein Fortschritt", (cx, panel.y + 10), center=True)
         r.dark_text("(Bohnen, Challenges, Werkstatt) überall da.", (cx, panel.y + 26), center=True)
@@ -677,6 +680,10 @@ def draw_account(r: Renderer, profile: dict[str, Any], form: dict, status: str, 
             items.append(("Mit Apple", "acc_apple"))
         items.append(("Zurück", "menu"))
         y += 4
+        if web:  # passkeys: Face ID, Touch ID, Windows Hello or fingerprint, no password
+            buttons += _button_row(r, y, [("Mit Face ID anmelden", "acc_pk_login"), ("Neu mit Face ID", "acc_pk_new")],
+                                   width=170)  # fmt: skip
+            y += 38
     if status:
         r.text(_fit(r, status, r.w - 20), (cx, y + 2), center=True)
         y += 16

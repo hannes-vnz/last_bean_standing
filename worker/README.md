@@ -59,3 +59,12 @@ Spieler können sich freiwillig anmelden; danach liegt ihr Profil in D1 (`/v1/sa
 Die Knöpfe „Mit Google“ / „Mit Apple“ erscheinen im Spiel (Browser-Version), sobald die jeweilige ID gesetzt ist
 (`GET /v1/config`). Der Worker prüft das ID-Token gegen die öffentlichen Schlüssel des Anbieters (Signatur,
 Aussteller, Client-ID, Ablauf). `DELETE /v1/account` löscht Konto, Sitzungen und Spielstand.
+
+### Passkeys (Face ID, Touch ID, Windows Hello, Fingerabdruck)
+
+Kostenlos und ohne Entwicklerkonto: `POST /v1/passkey/begin`, `/v1/passkey/register`, `/v1/passkey/login`
+(Tabellen aus `migrations/0003_passkeys.sql`). Der Schlüssel liegt im Gerät (bei Apple im iCloud-Schlüsselbund und
+damit auf allen Apple-Geräten), der Server kennt nur den öffentlichen Schlüssel und prüft Herausforderung,
+Herkunft, Relying Party und Signatur (ES256 oder RS256). Passkeys gelten nur für die Spielseite:
+`PASSKEY_RP_ID` (Standard `hannes-vnz.github.io`) und `PASSKEY_ORIGINS` (Standard `https://hannes-vnz.github.io`).
+Mit Anmeldung (`Authorization`) kommt ein neuer Passkey zum bestehenden Konto dazu („Face ID hinzufügen“).
