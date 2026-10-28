@@ -309,18 +309,9 @@ function show_infobox() {
     <script src="{{cookiecutter.cdn}}/browserfs.min.js"></script>
 
     <script>
-    // Last Bean Standing: on Android and desktop browsers the first touch or click switches to fullscreen.
-    // iPhone Safari has no fullscreen API for pages: there "Teilen -> Zum Home-Bildschirm" gives a fullscreen app.
+    // Last Bean Standing: no automatic browser fullscreen (SDL's own fullscreen handling broke taps on phones).
+    // Fullscreen on phones: "Zum Home-Bildschirm" (iPhone: Teilen-Menü, Android: Browser-Menü) starts it as an app.
     (function () {
-        function goFullscreen() {
-            const el = document.documentElement;
-            const req = el.requestFullscreen || el.webkitRequestFullscreen;
-            const touchDevice = "ontouchstart" in window;
-            if (touchDevice && req && !document.fullscreenElement && !document.webkitFullscreenElement) {
-                try { const p = req.call(el); if (p && p.catch) p.catch(function () {}); } catch (e) {}
-            }
-        }
-        document.addEventListener("touchend", goFullscreen, { passive: true });
         // Browsers only allow sound after a touch or click: resume the audio of the game then.
         function lbsUnlockAudio() {
             try {
