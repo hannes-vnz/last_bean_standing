@@ -158,3 +158,19 @@ def test_prologue_fits(renderer, size):
     buttons = screens.draw_prologue(r)
     assert [b.action for b in buttons] == ["prologue_done"]
     assert pygame.Rect(0, 0, *size).contains(buttons[0].rect)
+
+
+def test_app_icon_and_manifest_for_the_home_screen():
+    import json
+    from pathlib import Path
+
+    web = Path(__file__).resolve().parents[1] / "web"
+    manifest = json.loads((web / "manifest.webmanifest").read_text(encoding="utf-8"))
+    assert manifest["display"] == "fullscreen" and manifest["short_name"]
+    for icon in manifest["icons"]:
+        assert (web / icon["src"]).is_file(), icon["src"]
+    page = (web / "template.tmpl").read_text(encoding="utf-8")
+    assert 'rel="apple-touch-icon"' in page and (web / "icons" / "apple-touch-icon.png").is_file()
+    assert 'rel="manifest"' in page
+    img = pygame.image.load(str(web / "icons" / "apple-touch-icon.png"))
+    assert img.get_size() == (180, 180)
