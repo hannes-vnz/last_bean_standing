@@ -53,6 +53,7 @@ from .events import (
     Event,
     FloodStarted,
     FloodWarning,
+    FloodWave,
     GateOpened,
     HazardActivated,
     ItemGained,
@@ -203,6 +204,10 @@ class FloodRules:
     hp_growth: float = 0.15
     damage_growth: float = 0.08
     reward_growth: float = 0.25  # XP and seeds per 10 s of flood (linear): the gamble pays
+    wave_s: float = 30.0  # a new flood wave every this many seconds
+    burst_base: int = 12  # enemies in the ring around the player when a flood wave rolls in
+    burst_per_wave: int = 8
+    speed_per_wave_pct: float = 8.0  # every flood wave, new enemies are this much faster
 
 
 @dataclass(frozen=True, slots=True)
@@ -289,6 +294,10 @@ class WorldConfig:
                 float(content.flood["hp_growth_per_10s"]),
                 float(content.flood["damage_growth_per_10s"]),
                 float(content.flood.get("reward_growth_per_10s", 0.0)),
+                float(content.flood.get("wave_s", 30)),
+                int(content.flood.get("burst_base", 0)),
+                int(content.flood.get("burst_per_wave", 0)),
+                float(content.flood.get("speed_per_wave_pct", 0.0)),
             ),
             gate_radius=float(content.gate["radius_px"]),
             bosses=bosses,
@@ -430,6 +439,8 @@ class Snapshot:
     stage_time_s: float = 0.0
     stage_duration_s: float = 300.0
     flood: bool = False
+    flood_wave: int = 0
+    reward_mult: float = 1.0
     gate: tuple[float, float] | None = None
     victory: bool = False
     obstacles: tuple = ()  # the bed's obstacles (static per bed, the renderer rebuilds its map when they change)
@@ -617,10 +628,14 @@ class World:
         st = self.stage_cfg
         if self.stage_tick > st.duration_s * TICK_HZ:
             self.flood_ticks += 1
+            wave_ticks = int(self.config.flood.wave_s * TICK_HZ)
+            if wave_ticks and (self.stage_tick - int(st.duration_s * TICK_HZ)) % wave_ticks == 0:
+                self._flood_wave(events)
         elif self.stage_tick == int((st.duration_s - self.config.flood.warning_s) * TICK_HZ):
             events.append(FloodWarning(self.tick, None, st.index))
         elif self.stage_tick == int(st.duration_s * TICK_HZ):
             events.append(FloodStarted(self.tick, None, st.index))
+            self._flood_wave(events)
         # Wave n of a bed starts at n * wave_interval_s after the bed began (0:00-0:30 is wave 0).
         wave = self.stage_tick // (self.config.wave_interval_s * TICK_HZ)
         if wave != self.wave:
@@ -636,6 +651,31 @@ class World:
             self.over = True
             events.append(RunEnded(self.tick, None, self.time_s))
         return events
+
+    @property
+    def flood_wave(self) -> int:
+        """Number of the current flood wave (0 before the flood)."""
+        if self.flood_s <= 0 and self.stage_tick < self.stage_cfg.duration_s * TICK_HZ:
+            return 0
+        return 1 + int(self.flood_s // self.config.flood.wave_s)
+
+    def _flood_wave(self, events: list[Event]) -> None:
+        """A flood wave rolls in: a ring of pests right around every player, faster than the last ones."""
+        f, n = self.config.flood, self.flood_wave
+        events.append(FloodWave(self.tick, None, self.stage_cfg.index, n, self.reward_mult))
+        count = f.burst_base + f.burst_per_wave * (n - 1)
+        for p in self.players:
+            if not p.alive:
+                continue
+            for k in range(count):
+                if len(self.enemies) >= self.config.max_alive_enemies:
+                    return
+                mob = self._pick_mob(self.stage_cfg.biome)
+                if mob is None:
+                    return
+                dx, dy = cos_sin(6.283185307179586 * k / count)
+                dist = self.config.spawn_distance[0] * 0.75
+                self._spawn_enemy(mob, p.x + dx * dist, p.y + dy * dist, events)
 
     def _enter_gate(self, events: list[Event]) -> bool:
         """A living player in the gate takes everyone to the next bed. Returns True when that happened."""
@@ -988,6 +1028,8 @@ class World:
             hp *= self._flood_factor(self.config.flood.hp_growth)
             dmg *= self._flood_factor(self.config.flood.damage_growth)
         speed = m.speed * sc.speed_mult(minutes)
+        if self.flood_wave > 1:  # every flood wave brings faster pests
+            speed *= 1.0 + self.config.flood.speed_per_wave_pct / 100.0 * (self.flood_wave - 1)
         e = Enemy(self._next_eid, m.id, x, y, hp, hp, speed, dmg, m.radius, m.xp, m.behavior)
         e.keep_distance, e.shot_interval, e.timer = m.keep_distance, m.shot_interval, m.shot_interval
         self.enemies.append(e)
@@ -2102,6 +2144,8 @@ class World:
             stage_time_s=self.stage_time_s,
             stage_duration_s=self.stage_cfg.duration_s,
             flood=self.flood_s > 0,
+            flood_wave=self.flood_wave,
+            reward_mult=self.reward_mult,
             gate=self.gate,
             victory=self.victory,
             obstacles=self.stage_cfg.obstacles,

@@ -192,6 +192,10 @@ class Effects:
                 self.banner = ("PLAGENFLUT!", 150)
                 self.subtitle = ("Sie hört nicht auf. Ins Tor oder durchhalten!", 150)
                 self.trauma = min(1.0, self.trauma + 0.6)
+            elif isinstance(e, ev.FloodWave) and e.wave > 1:
+                self.banner = (f"Flutwelle {e.wave}!", 120)
+                self.subtitle = (f"Belohnung x{e.reward_mult:.2f}".replace(".", ","), 120)
+                self.trauma = min(1.0, self.trauma + 0.4)
             elif isinstance(e, ev.GateOpened):
                 self.banner = ("Das Gartentor ist offen!", 150)
                 self.rings.append(Ring(e.x, e.y, 10, 6, 30, 30, c.get("gate", c["crit"])))

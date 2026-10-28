@@ -127,3 +127,22 @@ def test_full_run_through_three_beds(make_config):
     assert p.kills > 50 and sum(p.upgrades.values()) + sum(st.level for st in p.weapons) == p.level - 1
     assert p.weapons and len(p.weapons) <= w.config.weapon_slots - 1
     assert sum(p.items.values()) == sum(isinstance(e, ChestOpened) for e in events)
+
+
+def test_flood_rolls_in_waves_every_thirty_seconds(make_config):
+    from lastbean.sim import FloodWave
+
+    w = World(1, make_config(character={"hp": 10**9, "attack_rate": 0.001}, bosses=()))
+    w.tick = w.stage_tick = int(w.stage_cfg.duration_s * TICK_HZ) - 1
+    events = []
+    for _ in range(int(61 * TICK_HZ)):
+        w.players[0].offer, w.players[0].pending_levels = (), 0
+        events += w.step()
+    waves = [e for e in events if isinstance(e, FloodWave)]
+    assert [e.wave for e in waves] == [1, 2, 3]
+    assert waves[2].reward_mult > waves[1].reward_mult > 1.0
+    assert w.snapshot().flood_wave == 3
+    cfg = w.config.flood
+    fast = w._spawn_enemy(w.config.mobs[0], 10.0, 10.0, [])
+    base = w.config.mobs[0].speed * w.config.scaling.speed_mult(w.stage_time_s / 60)
+    assert fast.speed == pytest.approx(base * (1 + cfg.speed_per_wave_pct / 100 * 2))

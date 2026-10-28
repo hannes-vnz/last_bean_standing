@@ -327,7 +327,7 @@ class Renderer:
         left = snap.stage_duration_s - snap.stage_time_s
         if snap.flood:  # counting up: how long the Plagenflut has lasted
             m, s = divmod(int(-left), 60)
-            clock = f"FLUT +{m}:{s:02d}"
+            clock = f"FLUT {snap.flood_wave} +{m}:{s:02d} x{snap.reward_mult:.1f}".replace(".", ",")
         else:
             m, s = divmod(int(left + 0.999), 60)
             clock = f"{m}:{s:02d}"

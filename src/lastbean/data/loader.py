@@ -522,6 +522,10 @@ def _stages(raw, e) -> tuple[tuple[Stage, ...], dict, dict, dict[str, str]]:
         "hp_growth_per_10s",
         "damage_growth_per_10s",
         "reward_growth_per_10s",
+        "wave_s",
+        "burst_base",
+        "burst_per_wave",
+        "speed_per_wave_pct",
     ):
         flood.num(key, 0)
     gate = r.sub("gate")
