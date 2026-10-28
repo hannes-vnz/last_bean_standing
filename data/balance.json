@@ -38,8 +38,8 @@
   700
  ],
  "arena_tiles": [
-  60,
-  60
+  200,
+  200
  ],
  "tile_px": 32,
  "player_base": {

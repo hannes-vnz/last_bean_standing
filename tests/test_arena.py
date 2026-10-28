@@ -7,7 +7,8 @@ from lastbean.sim.waves import biome_at
 
 def test_forest_trees_from_data(content, make_config):
     trees = make_config().obstacles
-    assert len(trees) == 70 and {o.kind for o in trees} == {"tree"}
+    forest = content.biome("forest").extra["obstacles"]
+    assert len(trees) == forest["count"] and {o.kind for o in trees} == {"tree"}
     areas = make_config().biomes
     assert all(biome_at(areas, o.x, o.y) == "forest" for o in trees)  # never in the clearing
     assert obstacles_from_content(content, 1) == trees  # fixed seed: same layout every run

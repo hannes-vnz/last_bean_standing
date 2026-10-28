@@ -20,7 +20,7 @@ BALANCE = {
     "speed_mult": {"linear": 0.01, "cap": 1.2},
     "xp_to_next": {"base": 3, "linear": 1.5, "quadratic": 0.15},        # Level L -> L+1 (Vorschlag C, 28.10.2026)
     "elite_every_n_waves": 5, "boss_waves": {"10": "ildra", "15": "skarra", "20": "kalthorn", "30": "ignarok"},
-    "spawn_distance_px": [520, 700], "arena_tiles": [60, 60], "tile_px": 32,
+    "spawn_distance_px": [520, 700], "arena_tiles": [200, 200], "tile_px": 32,
     "player_base": {"hp": 100, "pickup_radius_px": 220, "i_frames_s": 0.6},
     "score": {"per_second": 2, "per_kill": 5, "per_level": 20, "per_boss": 500, "victory_bonus": 20000, "swarm_per_10s": 1000},
     "rarity_weights": {"common": 60, "uncommon": 25, "rare": 10, "epic": 4, "legendary": 1},
@@ -274,11 +274,11 @@ BOSSES = [
       reward="victory", first_kill_challenge="boss_reaper"),
 ]
 BIOMES = [
- dict(id="plaza", name="Lichtung (Start)", effect="Keine, enthält den Boss-Altar (ab 10:00 aktivierbar, ruft den Schnitter)", rect_tiles=[22, 22, 16, 16], text="Neutrale Startzone in der Mitte.", objects=[dict(type="boss_altar", pos_tiles=[30, 30], unlock_s=600)]),
- dict(id="forest", name="Wald", effect="Bäume blockieren Geschosse (Deckung für beide Seiten)", rect_tiles=[0, 0, 30, 30], obstacles=dict(type="tree", count=70, seed=11), impl_phase=1),
- dict(id="desert", name="Wüste", effect="Du bist 15 % langsamer", rect_tiles=[30, 0, 30, 30], obstacles=dict(type="rock", count=25, seed=12), player_speed_pct=-15, impl_phase=2),
- dict(id="ice", name="Eis", effect="Rutschen: träge Beschleunigung und Bremsen", rect_tiles=[0, 30, 30, 30], obstacles=dict(type="ice_block", count=30, seed=13), friction=0.15, impl_phase=2),
- dict(id="lava", name="Lava", effect="4 Schaden pro Sekunde in Lavapfützen, dafür +25 % XP in der Zone", rect_tiles=[30, 30, 30, 30], obstacles=dict(type="lava_pool", count=18, seed=14), dot_per_s=4, xp_bonus_pct=25, impl_phase=3),
+ dict(id="plaza", name="Lichtung (Start)", effect="Keine, enthält den Boss-Altar (ab 10:00 aktivierbar, ruft den Schnitter)", rect_tiles=[85, 85, 30, 30], text="Neutrale Startzone in der Mitte.", objects=[dict(type="boss_altar", pos_tiles=[100, 100], unlock_s=600)]),
+ dict(id="forest", name="Wald", effect="Bäume blockieren Geschosse (Deckung für beide Seiten)", rect_tiles=[0, 0, 100, 100], obstacles=dict(type="tree", count=780, seed=11), impl_phase=1),
+ dict(id="desert", name="Wüste", effect="Du bist 15 % langsamer", rect_tiles=[100, 0, 100, 100], obstacles=dict(type="rock", count=280, seed=12), player_speed_pct=-15, impl_phase=2),
+ dict(id="ice", name="Eis", effect="Rutschen: träge Beschleunigung und Bremsen", rect_tiles=[0, 100, 100, 100], obstacles=dict(type="ice_block", count=330, seed=13), friction=0.15, impl_phase=2),
+ dict(id="lava", name="Lava", effect="4 Schaden pro Sekunde in Lavapfützen, dafür +25 % XP in der Zone", rect_tiles=[100, 100, 100, 100], obstacles=dict(type="lava_pool", count=200, seed=14), dot_per_s=4, xp_bonus_pct=25, impl_phase=3),
 ]
 PALETTES = {
  "plaza":  dict(ground="#b9e08f", detail="#9fcf72", hazard=None),
@@ -493,11 +493,11 @@ def md():
         tm = f"{b['spawn_time_s'] // 60}:{b['spawn_time_s'] % 60:02d}" if b.get("spawn_time_s") else f"per Altar ab {b['altar_unlock_s'] // 60}:{b['altar_unlock_s'] % 60:02d}"
         hp = f"HP {b['hp']}, " if b.get("hp") else (f"HP {b['hp_base']} x HP-Faktor, Wutphase nach {b['enrage_after_s']} s, " if b.get("hp_base") else "")
         P(f"- **{b['name']}** (`{b['id']}`, {tm}, Phase {b['impl_phase']}): " + hp + "; ".join(f"ab {p['at_hp_pct']} % HP: {p['pattern']}" for p in b["phases"]) + ".")
-    P("\n## Arena und Biome (60 x 60 Felder à 32 px)\n")
+    P(f"\n## Arena und Biome ({BALANCE['arena_tiles'][0]} x {BALANCE['arena_tiles'][1]} Felder à 32 px)\n")
     P("| ID | Name | Bereich (x, y, Breite, Höhe in Feldern) | Effekt | Phase |\n|---|---|---|---|---|")
     for b in BIOMES:
         P(f"| `{b['id']}` | {b['name']} | {b['rect_tiles']} | {b['effect']} | {b.get('impl_phase', 1)} |")
-    P("\nLayout: Lichtung in der Mitte (16 x 16, überlagert die Quadranten), Wald oben links, Wüste oben rechts, Eis unten links, Lava unten rechts. Hindernisse sind pro Biom mit festem Seed verteilt.\n")
+    P("\nLayout (seit 28.10.2026 große Karte): Lichtung in der Mitte (30 x 30, überlagert die Quadranten), Wald oben links, Wüste oben rechts, Eis unten links, Lava unten rechts. Hindernisse sind pro Biom mit festem Seed verteilt.\n")
     P("Biom-Farben (Pastell): " + "; ".join(f"{b['name']}: Boden {PALETTES[b['id']]['ground']}, Details {PALETTES[b['id']]['detail']}" for b in BIOMES) + ". Gefahren (Lava, Sand, Eisglanz) heben sich über die Farbe `hazard` ab.\n")
     P("## Punkte\n")
     P("`Punkte = 2 x Sekunden + 5 x Kills + 20 x Level + 500 x Bosse` (Sieg über den Schnitter +20000; in der Schwarmflut +1000 je 10 s mal Flut-Multiplikator, der Schwierigkeitsfaktor erhöht die Punkte). Highscore je Charakter und gesamt, lokal gespeichert. Modus „Ewige Nacht“ (nach Challenge „Erreiche 20:00“): Gegner-HP x1,5, XP x1,25, Punkte x1,5.\n")
