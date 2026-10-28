@@ -77,3 +77,43 @@ def test_eternal_night_mode(content):
     assert b.max_hp == a.max_hp * 1.5
     r = night.result().to_dict()
     assert r["mode"] == "eternal_night" and night.snapshot().mode == "eternal_night"
+
+
+def test_garden_critters_and_creative_stats(content):
+    from lastbean.sim import TICK_HZ
+    from lastbean.sim.events import Critter
+
+    cfg = WorldConfig.from_content(content)
+    cfg = dataclasses.replace(cfg, character=dataclasses.replace(cfg.character, hp=10**9))
+    w = World(6, cfg)
+    gnome_bed = w._gnome_bed
+    assert gnome_bed in (0, 1) and w._snail_tick > 0
+    if gnome_bed == 0:
+        gnome = next(e for e in w.enemies if e.critter == "gnome")
+        killed = set()
+        for _ in range(10):
+            w._weapon_hit(w.players[0], 0, gnome, 999.0, True, killed, [])
+        assert gnome.eid in killed and w.run_stats["gnomes"] == 1
+    events = []
+    snail_at = w._snail_tick
+    while w.stage_tick < snail_at + 2:
+        p = w.players[0]
+        events += w.step([PlayerInput(0, 0, 0, 0 if p.offer else None)])
+    assert any(isinstance(e, Critter) and e.kind == "golden_snail" and e.what == "appeared" for e in events)
+    snail = next(e for e in w.enemies if e.critter == "golden_snail")
+    snail.life = 1 / TICK_HZ
+    events = w.step([PlayerInput(0, 0, 0, None)])
+    assert any(isinstance(e, Critter) and e.what == "escaped" for e in events) or snail.hp <= 0
+    r = w.result().to_dict()
+    assert r["stats"]["longest_still_s"] > 20 and "max_kills_10s" in r["stats"]
+
+
+def test_creative_challenges_complete(content):
+    p = new_profile()
+    stats = {"golden_snails": 1, "longest_still_s": 31, "first_boss_s": 140.0, "shrine_kinds": 4, "max_kills_10s": 70}
+    res = _result(stage=2, mode="eternal_night", stats=stats)
+    done = {c.id for c in challenges.evaluate(p, res, content.challenges, 1)}
+    assert {"golden_snail_1", "still_life", "express_boss", "pilgrim", "chain_reaction", "night_owl"} <= done
+    assert "golden_snail_3" not in done
+    p["lifetime"]["menu_squished"] = 10
+    assert [c.id for c in challenges.evaluate_profile(p, content.challenges, 1)] == ["menu_squish"]

@@ -201,6 +201,8 @@ class Audio:
                 self.play("seeds")
             elif isinstance(e, ev.SparklesCollected):
                 self.play("shrine")
+            elif isinstance(e, ev.Critter):
+                self.play("chest" if e.what == "caught" else "shrine" if e.what == "appeared" else "blocked")
             elif isinstance(e, ev.WeaponPulse) or (isinstance(e, ev.HazardActivated) and e.kind == "explosion"):
                 self.play("explosion")
             elif isinstance(e, ev.ProjectileBlocked):

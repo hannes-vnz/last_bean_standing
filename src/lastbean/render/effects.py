@@ -259,6 +259,8 @@ class Effects:
                     "elite": "3 Elite-Gegner! Jeder lässt eine Truhe fallen",
                 }.get(e.kind, "")
                 self.subtitle = (f"{reward} · Schwierigkeit {round(e.difficulty * 100)} %", 110)
+            elif isinstance(e, ev.Critter):
+                self._critter(e)
             elif isinstance(e, ev.SparklesCollected) and players and e.player_id in players:
                 x, y = players[e.player_id]
                 self.texts.append(FloatingText(x, y - 30, f"+{e.amount} Funkel", (255, 159, 192), e.amount > 1, 50))
@@ -285,6 +287,26 @@ class Effects:
     def level_up(self, x: float, y: float) -> None:
         self.rings.append(Ring(x, y, 8, 5, 24, 24, self.colors["crit"]))
         self.burst(x, y, 24, self.colors["crit"], speed=140, life=30, size=2)
+
+    def _critter(self, e) -> None:
+        """Announcements for the garden critters (balance.json critters)."""
+        gold = self.colors["crit"]
+        if e.kind == "golden_snail" and e.what == "appeared":
+            self.banner = ("Eine Goldschnecke!", 110)
+            self.subtitle = ("Schnapp sie, bevor sie sich eingräbt!", 110)
+        elif e.kind == "golden_snail" and e.what == "caught":
+            self.banner = ("Goldschnecke gefangen!", 100)
+            self.burst(e.x, e.y, 40, gold, speed=180, life=40, size=2)
+            self.trauma = min(1.0, self.trauma + 0.3)
+        elif e.kind == "golden_snail":
+            self.toast = ("Die Goldschnecke ist entwischt.", 150)
+        elif e.kind == "gnome":
+            self.banner = ("Der Gartenzwerg ist frei!", 110)
+            self.subtitle = ("Zum Dank: eine Truhe.", 110)
+            self.burst(e.x, e.y, 30, (230, 70, 70), speed=140, life=34, size=2)
+        elif e.kind == "ladybug":
+            self.toast = ("Glückskäfer! Eine Weile mehr Schaden.", 150)
+            self.burst(e.x, e.y, 16, (230, 60, 60), speed=100, life=24, size=2)
 
     def footstep(self, x: float, y: float, moving: bool) -> None:
         """Small dust puffs at the feet while walking (called by the renderer once per frame)."""

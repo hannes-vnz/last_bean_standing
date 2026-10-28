@@ -82,6 +82,37 @@
   ],
   "swarm_reached": "extrem selten"
  },
+ "critters": {
+  "golden_snail": {
+   "name": "Goldschnecke",
+   "hp": 60,
+   "speed": 150,
+   "radius": 14,
+   "spawn_window_s": [
+    25,
+    100
+   ],
+   "life_s": 25,
+   "sparkles": 15,
+   "seeds": 20,
+   "text": "Einmal je Beet taucht sie auf und flieht. Wer sie erwischt, wird reich."
+  },
+  "gnome": {
+   "name": "Gartenzwerg",
+   "hits": 10,
+   "radius": 12,
+   "sparkles": 5,
+   "chest": "elite",
+   "text": "Steht irgendwo in Beet 1 oder 2 versteckt. Zehn Treffer, dann ist er frei und schenkt dir eine Truhe."
+  },
+  "ladybug": {
+   "name": "Glückskäfer",
+   "drop_pct": 0.4,
+   "buff_s": 15,
+   "damage_pct": 30,
+   "text": "Fällt selten von Plagen: 15 s lang +30 % Schaden."
+  }
+ },
  "mini_boss_times_s": [
   120,
   750

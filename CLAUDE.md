@@ -4,7 +4,7 @@ Roguelite mit Auto-Feuer nach Megabonk-Vorbild (eigene Optik: Bohnen verteidigen
 
 ## Quellen der Wahrheit
 - `docs/DESIGN.md`: Konzept, Architektur, Meilensteine M0 bis M8.
-- `data/*.json`: fester Spielinhalt (10 Charaktere: 6 von Anfang an, 4 per Challenge, 50 Upgrades, 46 Items, 6 Waffen, 10 Gartenplagen, 3 Bosse, 3 Beete in `stages.json`, 53 Challenges, 20 Skins). `docs/CONTENT.md` ist nur die lesbare Fassung.
+- `data/*.json`: fester Spielinhalt (10 Charaktere: 6 von Anfang an, 4 per Challenge, 50 Upgrades, 46 Items, 6 Waffen, 10 Gartenplagen, 3 Bosse, 3 Beete in `stages.json`, 67 Challenges, 20 Skins). `docs/CONTENT.md` ist nur die lesbare Fassung.
 - `tools/build_content.py` erzeugt beides und prüft Querverweise. Inhalt ändern: dort, dann `python tools/build_content.py`.
 
 ## Regeln

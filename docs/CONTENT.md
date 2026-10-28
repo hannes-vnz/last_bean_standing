@@ -325,7 +325,7 @@ Höchstens 2 je Lauf. **Proviant** (25): +5 % Heilkugel-Chance in diesem Lauf.; 
 
 Rein kosmetische Zusatzfarben für jeden Charakter (Paletten-Tausch der Ramp-Farben). 3 Varianten je Charakter (Zuckerwatte, Minze, Sonnenuntergang) für je 150 Funkelsteine, zusammen 4500.
 
-## Challenges (53)
+## Challenges (67)
 
 | ID | Aufgabe | Belohnung |
 |---|---|---|
@@ -382,6 +382,20 @@ Rein kosmetische Zusatzfarben für jeden Charakter (Paletten-Tausch der Ramp-Far
 | `boss_reaper` | Besiege den Schnitter. | title: Sensenmeister |
 | `shrines_5` | Aktiviere 5 Schreine in einem Run. | title: Wagemutig |
 | `swarm_5min` | Überlebe 3 Minuten Plagenflut. | title: Flutreiter |
+| `golden_snail_1` | Fang eine Goldschnecke. | title: Goldgräber |
+| `golden_snail_3` | Fang drei Goldschnecken in einem Lauf. | title: Schneckenbaron |
+| `gnome_free` | Finde und befreie den Gartenzwerg. | title: Zwergenfreund |
+| `ladybugs_3` | Sammle drei Glückskäfer in einem Lauf. | title: Glückspilz |
+| `still_life` | Stehe 30 Sekunden am Stück still. | title: Stillleben |
+| `flawless_boss` | Besiege einen Boss, ohne getroffen zu werden. | title: Unantastbar |
+| `marathon` | Laufe in einem Lauf 2000 Meter. | title: Marathonbohne |
+| `hoarder` | Besitze fünf Kopien desselben Items. | title: Hamsterbohne |
+| `pilgrim` | Aktiviere alle vier Schreinarten in einem Lauf. | title: Pilgerbohne |
+| `menu_squish` | Zerdrücke zehn Schnecken im Hauptmenü. | title: Pausenclown |
+| `express_boss` | Besiege Schleimrun vor 2:30. | title: Schneckenpost |
+| `chain_reaction` | Besiege 60 Gegner innerhalb von 10 Sekunden. | title: Kettenreaktion |
+| `night_owl` | Erreiche in der Ewigen Nacht das zweite Beet. | title: Nachteule |
+| `arsenal` | Fülle alle Waffenplätze in einem Lauf. | title: Waffennarr |
 
 ## Umsetzungsphasen (Vertical Slice zuerst)
 

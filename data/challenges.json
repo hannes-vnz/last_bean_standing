@@ -821,5 +821,216 @@
    "id": "Flutreiter",
    "stones": 150
   }
+ },
+ {
+  "id": "golden_snail_1",
+  "text": "Fang eine Goldschnecke.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "golden_snails",
+   "op": ">=",
+   "value": 1
+  },
+  "reward": {
+   "type": "title",
+   "id": "Goldgräber",
+   "stones": 150
+  }
+ },
+ {
+  "id": "golden_snail_3",
+  "text": "Fang drei Goldschnecken in einem Lauf.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "golden_snails",
+   "op": ">=",
+   "value": 3
+  },
+  "reward": {
+   "type": "title",
+   "id": "Schneckenbaron",
+   "stones": 150
+  }
+ },
+ {
+  "id": "gnome_free",
+  "text": "Finde und befreie den Gartenzwerg.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "gnomes",
+   "op": ">=",
+   "value": 1
+  },
+  "reward": {
+   "type": "title",
+   "id": "Zwergenfreund",
+   "stones": 150
+  }
+ },
+ {
+  "id": "ladybugs_3",
+  "text": "Sammle drei Glückskäfer in einem Lauf.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "ladybugs",
+   "op": ">=",
+   "value": 3
+  },
+  "reward": {
+   "type": "title",
+   "id": "Glückspilz",
+   "stones": 150
+  }
+ },
+ {
+  "id": "still_life",
+  "text": "Stehe 30 Sekunden am Stück still.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "longest_still_s",
+   "op": ">=",
+   "value": 30
+  },
+  "reward": {
+   "type": "title",
+   "id": "Stillleben",
+   "stones": 150
+  }
+ },
+ {
+  "id": "flawless_boss",
+  "text": "Besiege einen Boss, ohne getroffen zu werden.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "flawless_bosses",
+   "op": ">=",
+   "value": 1
+  },
+  "reward": {
+   "type": "title",
+   "id": "Unantastbar",
+   "stones": 150
+  }
+ },
+ {
+  "id": "marathon",
+  "text": "Laufe in einem Lauf 2000 Meter.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "distance_m",
+   "op": ">=",
+   "value": 2000
+  },
+  "reward": {
+   "type": "title",
+   "id": "Marathonbohne",
+   "stones": 150
+  }
+ },
+ {
+  "id": "hoarder",
+  "text": "Besitze fünf Kopien desselben Items.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "max_item_stack",
+   "op": ">=",
+   "value": 5
+  },
+  "reward": {
+   "type": "title",
+   "id": "Hamsterbohne",
+   "stones": 150
+  }
+ },
+ {
+  "id": "pilgrim",
+  "text": "Aktiviere alle vier Schreinarten in einem Lauf.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "shrine_kinds",
+   "op": ">=",
+   "value": 4
+  },
+  "reward": {
+   "type": "title",
+   "id": "Pilgerbohne",
+   "stones": 150
+  }
+ },
+ {
+  "id": "menu_squish",
+  "text": "Zerdrücke zehn Schnecken im Hauptmenü.",
+  "condition": {
+   "type": "profile_stat",
+   "stat": "menu_squished",
+   "op": ">=",
+   "value": 10
+  },
+  "reward": {
+   "type": "title",
+   "id": "Pausenclown",
+   "stones": 150
+  }
+ },
+ {
+  "id": "express_boss",
+  "text": "Besiege Schleimrun vor 2:30.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "first_boss_s",
+   "op": "<",
+   "value": 150
+  },
+  "reward": {
+   "type": "title",
+   "id": "Schneckenpost",
+   "stones": 150
+  }
+ },
+ {
+  "id": "chain_reaction",
+  "text": "Besiege 60 Gegner innerhalb von 10 Sekunden.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "max_kills_10s",
+   "op": ">=",
+   "value": 60
+  },
+  "reward": {
+   "type": "title",
+   "id": "Kettenreaktion",
+   "stones": 150
+  }
+ },
+ {
+  "id": "night_owl",
+  "text": "Erreiche in der Ewigen Nacht das zweite Beet.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "stage_reached",
+   "op": ">=",
+   "value": 2,
+   "mode": "eternal_night"
+  },
+  "reward": {
+   "type": "title",
+   "id": "Nachteule",
+   "stones": 150
+  }
+ },
+ {
+  "id": "arsenal",
+  "text": "Fülle alle Waffenplätze in einem Lauf.",
+  "condition": {
+   "type": "run_stat",
+   "stat": "weapons_owned",
+   "op": ">=",
+   "value": 3
+  },
+  "reward": {
+   "type": "title",
+   "id": "Waffennarr",
+   "stones": 150
+  }
  }
 ]

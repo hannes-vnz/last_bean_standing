@@ -167,6 +167,7 @@ class Game:
         self.settings_return = "menu"
         self.challenge_page = 0
         self.poke_ms = -10_000
+        self.squish_ms = -10_000
         self.mode = "normal"  # modes.json; "eternal_night" once its challenge is done
         self.recording = True  # stress-test runs are not recorded
         self.workshop_tab = "wonders"  # greenhouse tab: wonders, seeds, workshop (Kraft), packs (Vorrat)
@@ -285,6 +286,7 @@ class Game:
             new = challenges.evaluate(self.profile, self.result, self.content.challenges, self.starters)
             names = challenges.reward_names(self.content)
             self.result["challenges"] = [(ch.text, challenges.reward_text(ch, names)) for ch in new]
+            self.result["epitaph"] = epitaph(self.result, self.content, self.profile.get("nickname"))
             earned = workshop.payout(self.result, self.content.shop, self.world.victory)
             self.result["sparkles"] = earned
             self.profile["sparkles"] = self.profile.get("sparkles", 0) + sum(earned.values())
@@ -724,6 +726,13 @@ async def run(
             game.open_account()
         elif action == "poke":  # tap the bean on the menu: it hops and says something
             game.poke_ms = pygame.time.get_ticks()
+        elif action == "squish":  # the menu slug (a challenge counts them)
+            game.squish_ms = pygame.time.get_ticks()
+            life = game.profile.setdefault("lifetime", {})
+            life["menu_squished"] = life.get("menu_squished", 0) + 1
+            for ch in challenges.evaluate_profile(game.profile, content.challenges, game.starters):
+                effects.toast = (f"Challenge geschafft: {ch.text}", 200)
+            game.save()
         elif action.startswith("acc_field:"):
             game.start_text_entry(action.split(":", 1)[1])
         elif action.startswith("acc_"):
@@ -1008,7 +1017,10 @@ async def run(
                     buttons = screens.draw_results(renderer, game.result, game.flags, game.profile, line)
             elif game.state == "menu":
                 buttons = screens.draw_menu(renderer, game.profile, WEB, game.character, game.poke_ms,
-                                            renderer.character_tint)  # fmt: skip
+                                            renderer.character_tint, game.squish_ms)  # fmt: skip
+                if effects.toast:  # e.g. a challenge done right here in the menu
+                    renderer.text(effects.toast[0], (renderer.w // 2, renderer.h - 30), center=True)
+                    effects.update()
             elif game.state == "characters":
                 best = game.profile["highscores"].get("by_character", {})
                 choices = game.skin_choices()
@@ -1074,6 +1086,28 @@ async def run(
     finally:
         pygame.quit()
     return game.world
+
+
+EPITAPHS = (
+    "Hier ruht {bean}. {n}× {pest} hat es erwischt, eine hat zurückgebissen.",
+    "{bean} ist jetzt Dünger. Die {pest} jubeln ({n} von ihnen nicht mehr).",
+    "Ruhe sanft, {bean}. Du hast {n}× {pest} gezeigt, wo der Spaten hängt.",
+    "{bean} wurde zu Kompost. Immerhin {n}× {pest} gingen mit.",
+)
+
+
+def epitaph(result: dict, content, nickname: str | None) -> str:
+    """A gravestone line with a wink for a lost run: the pest the bean beat most often."""
+    if result.get("victory"):
+        return "Der Schnitter hat seine Ernte verloren."
+    kinds = {k[5:]: v for k, v in (result.get("stats") or {}).items() if k.startswith("kind_")}
+    if not kinds:
+        return ""
+    top = max(kinds, key=lambda k: (kinds[k], k))
+    pest = next((m.name for m in content.mobs if m.id == top), top)
+    bean = next((c.name for c in content.characters if c.id == result.get("character")), nickname or "Bohne")
+    line = EPITAPHS[int(result.get("seed", 0)) % len(EPITAPHS)]
+    return line.format(bean=bean, n=int(kinds[top]), pest=pest)
 
 
 def first_run_hints(touch: bool) -> list[str]:

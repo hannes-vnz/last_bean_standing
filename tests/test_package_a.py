@@ -41,7 +41,8 @@ def test_magnet_drop_rate_is_small(make_config):
     m = w.config.mobs[0]
     for i in range(4000):
         w._kill(Enemy(i, m.id, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, m.radius, 1.0), 0, [])
-    assert 0.2 < 100 * len(w.pickups) / 4000 < 1.0  # about MAGNET_DROP_PCT
+    magnets = [k for k in w.pickups if k.kind == "magnet"]
+    assert 0.2 < 100 * len(magnets) / 4000 < 1.0  # about MAGNET_DROP_PCT (ladybugs are counted apart)
 
 
 def test_weitblick_passive(make_config):

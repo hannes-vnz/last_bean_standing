@@ -222,8 +222,31 @@ def _gem(r: Renderer, x: int, y: int) -> None:
     c.fill((255, 214, 230), (x - 2, y - 3, 2, 4))
 
 
+def _menu_slug(r: Renderer, t: int, squish_ms: int) -> pygame.Rect | None:
+    """Every 20 s a slug crawls along the bottom of the menu. Squished ones leave a puff and stay away a while."""
+    cycle, period = t // 20_000, 20_000
+    since = t - squish_ms
+    if 0 <= since < 600:  # squish puff
+        x, y = _menu_slug.last if hasattr(_menu_slug, "last") else (r.w // 2, r.h - 34)
+        for k in range(6):
+            r.canvas.fill((200, 230, 160), (x - 8 + k * 3, y - 2 - (since // 60 + k) % 5, 2, 2))
+        return None
+    if squish_ms // period == cycle and squish_ms > 0:
+        return None
+    phase = (t % period) / 9000
+    if phase > 1.0:
+        return None
+    x, y = round(-20 + phase * (r.w + 40)), r.h - 34
+    img = r.sprites.get("slug", 1.0, False, False, (0, 1, 0, -1)[(t // 150) % 4])
+    if img is not None:
+        r.canvas.blit(img, (x - img.get_width() // 2, y + 6 - img.get_height()))
+    _menu_slug.last = (x, y)
+    rect = pygame.Rect(x - 14, y - 14, 28, 24).clip(r.canvas.get_rect())
+    return rect if rect.w > 8 else None
+
+
 def draw_menu(r: Renderer, profile: dict[str, Any], web: bool, bean: str = "ranger", poke_ms: int = -10_000,
-              tint=None) -> list[Button]:  # fmt: skip
+              tint=None, squish_ms: int = -10_000) -> list[Button]:  # fmt: skip
     """Main menu: logo, the chosen bean on its mound, big buttons, Funkelsteine and account in the corner."""
     _backdrop(r)
     t = pygame.time.get_ticks()
@@ -257,11 +280,18 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool, bean: str = "rang
             buttons.append(_button(r, pygame.Rect(r.w // 2 - 100 + k * 68, y + 180, 64, 26), label, action))
     showcase = _showcase(r, bean, bean_x, bean_y, t, poke_ms, tint)
     buttons.append(Button(showcase, "poke"))
+    slug = _menu_slug(r, t, squish_ms)  # a slug crawls by now and then; tap it
+    if slug is not None:
+        buttons.insert(0, Button(slug, "squish"))
     best = profile["highscores"]["overall"]
     sign = pygame.Rect(0, 0, 150, 34)
     sign.midtop = (bean_x, bean_y + 44)
     _plank(r, sign)
-    r.text(f"Hallo, {profile.get('nickname') or 'Bohne'}!", (sign.centerx, sign.y + 9), center=True)
+    titles = profile.get("titles") or []
+    hello = f"Hallo, {profile.get('nickname') or 'Bohne'}!"
+    r.text(
+        _fit(r, f"{hello} ({titles[-1]})" if titles else hello, sign.w + 40), (sign.centerx, sign.y + 9), center=True
+    )
     r.text(f"Rekord {best['score']}" if best else "Noch kein Rekord", (sign.centerx, sign.y + 22), center=True)
     tip = GARDEN_TIPS[(t // 6000) % len(GARDEN_TIPS)]
     r.text(_fit(r, tip, r.w - 16), (r.w // 2, r.h - 14), center=True)
@@ -788,6 +818,8 @@ def draw_results(
     top = _top(r, 290)
     title = "Sieg! Die Saat ist gerettet" if result.get("victory") else "Die Bohne ist gefallen"
     _title(r, title, (cx, top + 14))
+    if result.get("epitaph"):  # a gravestone line with a wink
+        r.text(_fit(r, result["epitaph"], r.w - 16), (cx, top + 31), center=True)
     panel = pygame.Rect(cx - min(140, r.w // 2 - 10), top + 38, min(280, r.w - 20), 184)
     _panel(r, panel)
     r.dark_text(f"{result['score']} Punkte", (cx, panel.y + 12), center=True)
