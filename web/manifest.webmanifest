@@ -1,0 +1,16 @@
+{
+  "name": "Last Bean Standing",
+  "short_name": "Last Bean",
+  "description": "Die Bohne verteidigt die letzte Saat gegen die Gartenplagen.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#2c2035",
+  "theme_color": "#2c2035",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

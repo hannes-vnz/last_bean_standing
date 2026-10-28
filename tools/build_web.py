@@ -2,7 +2,7 @@
 
 Usage: python tools/build_web.py [--serve]
 Stages web/main.py, src/lastbean and data/ in build/web-src and runs pygbag there.
-The result is build/web-src/build/web (index.html plus the packed game), ready for GitHub Pages.
+The result is build/web-src/build/web (index.html plus the packed game, app icons and manifest), ready for GitHub Pages.
 `--serve` starts pygbag's local test server on http://localhost:8000 instead of only building.
 """
 
@@ -52,6 +52,9 @@ def main() -> None:
         index.write_text(
             index.read_text(encoding="utf-8").replace("LBS_BEAN_DATA_URI", bean_data_uri()), encoding="utf-8"
         )
+        # App icon and manifest for "Zum Home-Bildschirm" (made by tools/sprites/logo.py)
+        shutil.copytree(ROOT / "web" / "icons", index.parent / "icons", dirs_exist_ok=True)
+        shutil.copy(ROOT / "web" / "manifest.webmanifest", index.parent / "manifest.webmanifest")
     print("web build:", STAGE / "build" / "web")
 
 
