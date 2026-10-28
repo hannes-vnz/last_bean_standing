@@ -295,6 +295,17 @@ class Screen:
             w, h = logical_size(*self.window.get_size(), short=self.zoom)
         self.renderer.resize(w, h)
 
+    def debug_requested(self) -> bool:
+        """Web: `?debug` in the address shows touch diagnostics on screen (for testing on phones)."""
+        if not WEB:
+            return False
+        try:
+            import platform
+
+            return "debug" in str(platform.window.location.search)
+        except Exception:  # noqa: BLE001
+            return False
+
     def to_canvas(self, event) -> tuple[int, int]:
         """Canvas position of a mouse or finger event (fingers come normalised to 0..1)."""
         if event.type in (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION):
@@ -335,6 +346,7 @@ async def run(
     buttons: list[screens.Button] = []
     touch_ability = False
     was_paused = False
+    touch_debug = "" if screen.debug_requested() else None
     last = time.perf_counter()
     next_fit = 0.0
 
@@ -404,6 +416,12 @@ async def run(
                 elif event.type == pygame.FINGERDOWN:
                     renderer.touch = True
                     pos = screen.to_canvas(event)
+                    if touch_debug is not None:
+                        ww, wh = screen.window.get_size()
+                        touch_debug = (
+                            f"tap {event.x:.2f},{event.y:.2f} -> {pos} {game.state}\n"
+                            f"canvas {renderer.w}x{renderer.h} win {ww}x{wh} css {screen._css[0]}x{screen._css[1]}"
+                        )
                     on_button = renderer.ability_rect.collidepoint(pos) or renderer.pause_rect.collidepoint(pos)
                     steer = game.state == "play" and not game.world.paused and not on_button
                     touch.down(event.finger_id, *pos, steer=steer)
@@ -534,6 +552,11 @@ async def run(
             else:
                 valid = valid_nickname(game.name_buffer)
                 buttons = screens.draw_name_entry(renderer, game.name_buffer, valid, game.first_name)
+            if touch_debug is not None:
+                for i, line in enumerate((touch_debug or "Tippe irgendwo hin").split("\n")):
+                    renderer.text(line, (4, renderer.h - 34 + i * 14))
+                for b in buttons:
+                    pygame.draw.rect(renderer.canvas, (255, 60, 60), b.rect, 1)
             renderer.present(screen.window)
             pygame.display.flip()
             t2 = time.perf_counter()
