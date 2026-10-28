@@ -154,12 +154,9 @@ class Renderer:
         if snap.boss_bar:
             self._draw_boss_bar(snap.boss_bar)
         if debug:
-            self._text(debug, (6, CANVAS_H - 16))
+            self.text(debug, (6, CANVAS_H - 16))
         if focus.offer and not snap.over:
             self._draw_offer(focus)
-        if snap.over:
-            self._text("Die Bohne ist gefallen", (CANVAS_W // 2, CANVAS_H // 2 - 12), self.big_font, center=True)
-            self._text("R: neuer Lauf   Esc: Ende", (CANVAS_W // 2, CANVAS_H // 2 + 14), center=True)
         return c
 
     def _draw_hud(self, snap: Snapshot, focus) -> None:
@@ -172,7 +169,7 @@ class Renderer:
         hud = f"{m}:{s:02d}   Welle {snap.wave}   Level {focus.level}   Kills {focus.kills}   HP {hp}"
         if snap.difficulty != 1.0:
             hud += f"   Schwierigkeit {round(snap.difficulty * 100)} %"
-        self._text(hud, (6, 9))
+        self.text(hud, (6, 9))
 
     def _draw_hazards(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
         """Warnings are coral and blink at 2 Hz (DESIGN.md section 16); active zones are soft and translucent."""
@@ -206,7 +203,7 @@ class Renderer:
         c.fill(ink, rect.inflate(2, 2))
         c.fill((90, 60, 100), rect)
         c.fill(self.enemy_colors.get(bar.boss, self.telegraph), (rect.x, rect.y, round(w * bar.hp_frac), rect.h))
-        self._text(self.boss_names.get(bar.boss, bar.boss), (CANVAS_W // 2, 46), center=True)
+        self.text(self.boss_names.get(bar.boss, bar.boss), (CANVAS_W // 2, 46), center=True)
 
     def _draw_offer(self, focus) -> None:
         c, ink = self.canvas, self.ink
@@ -216,7 +213,7 @@ class Renderer:
         title = (
             "Truhe! Wähle ein Upgrade" if focus.offer_source == "chest" else f"Level {focus.level}! Wähle ein Upgrade"
         )
-        self._text(title, (CANVAS_W // 2, 70), self.big_font, center=True)
+        self.text(title, (CANVAS_W // 2, 70), self.big_font, center=True)
         n = len(focus.offer)
         w, h, gap = 180, 150, 14
         x0 = (CANVAS_W - n * w - (n - 1) * gap) // 2
@@ -230,14 +227,14 @@ class Renderer:
             c.fill((255, 250, 240), card.inflate(-4, -4))
             c.fill(self.rarity_colors.get(u.rarity, WHITE), (card.x + 2, card.y + 2, w - 4, 16))
             c.fill(ink, (card.x + 2, card.y + 18, w - 4, 1))
-            self._dark_text(f"{i + 1}   {RARITY_NAMES.get(u.rarity, u.rarity)}", (card.x + 8, card.y + 5))
-            self._dark_text(u.name, (card.centerx, card.y + 28), center=True)
-            self._dark_text(f"Stufe {level} -> {level + 1} / {u.max_level}", (card.centerx, card.y + 44), center=True)
+            self.dark_text(f"{i + 1}   {RARITY_NAMES.get(u.rarity, u.rarity)}", (card.x + 8, card.y + 5))
+            self.dark_text(u.name, (card.centerx, card.y + 28), center=True)
+            self.dark_text(f"Stufe {level} -> {level + 1} / {u.max_level}", (card.centerx, card.y + 44), center=True)
             for j, line in enumerate(_wrap(u.text, self.font, w - 20)):
-                self._dark_text(line, (card.x + 10, card.y + 64 + j * 13))
-        self._text("1/2/3 oder Pfeile + Enter", (CANVAS_W // 2, 270), center=True)
+                self.dark_text(line, (card.x + 10, card.y + 64 + j * 13))
+        self.text("1/2/3 oder Pfeile + Enter", (CANVAS_W // 2, 270), center=True)
 
-    def _dark_text(self, text: str, pos: tuple[int, int], center: bool = False) -> None:
+    def dark_text(self, text: str, pos: tuple[int, int], center: bool = False) -> None:
         img = self.font.render(text, True, self.ink)
         x, y = pos
         if center:
@@ -278,7 +275,7 @@ class Renderer:
     def _draw_ground(self, c: pygame.Surface, cam_x: int, cam_y: int) -> None:
         c.blit(self.map_surface, (-cam_x, -cam_y))
 
-    def _text(self, text: str, pos: tuple[int, int], font=None, center: bool = False) -> None:
+    def text(self, text: str, pos: tuple[int, int], font=None, center: bool = False) -> None:
         """White text with a dark outline (readability rule, DESIGN.md section 16)."""
         font = font or self.font
         outline = font.render(text, True, self.ink)

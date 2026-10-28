@@ -11,14 +11,17 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import secrets
 import sys
 import time
 
 import pygame
 
 from .data import load_content
+from .meta.profile import ProfileStore, default_store, new_profile, record_run, set_nickname, valid_nickname
 from .render.renderer import CANVAS_H, CANVAS_W, Renderer
 from .sim import DT, PlayerInput, World, WorldConfig
+from .ui import screens
 
 MAX_STEPS_PER_FRAME = 5  # avoid the spiral of death after a stall
 WEB = sys.platform == "emscripten"
@@ -93,17 +96,85 @@ class FrameTimer:
         )
 
 
-async def run(seed: int = 1, max_frames: int | None = None) -> World:
+class Game:
+    """Screens and the running world. States: "name" -> "menu" -> "play" -> "results" -> "play"/"menu"."""
+
+    def __init__(self, content, renderer: Renderer, store: ProfileStore, seed: int | None, autostart: bool) -> None:
+        self.content, self.renderer, self.store = content, renderer, store
+        try:
+            self.profile = store.load()
+        except Exception as exc:  # noqa: BLE001 - a broken store must not stop the game
+            print("Spielstand konnte nicht geladen werden:", exc)
+            self.profile = new_profile()
+        self.normal = WorldConfig.from_content(content)
+        self.config = self.normal
+        self.fixed_seed = seed
+        self.seed = seed if seed is not None else secrets.randbelow(2**31)
+        self.world = World(self.seed, self.config)
+        self.result: dict = {}
+        self.flags: dict = {}
+        self.name_buffer = ""
+        self.state = "play" if autostart else ("menu" if self.profile.get("nickname") else "name")
+        self.first_name = not self.profile.get("nickname")
+
+    def new_run(self) -> None:
+        self.seed = self.seed + 1 if self.fixed_seed is not None else secrets.randbelow(2**31)
+        self.world = World(self.seed, self.config)
+        self.state = "play"
+
+    def finish_run(self) -> None:
+        """Record the result once, when the run ends (stress-test runs are not recorded)."""
+        self.result = self.world.result().to_dict()
+        self.flags = {}
+        if self.config is self.normal:
+            self.flags = record_run(self.profile, self.result)
+            self.save()
+        self.state = "results"
+
+    def save(self) -> None:
+        try:
+            self.store.save(self.profile)
+        except Exception as exc:  # noqa: BLE001 - a full disk or blocked storage must not crash the game
+            print("Spielstand konnte nicht gespeichert werden:", exc)
+
+    def start_name_entry(self) -> None:
+        self.name_buffer = self.profile.get("nickname") or ""
+        self.state = "name"
+        pygame.key.start_text_input()
+
+    def handle_name_event(self, event) -> None:
+        if event.type == pygame.TEXTINPUT:
+            self.name_buffer = (self.name_buffer + event.text)[:16]
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_BACKSPACE:
+                self.name_buffer = self.name_buffer[:-1]
+            elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER) and valid_nickname(self.name_buffer):
+                set_nickname(self.profile, self.name_buffer)
+                self.save()
+                self.first_name = False
+                self.state = "menu"
+                pygame.key.stop_text_input()
+            elif event.key == pygame.K_ESCAPE and not self.first_name:
+                self.state = "menu"
+                pygame.key.stop_text_input()
+
+
+async def run(
+    seed: int | None = None,
+    max_frames: int | None = None,
+    store: ProfileStore | None = None,
+    autostart: bool = False,
+) -> World:
     """Open the window and play. `max_frames` stops after that many frames (smoke tests)."""
     content = load_content()
     pygame.init()
     pygame.display.set_caption("Last Bean Standing")
     window = pygame.display.set_mode((CANVAS_W * 2, CANVAS_H * 2), 0 if WEB else pygame.RESIZABLE)
     renderer = Renderer(content)
-    normal = WorldConfig.from_content(content)
-    config = normal
-    world = World(seed, config)
-    renderer.set_arena(config)
+    game = Game(content, renderer, store or default_store(), seed, autostart)
+    if game.state == "name":
+        game.start_name_entry()
+    renderer.set_arena(game.config)
     clock = pygame.time.Clock()
     timer, show_timings, bench_result = FrameTimer(), False, ""
     acc, frames, running, choice = 0.0, 0, True, None
@@ -111,10 +182,10 @@ async def run(seed: int = 1, max_frames: int | None = None) -> World:
     try:
         while running:
             for event in pygame.event.get():
-                if event.type == pygame.QUIT or (
-                    not WEB and event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
-                ):
+                if event.type == pygame.QUIT:
                     running = False
+                elif game.state == "name":
+                    game.handle_name_event(event)
                 elif event.type != pygame.KEYDOWN:
                     continue
                 elif event.key == pygame.K_F3:
@@ -123,32 +194,59 @@ async def run(seed: int = 1, max_frames: int | None = None) -> World:
                     bench_result = benchmark(content, renderer)
                     print(bench_result)
                     show_timings, last = True, time.perf_counter()
+                elif game.state == "menu":
+                    if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
+                        game.new_run()
+                        acc = 0.0
+                    elif event.key == pygame.K_n:
+                        game.start_name_entry()
+                    elif event.key == pygame.K_ESCAPE and not WEB:
+                        running = False
+                elif game.state == "results":
+                    if event.key == pygame.K_r:
+                        game.new_run()
+                        acc = 0.0
+                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_ESCAPE):
+                        game.state = "menu"
+                elif event.key == pygame.K_ESCAPE:
+                    game.state = "menu"  # abandon the run, it is not recorded
                 elif event.key == pygame.K_F4:
-                    config = normal if config is not normal else stress_config(normal)
-                    world, acc = World(seed, config), 0.0
-                elif event.key == pygame.K_r and world.over:
-                    seed += 1
-                    world, acc = World(seed, config), 0.0
-                elif world.paused:
+                    game.config = game.normal if game.config is not game.normal else stress_config(game.normal)
+                    game.new_run()
+                    acc = 0.0
+                elif game.world.paused:
                     choice = card_choice(event.key, renderer)
             acc += min(clock.tick(60 if WEB else 120) / 1000.0, DT * MAX_STEPS_PER_FRAME)
             t0 = time.perf_counter()
-            if world.paused:
-                acc = 0.0
-                if choice is not None:
-                    world.step([PlayerInput(0, choice=choice)])
-                    renderer.selected = 0
-                elif config is not normal:
-                    world.step([PlayerInput(0, choice=0)])  # stress test picks automatically
+            world = game.world
+            if game.state == "play":
+                if world.paused:
+                    acc = 0.0
+                    if choice is not None:
+                        world.step([PlayerInput(0, choice=choice)])
+                        renderer.selected = 0
+                    elif game.config is not game.normal:
+                        world.step([PlayerInput(0, choice=0)])  # stress test picks automatically
+                else:
+                    inputs = [read_input(0)]
+                    while acc >= DT and not world.paused and not world.over:
+                        world.step(inputs)
+                        acc -= DT
+                if world.over:
+                    game.finish_run()
             else:
-                inputs = [read_input(0)]
-                while acc >= DT and not world.paused:
-                    world.step(inputs)
-                    acc -= DT
+                acc = 0.0
             choice = None
             t1 = time.perf_counter()
-            debug = f"{timer.text(world)}  {bench_result}" if show_timings else None
-            renderer.draw(world.snapshot(), debug=debug)
+            if game.state in ("play", "results"):
+                debug = f"{timer.text(world)}  {bench_result}" if show_timings else None
+                renderer.draw(world.snapshot(), debug=debug)
+                if game.state == "results":
+                    screens.draw_results(renderer, game.result, game.flags, game.profile)
+            elif game.state == "menu":
+                screens.draw_menu(renderer, game.profile, WEB)
+            else:
+                screens.draw_name_entry(renderer, game.name_buffer, valid_nickname(game.name_buffer), game.first_name)
             renderer.present(window)
             pygame.display.flip()
             t2 = time.perf_counter()
@@ -160,4 +258,4 @@ async def run(seed: int = 1, max_frames: int | None = None) -> World:
             await asyncio.sleep(0)
     finally:
         pygame.quit()
-    return world
+    return game.world

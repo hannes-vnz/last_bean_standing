@@ -4,7 +4,7 @@ A small stop-and-shoot roguelite with bean mascots, built in Python with pygame-
 Time-based waves in a finite arena with four biomes, bosses, shrines and an endless swarm after 20:00.
 Portfolio project: clean code, tests, and later a reinforcement-learning agent that plays the game.
 
-**Status:** milestone M4: all phase-1 enemies (slimes, bat swarms, root guards, spore shooters), elites with affixes and chests, boss Ildra at 5:00.
+**Status:** milestone M5: menu, nickname, score and local highscores (file on desktop, localStorage in the browser), on top of all phase-1 enemies, elites and boss Ildra.
 
 Play in the browser: https://hannes-vnz.github.io/last_bean_standing/
 

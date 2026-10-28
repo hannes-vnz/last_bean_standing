@@ -8,7 +8,7 @@ import asyncio
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="lastbean", description="Last Bean Standing")
-    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--seed", type=int, default=None, help="fixed seed (default: random per run)")
     parser.add_argument("--frames", type=int, default=None, help="quit after N frames (smoke test)")
     args = parser.parse_args(argv)
 

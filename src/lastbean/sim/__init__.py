@@ -41,11 +41,15 @@ from .events import (
     WaveStarted,
 )
 from .rng import Rng
+from .score import RunResult, ScoreRules, compute_score
 from .upgrades import UpgradeDef
 from .waves import Scaling
 from .world import DT, TICK_HZ, PlayerInput, Snapshot, World, WorldConfig
 
 __all__ = [
+    "RunResult",
+    "ScoreRules",
+    "compute_score",
     "BossKilled",
     "BossPhase",
     "BossSpawned",

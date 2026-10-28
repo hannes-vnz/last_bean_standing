@@ -57,6 +57,7 @@ from .events import (
     WaveStarted,
 )
 from .rng import Rng
+from .score import RunResult, ScoreRules, compute_score
 from .spatial import SpatialHash
 from .tuning import (
     BOSS_MIN_SPAWN_DISTANCE,
@@ -120,6 +121,7 @@ class WorldConfig:
     difficulty: float = 1.0  # D, raised by shrines from phase 2 on
     enemy_target: int | None = None  # tests/benchmarks: keep exactly this many alive instead of the budget
     player_count: int = 1
+    score: ScoreRules | None = None  # from balance.json; needed for `result()`
 
     @classmethod
     def from_content(
@@ -161,6 +163,7 @@ class WorldConfig:
             spawn_distance=(float(lo), float(hi)),
             max_alive_enemies=bal.max_alive_enemies,
             player_count=player_count,
+            score=ScoreRules.from_content(content),
         )
         values.update(overrides)
         return cls(**values)
@@ -296,6 +299,7 @@ class World:
                 for pid in range(cfg.player_count)
             ]
         self._pending: list[Event] = [RunStarted(0, None, self.seed)]
+        self.bosses_killed = 0
 
     @property
     def time_s(self) -> float:
@@ -653,6 +657,7 @@ class World:
                 spec = HazardSpec("explosion", VOLATILE_RADIUS, delay=VOLATILE_DELAY_S, burst=e.damage)
                 self.add_hazard(spec, e.x, e.y, e.eid)
         if e.boss:
+            self.bosses_killed += 1
             events.append(BossKilled(self.tick, killer, e.eid, e.boss, self.time_s))
             self._drop_chest(e.x, e.y, self._boss_chest.get(e.boss, "epic"), events)
 
@@ -864,6 +869,31 @@ class World:
             p.pending_levels += 1
             events.append(LevelUp(self.tick, p.player_id, p.level))
         self._offer(p, events)
+
+    # ------------------------------------------------------------------ results
+
+    def result(self, player_id: int = 0) -> RunResult:
+        """Score and stats of one player's run so far (final once the run is over)."""
+        p = next(p for p in self.players if p.player_id == player_id)
+        seconds = int(self.time_s)
+        if self.config.score is None:
+            raise ValueError("WorldConfig.score is missing (use WorldConfig.from_content)")
+        score = compute_score(self.config.score, seconds, p.kills, p.level, self.bosses_killed, self.difficulty)
+        return RunResult(
+            character=self.config.character.id,
+            seed=self.seed,
+            seconds=seconds,
+            wave=self.wave,
+            kills=p.kills,
+            level=p.level,
+            bosses=self.bosses_killed,
+            difficulty=self.difficulty,
+            victory=False,
+            swarm_seconds=0,
+            swarm_mult=1.0,
+            damage_taken=p.damage_taken,
+            score=score,
+        )
 
     # ------------------------------------------------------------------ views
 
