@@ -107,9 +107,9 @@ def test_every_pest_is_in_the_pool_and_beds_pick_their_own(content, make_config)
 
 
 def test_full_run_through_three_beds(make_config):
-    """Acceptance Paket F: bed 1 with its boss at 2:06, the gate, bed 2, bed 3; the bot has infinite HP.
+    """Acceptance Paket F: bed 1 with its boss at 2:06, the gate, bed 2, bed 3; the bot has infinite HP and 5x damage.
     Real survival is measured in tools/balance.py."""
-    w = World(7, make_config(character={"hp": 10**9}))
+    w = World(7, make_config(character={"hp": 10**9, "damage": 60.0}))  # flow, not balance (29.10.2026: harder)
     events = []
     while w.stage < 1 or w.stage_time_s < 60:
         events += w.step([heuristic_input(w)])
