@@ -4,16 +4,16 @@
   "name": "Schleimrun, die Schneckenkönigin",
   "spawn_wave": 7,
   "spawn_time_s": 126,
-  "hp": 2400,
-  "speed": 50,
-  "damage": 14,
+  "hp": 4000,
+  "speed": 56,
+  "damage": 20,
   "biome": "seedbed",
   "impl_phase": 1,
   "summon_mob": "snail",
   "phases": [
    {
     "at_hp_pct": 100,
-    "pattern": "Schleimring (8 Tropfen), alle 4 s"
+    "pattern": "Schleimring (12 Tropfen), alle 3 s"
    },
    {
     "at_hp_pct": 60,
@@ -32,16 +32,16 @@
   "name": "Knollgrimm, der Käferkönig",
   "spawn_wave": 7,
   "spawn_time_s": 126,
-  "hp": 6000,
-  "speed": 60,
-  "damage": 18,
+  "hp": 16000,
+  "speed": 64,
+  "damage": 28,
   "biome": "veggiebed",
   "impl_phase": 1,
   "summon_mob": "potato_beetle",
   "phases": [
    {
     "at_hp_pct": 100,
-    "pattern": "Stachelfächer (5 Geschosse, alle 3 s) und Sturmangriff nach Warnlinie (Tempo 380)"
+    "pattern": "Stachelfächer (5 Geschosse, alle 2,2 s) und Sturmangriff nach Warnlinie (Tempo 380)"
    },
    {
     "at_hp_pct": 60,
@@ -60,16 +60,16 @@
   "name": "Der Schnitter",
   "spawn_wave": 7,
   "spawn_time_s": 126,
-  "hp": 14000,
-  "speed": 60,
-  "damage": 24,
+  "hp": 40000,
+  "speed": 66,
+  "damage": 36,
   "biome": "compost",
   "impl_phase": 1,
   "summon_mob": "pest_tomato",
   "phases": [
    {
     "at_hp_pct": 100,
-    "pattern": "Sensenring (12 Geschosse), alle 3,5 s"
+    "pattern": "Sensenring (16 Geschosse), alle 2,6 s"
    },
    {
     "at_hp_pct": 66,
@@ -77,7 +77,7 @@
    },
    {
     "at_hp_pct": 33,
-    "pattern": "Sensenring alle 2 s, stürmt nach Warnlinie"
+    "pattern": "Sensenring alle 1,6 s, stürmt nach Warnlinie"
    }
   ],
   "reward": "victory",

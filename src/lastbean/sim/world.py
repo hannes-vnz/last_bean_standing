@@ -237,6 +237,7 @@ class PlayerInput:
 
     `choice` picks an offered upgrade card (0-based index); ignored when nothing is offered.
     `ability` triggers the character's active ability when it is ready.
+    `gate` answers the question that comes up when a player walks into the open gate.
     """
 
     player_id: int
@@ -246,6 +247,7 @@ class PlayerInput:
     ability: bool = False
     reroll: bool = False  # roll the offered cards again (limited per run)
     banish: int | None = None  # remove that card's upgrade from this run and roll again (limited)
+    gate: bool | None = None  # answer to the gate question: True = go through, False = not yet
 
 
 @dataclass(frozen=True, slots=True)
@@ -447,6 +449,7 @@ class PlayerView(NamedTuple):
     storm: bool = False  # Vex's thunderstorm is raging
     sparkles: int = 0  # Funkelsteine found in this run
     lucky: bool = False  # ladybug buff
+    gate_prompt: bool = False  # in the open gate: waiting for "go through?" (PlayerInput.gate)
 
 
 class EnemyView(NamedTuple):
@@ -546,6 +549,7 @@ class Snapshot:
     mode: str = "normal"  # modes.json id (the renderer darkens the eternal night)
     reward_mult: float = 1.0
     gate: tuple[float, float] | None = None
+    gate_exit: bool = False  # the open gate leaves the garden: going through wins the run
     victory: bool = False
     obstacles: tuple = ()  # the bed's obstacles (static per bed, the renderer rebuilds its map when they change)
     orbiters: tuple[tuple[str, float, float], ...] = ()  # (weapon, x, y), e.g. bees
@@ -763,7 +767,7 @@ class World:
     @property
     def paused(self) -> bool:
         """Single player: an open upgrade choice pauses the game. Co-op will keep running (section 18)."""
-        return self.config.player_count == 1 and any(p.offer for p in self.players if p.alive)
+        return self.config.player_count == 1 and any(p.offer or p.gate_prompt for p in self.players if p.alive)
 
     @property
     def reward_mult(self) -> float:
@@ -785,6 +789,8 @@ class World:
         inputs = inputs or {}
         events, self._pending = self._pending, []
 
+        if self._answer_gate(inputs, events):
+            return events
         self._apply_choices(inputs, events)
         if self.paused:
             return events
@@ -807,8 +813,8 @@ class World:
         self._update_hazards(events)
         self._contact_damage(events)
         self._collect_pickups(events)
-        if self.gate is not None and self.tick >= self._gate_ready_tick and self._enter_gate(events):
-            return events
+        if self.gate is not None and self.tick >= self._gate_ready_tick:
+            self._check_gate()
 
         self.tick += 1
         self._track_run_stats()
@@ -834,10 +840,7 @@ class World:
             elite = self.config.elite
             if elite and self.config.enemy_target is None and wave % elite.every_n_waves == 0:
                 self._spawn_elite(events)
-        if self.victory:
-            self.over = True
-            events.append(RunEnded(self.tick, None, self.time_s, True))
-        elif not any(p.alive for p in self.players):
+        if not any(p.alive for p in self.players):
             self.over = True
             events.append(RunEnded(self.tick, None, self.time_s))
         return events
@@ -850,29 +853,71 @@ class World:
         return 1 + int(self.flood_s // self.config.flood.wave_s)
 
     def _flood_wave(self, events: list[Event]) -> None:
-        """A flood wave rolls in: a ring of pests right around every player, faster than the last ones."""
+        """A flood wave rolls in: every pest on the field gets faster and hits harder (not only the new ones),
+        and a ring of pests appears right around every player. At the enemy limit the farthest pests are
+        moved into the ring instead, so the ring always comes."""
         f, n = self.config.flood, self.flood_wave
         events.append(FloodWave(self.tick, None, self.stage_cfg.index, n, self.reward_mult))
+        if n > 1:
+            pct = f.speed_per_wave_pct / 100.0
+            speed_k = (1.0 + pct * (n - 1)) / (1.0 + pct * (n - 2))  # same curve as new spawns
+            dmg_k = 1.0
+            for _ in range(int(f.wave_s // 10)):  # the damage growth of one wave (per 10 s, compounded)
+                dmg_k *= 1.0 + f.damage_growth
+            for e in self.enemies:
+                if not (e.boss or e.critter):
+                    e.speed *= speed_k
+                    e.damage *= dmg_k
         count = f.burst_base + f.burst_per_wave * (n - 1)
         for p in self.players:
             if not p.alive:
                 continue
+            spares = sorted((e for e in self.enemies if not (e.boss or e.elite or e.critter)),
+                            key=lambda e: (-((e.x - p.x) ** 2 + (e.y - p.y) ** 2), e.eid))  # fmt: skip
             for k in range(count):
-                if len(self.enemies) >= self.config.max_alive_enemies:
-                    return
-                mob = self._pick_mob(self.stage_cfg.biome)
-                if mob is None:
-                    return
                 dx, dy = cos_sin(6.283185307179586 * k / count)
-                dist = self.config.spawn_distance[0] * 0.75
-                self._spawn_enemy(mob, p.x + dx * dist, p.y + dy * dist, events)
+                dist = self.config.spawn_distance[0] * 0.5  # close: the ring is right around you
+                x, y = p.x + dx * dist, p.y + dy * dist
+                if len(self.enemies) < self.config.max_alive_enemies:
+                    mob = self._pick_mob(self.stage_cfg.biome)
+                    if mob is not None:
+                        self._spawn_enemy(mob, x, y, events)
+                        continue
+                if not spares:
+                    break
+                e = spares.pop(0)
+                e.x, e.y = self._clamp(*self.obstacles.push_out(x, y, e.radius), e.radius)
 
-    def _enter_gate(self, events: list[Event]) -> bool:
-        """A living player in the gate takes everyone to the next bed. Returns True when that happened."""
+    def _check_gate(self) -> None:
+        """Walking into the open gate asks whether to go through (once per visit, never automatically)."""
         gx, gy = self.gate
         r2 = (self.config.gate_radius + PLAYER_RADIUS) ** 2
-        if not any(p.alive and (p.x - gx) ** 2 + (p.y - gy) ** 2 <= r2 for p in self.players):
-            return False
+        for p in self.players:
+            inside = p.alive and (p.x - gx) ** 2 + (p.y - gy) ** 2 <= r2
+            if not inside:
+                p.in_gate = p.gate_prompt = False
+            elif not p.in_gate and not p.offer:
+                p.in_gate = p.gate_prompt = True
+
+    def _answer_gate(self, inputs: dict[int, PlayerInput], events: list[Event]) -> bool:
+        """A player's answer to the gate question. True when the run moved on (next bed or the end)."""
+        for p in self.players:
+            inp = inputs.get(p.player_id)
+            if not p.gate_prompt or inp is None or inp.gate is None:
+                continue
+            p.gate_prompt = False
+            if inp.gate and self.gate is not None:
+                self._enter_gate(events)
+                return True
+        return False
+
+    def _enter_gate(self, events: list[Event]) -> None:
+        """Everyone goes to the next bed; the last bed's gate leads home and wins the run."""
+        if self.stage + 1 >= len(self.config.stages):
+            self.victory = self.over = True
+            self.gate = None
+            events.append(RunEnded(self.tick, None, self.time_s, True))
+            return
         # Whatever still lies around is collected on the way (XP, seeds, healing).
         alive = [p for p in self.players if p.alive]
         for o in self.orbs:
@@ -898,8 +943,9 @@ class World:
         # A hot start: the first wave's budget is there at once, so the new bed fills up quickly.
         head = int(st.head_start_s // self.config.wave_interval_s)
         self._budget = self.config.scaling.wave_budget(head, self.difficulty, self.config.player_count) * st.budget_mult
+        for p in self.players:
+            p.in_gate = p.gate_prompt = False
         events.append(StageStarted(self.tick, None, st.index, st.name))
-        return True
 
     # ------------------------------------------------------------------ players
 
@@ -1659,18 +1705,16 @@ class World:
                 if owner is not None:
                     owner.pending_chests.append(CURSE_CARD_RARITY)
                     self._offer(owner, events)
-            if not last:
-                self._drop_chest(e.x, e.y, "boss", events)
+            self._drop_chest(e.x, e.y, "boss", events)
             if any(o.boss and o.eid != e.eid and o.hp > 0 for o in self.enemies):
                 return  # copies of the boss are still standing
-            if last:
-                self.victory = True  # the last bed's boss: the run is won
-            else:
-                gx, gy = self._clamp(*self.obstacles.push_out(e.x, e.y + GATE_OFFSET, self.config.gate_radius),
-                                     self.config.gate_radius)  # fmt: skip
-                self.gate = (gx, gy)
-                self._gate_ready_tick = self.tick + int(GATE_DELAY_S * TICK_HZ)
-                events.append(GateOpened(self.tick, None, gx, gy))
+            # The gate opens; after the last boss it leads home: going through wins the run (with the victory
+            # bonus), staying gambles in the flood for more points, and dying there forfeits the bonus.
+            gx, gy = self._clamp(*self.obstacles.push_out(e.x, e.y + GATE_OFFSET, self.config.gate_radius),
+                                 self.config.gate_radius)  # fmt: skip
+            self.gate = (gx, gy)
+            self._gate_ready_tick = self.tick + int(GATE_DELAY_S * TICK_HZ)
+            events.append(GateOpened(self.tick, None, gx, gy, last))
 
     def _catch_critter(self, e: Enemy, killer: int | None, events: list[Event]) -> None:
         """Golden snail: a heap of Funkelsteine and seeds. Gnome: a free chest and a few Funkelsteine."""
@@ -2829,6 +2873,7 @@ class World:
                     p.storm_t > 0,
                     p.sparkles,
                     p.lucky_t > 0,
+                    p.gate_prompt,
                 )
                 for p in self.players
             ),
@@ -2880,6 +2925,7 @@ class World:
             flood_wave=self.flood_wave,
             reward_mult=self.reward_mult,
             gate=self.gate,
+            gate_exit=self.gate is not None and self.stage + 1 >= len(self.config.stages),
             victory=self.victory,
             obstacles=self.stage_cfg.obstacles,
             **self._weapon_views(),

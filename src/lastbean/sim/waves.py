@@ -16,6 +16,7 @@ class Scaling:
     damage: tuple[float, float]
     speed: tuple[float, float]  # linear in m, cap
     xp_to_next: tuple[float, float, float]  # base, linear, quadratic in level
+    xp_growth: tuple[float, int] = (1.0, 0)  # times this per level above the second value: exponential late game
     # Co-op hook (DESIGN.md section 18): extra budget per additional player. Value still open, 0 = off.
     budget_per_extra_player: float = 0.0
 
@@ -28,6 +29,7 @@ class Scaling:
             damage=(b["damage_mult"]["linear"], b["damage_mult"]["quadratic"]),
             speed=(b["speed_mult"]["linear"], b["speed_mult"]["cap"]),
             xp_to_next=(b["xp_to_next"]["base"], b["xp_to_next"]["linear"], b["xp_to_next"]["quadratic"]),
+            xp_growth=(float(b["xp_to_next"].get("growth", 1.0)), int(b["xp_to_next"].get("growth_from_level", 0))),
         )
 
     def wave_budget(self, wave: int, difficulty: float = 1.0, player_count: int = 1) -> float:
@@ -49,7 +51,11 @@ class Scaling:
 
     def xp_needed(self, level: int) -> float:
         base, lin, quad = self.xp_to_next
-        return base + lin * level + quad * level * level
+        need = base + lin * level + quad * level * level
+        growth, start = self.xp_growth
+        for _ in range(level - start):  # repeated product instead of pow(): the same result everywhere
+            need *= growth
+        return need
 
 
 @dataclass(frozen=True, slots=True)

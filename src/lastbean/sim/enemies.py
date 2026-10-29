@@ -260,7 +260,7 @@ def boss_reaper(w: World, e: Enemy, tx: float, ty: float, d: float, events: list
         w.summon_around(e, w.boss_stats[e.boss].summon_mob, REAPER_SUMMONS, events)
     e.timers = [t - DT for t in e.timers]
     if e.timers[0] <= 0:
-        e.timers[0] = REAPER_RING_INTERVAL_S / (1.75 if e.phase >= 2 else 1.0)
+        e.timers[0] = REAPER_RING_INTERVAL_S / (1.625 if e.phase >= 2 else 1.0)  # (text) "alle 1,6 s"
         thorn_ring(w, e, REAPER_RING_SHOTS, events)
     if e.phase >= 1 and e.timers[1] <= 0:
         e.timers[1] = REAPER_RAIN_INTERVAL_S

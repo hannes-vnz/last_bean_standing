@@ -95,6 +95,7 @@ class Renderer:
         self.xp_color = hex_rgb(style.xp_orb)
         self.upgrades = {u.id: u for u in content.upgrades}
         self.stat_labels = content.stat_labels
+        self.victory_bonus = int(content.balance.raw.get("score", {}).get("victory_bonus", 0))
         self.tier_mult = {k: float(v) for k, v in content.balance.raw.get("card_tier_mult", {}).items()}
         self.weapons = {w.id: w for w in content.weapons}
         self.items = {i.id: i for i in content.items}
@@ -388,6 +389,8 @@ class Renderer:
             self._draw_intro(effects, intro_k)
         if focus.offer and not snap.over:
             self._draw_offer(focus)
+        elif focus.gate_prompt and not snap.over:
+            self._draw_gate_prompt(snap)
         if effects and effects.reel is not None:
             self._draw_reel(effects.reel)
         return c
@@ -504,52 +507,51 @@ class Renderer:
                 c.fill((255, 255, 255), (x, y, 1, 1))
 
     def _draw_build(self, focus) -> None:
-        """Icon rows under the HUD (weapons, books, items) with level or count. Something new or levelled
-        pops up big and settles, with a ring in its rarity colour and a small "+1" or "NEU"."""
+        """New or levelled weapons, books and items pop up for a moment in a row near the bottom (big, with a
+        ring in their rarity colour and "NEU" or "+1") and fade away, so the view stays free. The whole build
+        is on the pause screen."""
         tiers = dict(focus.card_tiers)
         if not focus.weapons and not focus.upgrades and not focus.items:
             self._build_seen.clear()  # a new run: nothing to compare with
-        rows = [
-            [("weapon:start", 1, "common")]
-            + [("weapon:" + wid, lvl, tiers.get("weapon:" + wid)) for wid, lvl in focus.weapons],
-            [(uid, lvl, tiers.get(uid)) for uid, lvl in focus.upgrades],
-            [("item:" + iid, n, None) for iid, n in focus.items],
-        ]
-        step = ICON_SIZE + 2
-        cols = max(4, (self.w - self.minimap_size() - 20) // step)
-        y = self.hud_bottom + 2
+        entries = [("weapon:start", 1, "common")]
+        entries += [("weapon:" + wid, lvl, tiers.get("weapon:" + wid)) for wid, lvl in focus.weapons]
+        entries += [(uid, lvl, tiers.get(uid)) for uid, lvl in focus.upgrades]
+        entries += [("item:" + iid, n, None) for iid, n in focus.items]
+        recent = []
+        for key, n, tier in entries:
+            if self._build_seen.get(key) != n:  # new or levelled since the last frame
+                if key in self._build_seen or self.frame > 2:
+                    self._build_pop[key] = self.frame
+                self._build_seen[key] = n
+            age = self.frame - self._build_pop.get(key, -999)
+            if age < BUILD_SHOW_FRAMES:
+                recent.append((key, n, tier, age))
+        if not recent:
+            return
         c = self.canvas
-        for entries in rows:
-            if not entries:
-                continue
-            for k, (key, n, tier) in enumerate(entries[: cols * 2]):
-                row, col = divmod(k, cols)
-                x, yy = 6 + self.safe[3] + col * step, y + row * step
-                if self._build_seen.get(key) != n:  # new or levelled since the last frame
-                    if key in self._build_seen or self.frame > 2:
-                        self._build_pop[key] = self.frame
-                    self._build_seen[key] = n
-                icon = self.icons.get(key, tier)
-                age = self.frame - self._build_pop.get(key, -999)
-                if age < POP_FRAMES:
-                    k2 = 1.0 + 0.8 * (1.0 - age / POP_FRAMES) ** 2
-                    size = round(ICON_SIZE * k2)
-                    color = self.rarity_colors.get(tier or "common", WHITE)
-                    pygame.draw.rect(c, color, (x - age // 2, yy - age // 2, ICON_SIZE + age, ICON_SIZE + age), 1)
-                    c.blit(pygame.transform.scale(icon, (size, size)), (x - (size - ICON_SIZE) // 2,
-                                                                         yy - (size - ICON_SIZE) // 2))  # fmt: skip
-                    label = "NEU" if n == 1 else "+1"
-                    self.canvas.blit(self._outlined(label, self.tiny_font, color), (x + 2, yy - 10 - age // 4))
-                else:
-                    c.blit(icon, (x, yy))
-                if n > 1:
-                    img = self._number_cache.get(("lvl", n))
-                    if img is None:
-                        img = self._outlined(str(n), self.tiny_font, WHITE)
-                        self._number_cache[("lvl", n)] = img
-                    c.blit(img, (x + ICON_SIZE - img.get_width() + 1, yy + ICON_SIZE - img.get_height() + 2))
-            y += step * ((min(len(entries), cols * 2) + cols - 1) // cols)
-        self.hud_bottom = y
+        step = ICON_SIZE + 8
+        x0 = self.w // 2 - (len(recent) * step - 8) // 2
+        y = self.h - self.safe[2] - ICON_SIZE - (64 if self.touch else 30)
+        for k, (key, n, tier, age) in enumerate(recent):
+            x = x0 + k * step
+            icon = self.icons.get(key, tier)
+            color = self.rarity_colors.get(tier or "common", WHITE)
+            fade = BUILD_SHOW_FRAMES - age
+            if fade < 30:  # fade out at the end
+                icon = icon.copy()
+                icon.set_alpha(round(255 * fade / 30))
+            if age < POP_FRAMES:
+                k2 = 1.0 + 0.8 * (1.0 - age / POP_FRAMES) ** 2
+                size = round(ICON_SIZE * k2)
+                pygame.draw.rect(c, color, (x - age // 2, y - age // 2, ICON_SIZE + age, ICON_SIZE + age), 1)
+                c.blit(pygame.transform.scale(icon, (size, size)), (x - (size - ICON_SIZE) // 2,
+                                                                    y - (size - ICON_SIZE) // 2))  # fmt: skip
+            else:
+                c.blit(icon, (x, y))
+            if fade >= 30:
+                label = "NEU" if n == 1 else f"Lv {n}"
+                img = self._outlined(label, self.tiny_font, color)
+                c.blit(img, (x + ICON_SIZE // 2 - img.get_width() // 2, y - 10))
 
     def _draw_gate(self, snap: Snapshot, cam_x: int, cam_y: int) -> None:
         """Gartentor: wooden arch with a glowing green opening and flowers, bobbing gently."""
@@ -1101,6 +1103,13 @@ class Renderer:
         self._number_cache[key] = surf
         return surf
 
+    def _card_need(self, uid: str, level: int, tier: str, width: int) -> int:
+        """Height a card of this width needs to show its whole text."""
+        _, _, u, _ = self._card(uid)
+        lines = self._card_lines(uid, u, level, tier, uid.startswith(WEAPON_PREFIX))
+        count = sum(len(_wrap(line, self.font, width - 20)) for line in lines)
+        return 4 + 2 * ICON_SIZE + 10 + count * 13 + 8
+
     def _draw_rays(self, center: tuple[int, int], length: float, color, rank: int) -> None:
         """Slowly turning light rays behind epic and legendary cards (and rare ones, fainter)."""
         overlay = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
@@ -1118,7 +1127,7 @@ class Renderer:
     def _card_lines(self, uid: str, u, level: int, tier: str, weapon: bool) -> list[str]:
         """Stat lines of a card (Megabonk style: one change per line)."""
         text = self._card_text(uid, u, level, tier, weapon)
-        if weapon:
+        if weapon or text == u.text:  # a sentence, not a list of stat changes
             return [text]
         return [part.strip().rstrip(".") for part in text.split(", ")]  # ", " only: "+3,9 %" is one number
 
@@ -1191,6 +1200,44 @@ class Renderer:
     def minimap_size(self) -> int:
         return 64 if min(self.w, self.h) < 340 else 80
 
+    def _draw_gate_prompt(self, snap: Snapshot) -> None:
+        """Standing in the open gate: go through or not yet? (In the last bed: home with the victory bonus.)"""
+        c, ink = self.canvas, self.ink
+        dim = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        dim.fill((*ink, 120))
+        c.blit(dim, (0, 0))
+        if snap.gate_exit:
+            title, yes, no = "Der Heimweg", "Heimgehen", "Weiterzocken"
+            text = (f"Lauf beenden und den Sieg feiern: +{self.victory_bonus} Bonuspunkte. Wer bleibt, holt in "
+                    "der Flut mehr Punkte, aber wer dabei stirbt, bekommt keinen Bonus.")  # fmt: skip
+        else:
+            title, yes, no = "Das Gartentor", "Rein!", "Noch nicht"
+            text = (
+                "Ins nächste Beet? Du wirst ganz geheilt, aber es gibt kein Zurück. "
+                "Liegengebliebenes wird eingesammelt."
+            )
+        w = min(320, self.w - 24)
+        lines = _wrap(text, self.font, w - 24)
+        box = pygame.Rect(0, 0, w, 64 + len(lines) * 13 + 40)
+        box.center = (self.w // 2, self.h // 2 - 20)
+        c.fill(ink, box.inflate(6, 6))
+        c.fill((58, 42, 74), box)
+        c.fill(self.rarity_colors.get("uncommon", WHITE), (box.x, box.y, box.w, 3))
+        self.text(title, (box.centerx, box.y + 12), self.mid_font, center=True)
+        for i, line in enumerate(lines):
+            self.text(line, (box.centerx, box.y + 40 + i * 13), center=True)
+        bw = (w - 36) // 2
+        y = box.bottom - 38
+        self.card_rects = []
+        self.offer_buttons = []
+        for i, (label, action) in enumerate(((yes, "gate_yes"), (no, "gate_no"))):
+            rect = pygame.Rect(box.x + 12 + i * (bw + 12), y, bw, 28)
+            c.fill(ink, rect.inflate(4, 4))
+            c.fill(self.crit_color if i == 0 else (255, 250, 240), rect)
+            hint = "" if self.touch else (" (Enter)" if i == 0 else " (Esc)")
+            self.dark_text(label + hint, (rect.centerx, rect.y + 8), center=True)
+            self.offer_buttons.append((rect, action))
+
     def _draw_offer(self, focus) -> None:
         c, ink = self.canvas, self.ink
         dim = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
@@ -1203,16 +1250,24 @@ class Renderer:
         age = self.frame - self._offer_frame
         self.selected = min(self.selected, n - 1)
         wide = self.w > self.h  # landscape: cards side by side; portrait: stacked
+        st, sb = self.safe[0], self.safe[2]
         if wide:
             gap = 14
-            w, h = min(180, (self.w - 20 - (n - 1) * gap) // n), 150
-            top = max(80, (self.h - h) // 2 - 10)
+            w = min(180, (self.w - 20 - (n - 1) * gap) // n)
+            need = max(self._card_need(uid, level, tier, w) for uid, level, tier in focus.offer)
+            h = max(150, min(need, self.h - st - sb - 150))  # tall enough for the whole text
+            top = max(70 + st, (self.h - h) // 2 - 10)
             x0 = (self.w - n * w - (n - 1) * gap) // 2
             rects = [pygame.Rect(x0 + i * (w + gap), top, w, h) for i in range(n)]
-        else:  # phone in portrait: cards stacked, full width
-            w, h, gap = min(340, self.w - 20), 92, 10
-            top = max(70, (self.h - n * h - (n - 1) * gap) // 2)
-            rects = [pygame.Rect((self.w - w) // 2, top + i * (h + gap), w, h) for i in range(n)]
+        else:  # phone in portrait: cards stacked, full width, each as tall as its text needs
+            w, gap = min(340, self.w - 20), 10
+            room = (self.h - st - sb - 160 - (n - 1) * gap) // max(1, n)
+            heights = [max(80, min(room, self._card_need(uid, level, tier, w))) for uid, level, tier in focus.offer]
+            top = max(60 + st, (self.h - sum(heights) - (n - 1) * gap) // 2)
+            rects, y = [], top
+            for h in heights:
+                rects.append(pygame.Rect((self.w - w) // 2, y, w, h))
+                y += h + gap
         self.text(title, (self.w // 2, top - 30), self.big_font, center=True)
         self.card_rects = rects
         for i, (uid, level, tier) in enumerate(focus.offer):
@@ -1455,6 +1510,7 @@ def _wrap(text: str, font: pygame.font.Font, width: int) -> list[str]:
 
 
 RARITY_ORDER = ("common", "uncommon", "rare", "epic", "legendary")
+BUILD_SHOW_FRAMES = 150  # new build icons stay 2.5 s
 POP_FRAMES = 24  # HUD icon pop when something new arrives
 DECOR_PCT = 9  # share of tiles with a decoration
 MOTES = {  # floating particles per bed: colour, count

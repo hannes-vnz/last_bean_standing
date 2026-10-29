@@ -14,11 +14,11 @@ DATA, DOCS = ROOT / "data", ROOT / "docs"
 # ---------------------------------------------------------------------------- Balance
 BALANCE = {
     "tick_hz": 60, "wave_interval_s": 18, "max_wave": 40, "swarm_time_s": 300, "max_alive_enemies": 350,
-    "budget": {"base": 40, "linear": 7.0, "quadratic": 0.22},           # je Welle w: base + linear*w + quadratic*w^2 (mehr Gegner früh, seit 28.10.2026)
-    "hp_mult": {"linear": 0.17, "quadratic": 0.033},                     # 1 + a*m + b*m^2, m = Minuten (28.10.2026: Beete 3:00, Tempo x5/3)
-    "damage_mult": {"linear": 0.085, "quadratic": 0.011},
+    "budget": {"base": 48, "linear": 8.0, "quadratic": 0.26},           # je Welle w: base + linear*w + quadratic*w^2 (29.10.2026: deutlich schwerer)
+    "hp_mult": {"linear": 0.24, "quadratic": 0.05},                      # 1 + a*m + b*m^2, m = Minuten im Beet (29.10.2026: schwächere Builds kommen nicht mehr mit)
+    "damage_mult": {"linear": 0.12, "quadratic": 0.016},
     "speed_mult": {"linear": 0.017, "cap": 1.2},
-    "xp_to_next": {"base": 2, "linear": 1.2, "quadratic": 0.12},        # Level L -> L+1 (Paket F: noch schnellere Level)
+    "xp_to_next": {"base": 2, "linear": 1.2, "quadratic": 0.12, "growth": 1.09, "growth_from_level": 10},  # Level L -> L+1; ab Level 10 zusätzlich x1,09 je Level (29.10.2026: später exponentiell langsamer)
     "elite_every_n_waves": 5, "boss_waves": {},                         # Bosse kommen seit Paket F je Beet (stages.json)
     "spawn_distance_px": [520, 700], "arena_tiles": [120, 120], "tile_px": 32,
     "player_base": {"hp": 100, "pickup_radius_px": 220, "i_frames_s": 0.6},
@@ -293,14 +293,14 @@ SWARM = dict(start_s=300, entity="floodwisp", name="Flutgeist", hp=6, speed=75, 
              score_mult_start=1, score_mult_gain_per_45s=1, score_mult_cap=8, hp_damage_scaling="wie normale Gegner (hp_mult, damage_mult), setzt sich unbegrenzt fort",
              text="Seit Paket F ersetzt die Plagenflut am Ende jedes Beets (stages.json, flood) die Schwarmflut; diese Werte sind für spätere Flutgeister vorgemerkt.")
 BOSSES = [
- dict(id="snail_queen", name="Schleimrun, die Schneckenkönigin", spawn_wave=7, spawn_time_s=126, hp=2400, speed=50, damage=14, biome="seedbed", impl_phase=1, summon_mob="snail",
-      phases=[dict(at_hp_pct=100, pattern="Schleimring (8 Tropfen), alle 4 s"), dict(at_hp_pct=60, pattern="Schleimspur: verlangsamt dich 40 % in einem Kreis, ruft 3 Gartenschnecken"), dict(at_hp_pct=30, pattern="Schleimring doppelt so schnell, Sporenregen")],
+ dict(id="snail_queen", name="Schleimrun, die Schneckenkönigin", spawn_wave=7, spawn_time_s=126, hp=4000, speed=56, damage=20, biome="seedbed", impl_phase=1, summon_mob="snail",
+      phases=[dict(at_hp_pct=100, pattern="Schleimring (12 Tropfen), alle 3 s"), dict(at_hp_pct=60, pattern="Schleimspur: verlangsamt dich 40 % in einem Kreis, ruft 3 Gartenschnecken"), dict(at_hp_pct=30, pattern="Schleimring doppelt so schnell, Sporenregen")],
       reward="boss_chest_epic", first_kill_challenge="boss_snail_queen"),
- dict(id="beetle_king", name="Knollgrimm, der Käferkönig", spawn_wave=7, spawn_time_s=126, hp=6000, speed=60, damage=18, biome="veggiebed", impl_phase=1, summon_mob="potato_beetle",
-      phases=[dict(at_hp_pct=100, pattern="Stachelfächer (5 Geschosse, alle 3 s) und Sturmangriff nach Warnlinie (Tempo 380)"), dict(at_hp_pct=60, pattern="ruft 4 Kartoffelkäfer, Fächer mit 7 Geschossen"), dict(at_hp_pct=30, pattern="stürmt zweimal hintereinander, Fächer doppelt so schnell")],
+ dict(id="beetle_king", name="Knollgrimm, der Käferkönig", spawn_wave=7, spawn_time_s=126, hp=16000, speed=64, damage=28, biome="veggiebed", impl_phase=1, summon_mob="potato_beetle",
+      phases=[dict(at_hp_pct=100, pattern="Stachelfächer (5 Geschosse, alle 2,2 s) und Sturmangriff nach Warnlinie (Tempo 380)"), dict(at_hp_pct=60, pattern="ruft 4 Kartoffelkäfer, Fächer mit 7 Geschossen"), dict(at_hp_pct=30, pattern="stürmt zweimal hintereinander, Fächer doppelt so schnell")],
       reward="boss_chest_epic", first_kill_challenge="boss_beetle_king"),
- dict(id="reaper", name="Der Schnitter", spawn_wave=7, spawn_time_s=126, hp=14000, speed=60, damage=24, biome="compost", impl_phase=1, summon_mob="pest_tomato",
-      phases=[dict(at_hp_pct=100, pattern="Sensenring (12 Geschosse), alle 3,5 s"), dict(at_hp_pct=66, pattern="Seelenregen: 6 Einschläge mit Warnkreis (Radius 80), ruft Pestizid-Tomaten"), dict(at_hp_pct=33, pattern="Sensenring alle 2 s, stürmt nach Warnlinie")],
+ dict(id="reaper", name="Der Schnitter", spawn_wave=7, spawn_time_s=126, hp=40000, speed=66, damage=36, biome="compost", impl_phase=1, summon_mob="pest_tomato",
+      phases=[dict(at_hp_pct=100, pattern="Sensenring (16 Geschosse), alle 2,6 s"), dict(at_hp_pct=66, pattern="Seelenregen: 6 Einschläge mit Warnkreis (Radius 80), ruft Pestizid-Tomaten"), dict(at_hp_pct=33, pattern="Sensenring alle 1,6 s, stürmt nach Warnlinie")],
       reward="victory", first_kill_challenge="boss_reaper"),
 ]
 # Paket F: drei Beete statt vier Biome. Jedes Beet ist eine eigene Karte (arena_tiles), die Startfläche bleibt frei.
@@ -320,16 +320,16 @@ PALETTES = {
 STAGES = [
  dict(id="seedbed", index=1, name="Saatbeet", biome="seedbed", duration_s=180, boss="snail_queen", hp_mult=1.0, damage_mult=1.0, budget_mult=1.0, head_start_s=0,
       tagline="Die Keimlinge brauchen dich!"),
- dict(id="veggiebed", index=2, name="Gemüsebeet", biome="veggiebed", duration_s=180, boss="beetle_king", hp_mult=2.6, damage_mult=1.7, budget_mult=1.35, head_start_s=90,
+ dict(id="veggiebed", index=2, name="Gemüsebeet", biome="veggiebed", duration_s=180, boss="beetle_king", hp_mult=3.6, damage_mult=2.2, budget_mult=1.5, head_start_s=90,
       tagline="Das Gemüse ist vergiftet. Halte durch!"),
- dict(id="compost", index=3, name="Komposthaufen", biome="compost", duration_s=180, boss="reaper", hp_mult=6.0, damage_mult=2.6, budget_mult=1.7, head_start_s=108,
+ dict(id="compost", index=3, name="Komposthaufen", biome="compost", duration_s=180, boss="reaper", hp_mult=10.0, damage_mult=3.4, budget_mult=2.0, head_start_s=108,
       tagline="Der Schnitter wartet im Kompost."),
 ]
 # head_start_s (Paket G): spätere Beete beginnen mit so viel Wellen-Vorsprung (Gegnermenge und -arten), sonst laufen sie zu langsam an.
-FLOOD = dict(name="Plagenflut", warning_s=10, budget_growth_per_10s=0.4, hp_growth_per_10s=0.15, damage_growth_per_10s=0.08, reward_growth_per_10s=0.25,
-             wave_s=30, burst_base=12, burst_per_wave=8, speed_per_wave_pct=8,
-             text="Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Alle 30 s rollt eine neue Flutwelle heran: ein Ring aus 12 + 8 je Welle Gegnern direkt um dich, und alle neuen Gegner sind je Welle 8 % schneller. Das Gartentor bleibt offen, sobald der Boss besiegt ist.")
-GATE = dict(radius_px=40, text="Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Hineinlaufen bringt dich ins nächste Beet (volle Heilung).")
+FLOOD = dict(name="Plagenflut", warning_s=10, budget_growth_per_10s=0.5, hp_growth_per_10s=0.3, damage_growth_per_10s=0.18, reward_growth_per_10s=0.25,
+             wave_s=30, burst_base=20, burst_per_wave=14, speed_per_wave_pct=35,
+             text="Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +50 % Gegner, +30 % Gegner-HP und +18 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Alle 30 s rollt eine neue Flutwelle heran: ein Ring aus 20 + 14 je Welle Gegnern direkt um dich, und alle Gegner werden je Welle 35 % (vom Grundtempo) schneller und härter. Das Gartentor bleibt offen, sobald der Boss besiegt ist; auch im Komposthaufen kommt die Flut, nach dem Schnitter wartet dort der Heimweg.")
+GATE = dict(radius_px=40, text="Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Wer hineinläuft, wird gefragt, ob es ins nächste Beet geht (volle Heilung); nie automatisch. Nach dem Schnitter führt es heim: Lauf beenden mit Siegbonus. Wer stattdessen in der Flut weiterzockt und stirbt, bekommt keinen Bonus.")
 
 STYLE = dict(
  name="Freundlich, pastell", ink="#4a3358",
@@ -615,7 +615,7 @@ WEAPONS = [
 def budget(w): b = BALANCE["budget"]; return b["base"] + b["linear"] * w + b["quadratic"] * w * w
 def hp_mult(m): b = BALANCE["hp_mult"]; return 1 + b["linear"] * m + b["quadratic"] * m * m
 def dmg_mult(m): b = BALANCE["damage_mult"]; return 1 + b["linear"] * m + b["quadratic"] * m * m
-def xp_next(L): x = BALANCE["xp_to_next"]; return x["base"] + x["linear"] * L + x["quadratic"] * L * L
+def xp_next(L): x = BALANCE["xp_to_next"]; return (x["base"] + x["linear"] * L + x["quadratic"] * L * L) * x.get("growth", 1.0) ** max(0, L - x.get("growth_from_level", 0))
 def balance_rows():
     hp_per_cost = sum(m["hp"] / m["cost"] for m in MOBS) / len(MOBS)
     rows, cum_xp, level, spent = [], 0.0, 1, 0.0

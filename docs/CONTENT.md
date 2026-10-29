@@ -16,15 +16,15 @@ Alle Zahlen sind **Startwerte aus einer Modellrechnung**, nicht aus gespielten R
 
 | Minute | Welle | Budget | HP x | Schaden x | nötige HP/s | Level (ca.) | XP gesamt |
 |---|---|---|---|---|---|---|---|
-| 0.6 | 2 | 55 | 1.1 | 1.1 | 30 | 9 | 102 |
-| 1.2 | 4 | 72 | 1.3 | 1.1 | 45 | 14 | 237 |
-| 1.8 | 6 | 90 | 1.4 | 1.2 | 63 | 17 | 407 |
-| 2.4 | 8 | 110 | 1.6 | 1.3 | 88 | 20 | 617 |
-| 3 | 10 | 132 | 1.8 | 1.4 | 119 | 23 | 870 |
-| 4.2 | 14 | 181 | 2.3 | 1.6 | 207 | 29 | 1518 |
-| 6 | 20 | 268 | 3.2 | 1.9 | 428 | 37 | 2901 |
-| 9 | 30 | 448 | 5.2 | 2.7 | 1161 | 50 | 6535 |
-| 12 | 40 | 672 | 7.8 | 3.6 | 2609 | 62 | 12211 |
+| 0.6 | 2 | 65 | 1.2 | 1.1 | 38 | 10 | 121 |
+| 1.2 | 4 | 84 | 1.4 | 1.2 | 57 | 14 | 280 |
+| 1.8 | 6 | 105 | 1.6 | 1.3 | 84 | 17 | 480 |
+| 2.4 | 8 | 129 | 1.9 | 1.4 | 119 | 19 | 725 |
+| 3 | 10 | 154 | 2.2 | 1.5 | 167 | 20 | 1020 |
+| 4.2 | 14 | 211 | 2.9 | 1.8 | 304 | 24 | 1776 |
+| 6 | 20 | 312 | 4.2 | 2.3 | 659 | 27 | 3386 |
+| 9 | 30 | 522 | 7.2 | 3.4 | 1875 | 32 | 7618 |
+| 12 | 40 | 784 | 11.1 | 4.7 | 4328 | 37 | 14236 |
 
 Die Spalte „nötige HP/s“ ist die Leistung, die du brauchst, um alles Erscheinende zu töten. Ein Start-Jäger macht rund 19 Schaden pro Sekunde auf ein Ziel. Das Spiel soll so gebaut sein, dass starke Builds (Flächenschaden, Durchschlag, Ketten) diese Kurve bis etwa Minute 14 bis 18 halten können.
 
@@ -184,16 +184,16 @@ Pro Lauf liegen die Schreine mit festem Seed in den Zonen (jede Zone mindestens 
 | Beet | Dauer | Boss | HP x | Schaden x | Gegnermenge x |
 |---|---|---|---|---|---|
 | 1. Saatbeet | 3:00 | Schleimrun, die Schneckenkönigin | 1 | 1 | 1 |
-| 2. Gemüsebeet | 3:00 | Knollgrimm, der Käferkönig | 2.6 | 1.7 | 1.35 |
-| 3. Komposthaufen | 3:00 | Der Schnitter | 6 | 2.6 | 1.7 |
+| 2. Gemüsebeet | 3:00 | Knollgrimm, der Käferkönig | 3.6 | 2.2 | 1.5 |
+| 3. Komposthaufen | 3:00 | Der Schnitter | 10 | 3.4 | 2 |
 
-Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +40 % Gegner, +15 % Gegner-HP und +8 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Alle 30 s rollt eine neue Flutwelle heran: ein Ring aus 12 + 8 je Welle Gegnern direkt um dich, und alle neuen Gegner sind je Welle 8 % schneller. Das Gartentor bleibt offen, sobald der Boss besiegt ist. Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Hineinlaufen bringt dich ins nächste Beet (volle Heilung).
+Läuft die Zeit eines Beets ab, beginnt die Plagenflut: alle 10 s +50 % Gegner, +30 % Gegner-HP und +18 % Schaden, ohne Ende. Dafür steigen XP und Samenkörner um +25 % je 10 s und die Flutzeit zählt Punkte: Wer zockt, wird stärker und reicher. Alle 30 s rollt eine neue Flutwelle heran: ein Ring aus 20 + 14 je Welle Gegnern direkt um dich, und alle Gegner werden je Welle 35 % (vom Grundtempo) schneller und härter. Das Gartentor bleibt offen, sobald der Boss besiegt ist; auch im Komposthaufen kommt die Flut, nach dem Schnitter wartet dort der Heimweg. Gartentor: erscheint, wenn der Boss des Beets besiegt ist. Wer hineinläuft, wird gefragt, ob es ins nächste Beet geht (volle Heilung); nie automatisch. Nach dem Schnitter führt es heim: Lauf beenden mit Siegbonus. Wer stattdessen in der Flut weiterzockt und stirbt, bekommt keinen Bonus.
 
 ### Bosse
 
-- **Schleimrun, die Schneckenkönigin** (`snail_queen`, 2:06 im Beet, Phase 1): HP 2400, ab 100 % HP: Schleimring (8 Tropfen), alle 4 s; ab 60 % HP: Schleimspur: verlangsamt dich 40 % in einem Kreis, ruft 3 Gartenschnecken; ab 30 % HP: Schleimring doppelt so schnell, Sporenregen.
-- **Knollgrimm, der Käferkönig** (`beetle_king`, 2:06 im Beet, Phase 1): HP 6000, ab 100 % HP: Stachelfächer (5 Geschosse, alle 3 s) und Sturmangriff nach Warnlinie (Tempo 380); ab 60 % HP: ruft 4 Kartoffelkäfer, Fächer mit 7 Geschossen; ab 30 % HP: stürmt zweimal hintereinander, Fächer doppelt so schnell.
-- **Der Schnitter** (`reaper`, 2:06 im Beet, Phase 1): HP 14000, ab 100 % HP: Sensenring (12 Geschosse), alle 3,5 s; ab 66 % HP: Seelenregen: 6 Einschläge mit Warnkreis (Radius 80), ruft Pestizid-Tomaten; ab 33 % HP: Sensenring alle 2 s, stürmt nach Warnlinie.
+- **Schleimrun, die Schneckenkönigin** (`snail_queen`, 2:06 im Beet, Phase 1): HP 4000, ab 100 % HP: Schleimring (12 Tropfen), alle 3 s; ab 60 % HP: Schleimspur: verlangsamt dich 40 % in einem Kreis, ruft 3 Gartenschnecken; ab 30 % HP: Schleimring doppelt so schnell, Sporenregen.
+- **Knollgrimm, der Käferkönig** (`beetle_king`, 2:06 im Beet, Phase 1): HP 16000, ab 100 % HP: Stachelfächer (5 Geschosse, alle 2,2 s) und Sturmangriff nach Warnlinie (Tempo 380); ab 60 % HP: ruft 4 Kartoffelkäfer, Fächer mit 7 Geschossen; ab 30 % HP: stürmt zweimal hintereinander, Fächer doppelt so schnell.
+- **Der Schnitter** (`reaper`, 2:06 im Beet, Phase 1): HP 40000, ab 100 % HP: Sensenring (16 Geschosse), alle 2,6 s; ab 66 % HP: Seelenregen: 6 Einschläge mit Warnkreis (Radius 80), ruft Pestizid-Tomaten; ab 33 % HP: Sensenring alle 1,6 s, stürmt nach Warnlinie.
 
 ## Beete (120 x 120 Felder à 32 px)
 
