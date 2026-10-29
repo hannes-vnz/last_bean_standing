@@ -741,14 +741,15 @@ def draw_account(r: Renderer, profile: dict[str, Any], form: dict, status: str, 
     return buttons
 
 
-def draw_settings(r: Renderer, settings: dict[str, Any]) -> list[Button]:
-    """Volume, damage numbers, screen shake; first-run tips again."""
+def draw_settings(r: Renderer, settings: dict[str, Any], zoom: str = "") -> list[Button]:
+    """Volume, zoom, damage numbers, screen shake; first-run tips again."""
     _backdrop(r)
     cx = r.w // 2
-    top = _top(r, 250)
+    top = _top(r, 290 if zoom else 250)
     _title(r, "Einstellungen", (cx, top + 14))
     items = [
         (f"Lautstärke: {settings['volume']} %", "set:volume"),
+        *([(f"Zoom: {zoom}", "set:zoom")] if zoom else []),
         ("Schadenszahlen: " + ("an" if settings["numbers"] else "aus"), "set:numbers"),
         ("Bildschirmwackeln: " + ("an" if settings["shake"] else "aus"), "set:shake"),
         ("Tipps wieder zeigen", "set:hints"),

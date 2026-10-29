@@ -166,6 +166,23 @@ def grant(profile: dict[str, Any], ch) -> None:
             bucket.append(rid)
 
 
+def sync_unlocks(profile: dict[str, Any], challenges) -> None:
+    """Give every completed challenge's unlock (upgrade, skin, bean, mode) that the profile is missing,
+    e.g. when a challenge that used to give a title now unlocks an upgrade (29.10.2026)."""
+    _store(profile)
+    done = set(profile["challenges_done"])
+    for ch in challenges:
+        kind, rid = ch.reward.type, ch.reward.id
+        if ch.id not in done or not rid:
+            continue
+        if kind == "unlock_skin" and rid not in profile["skins"]:
+            profile["skins"].append(rid)
+        elif kind in ("unlock_upgrade", "unlock_character", "unlock_mode"):
+            bucket = profile["unlocked"][kind.split("_", 1)[1] + "s"]
+            if rid not in bucket:
+                bucket.append(rid)
+
+
 def reward_names(content) -> dict[str, str]:
     """Display names of everything a challenge can unlock."""
     names = {s.id: s.name for s in content.skins}

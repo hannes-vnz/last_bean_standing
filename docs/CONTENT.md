@@ -102,7 +102,7 @@ Auswahl: Gewichte gewöhnlich 60, ungewöhnlich 25, selten 10, episch 4, legend�
 | `regeneration` | Regeneration | 4 | +0,6 HP pro Sekunde je Stufe. | defense | von Anfang an | 1 |
 | `reroll` | Neuwurf | 3 | +1 Neu würfeln je Stufe (sofort). | utility | von Anfang an | 1 |
 | `banish` | Verbannung | 3 | +1 Verbannen je Stufe (sofort). | utility | von Anfang an | 1 |
-| `stillness` | Meditation | 3 | +15 % Schaden im Stand je Stufe. | stillness, damage | von Anfang an | 1 |
+| `stillness` | Meditation | 3 | +15 % Schaden im Stand je Stufe. | stillness, damage | Schließe 5 Runs ab. | 1 |
 | `ignite` | Entzünden | 4 | 10 % Chance je Stufe zu entzünden (3 s, 30 % Schaden/s). | fire, elemental | von Anfang an | 1 |
 | `chill` | Kälte | 4 | Treffer verlangsamen um 8 % je Stufe für 2 s (max. 60 %). | frost, elemental | von Anfang an | 1 |
 | `toxin` | Toxin | 4 | Treffer vergiften (12 % Schaden/s je Stufe, 3 s, stapelt bis 4x). | poison, elemental | von Anfang an | 1 |
@@ -115,12 +115,12 @@ Auswahl: Gewichte gewöhnlich 60, ungewöhnlich 25, selten 10, episch 4, legend�
 | ID | Name | Max. Stufe | Effekt | Tags | Freischaltung | Phase |
 |---|---|---|---|---|---|---|
 | `ricochet` | Rückprall | 3 | Geschosse springen +1-mal je Stufe auf einen nahen Gegner. | bounce, projectile | von Anfang an | 1 |
-| `executioner` | Henker | 3 | +30 % Schaden gegen Gegner unter 30 % HP je Stufe. | damage | von Anfang an | 1 |
-| `lifesteal` | Aderlass | 3 | Heilt 2 % des verursachten Schadens je Stufe. | defense, damage | von Anfang an | 1 |
-| `shield_burst` | Notschild | 3 | Alle 12 s ein Schild, der 25 Schaden je Stufe abfängt. | defense | von Anfang an | 1 |
-| `last_stand` | Letztes Gefecht | 3 | Unter 35 % HP: +30 % Schaden und +15 % Tempo je Stufe. | defense, damage | von Anfang an | 1 |
-| `overcharge` | Überladung | 3 | Alle 6 s trifft der nächste Schuss mit +200 % Schaden je Stufe. | damage | von Anfang an | 1 |
-| `explosive_rounds` | Sprengmunition | 3 | Treffer explodieren (Radius 50, 30 % Schaden je Stufe). | area, projectile | von Anfang an | 1 |
+| `executioner` | Henker | 3 | +30 % Schaden gegen Gegner unter 30 % HP je Stufe. | damage | Besiege 25 Elite-Gegner. | 1 |
+| `lifesteal` | Aderlass | 3 | Heilt 2 % des verursachten Schadens je Stufe. | defense, damage | Besiege insgesamt 1000 Gegner. | 1 |
+| `shield_burst` | Notschild | 3 | Alle 12 s ein Schild, der 25 Schaden je Stufe abfängt. | defense | Räume eine Welle ab Welle 8, ohne Schaden zu nehmen. | 1 |
+| `last_stand` | Letztes Gefecht | 3 | Unter 35 % HP: +30 % Schaden und +15 % Tempo je Stufe. | defense, damage | Verbringe insgesamt 60 s mit unter 20 % HP. | 1 |
+| `overcharge` | Überladung | 3 | Alle 6 s trifft der nächste Schuss mit +200 % Schaden je Stufe. | damage | Lande insgesamt 3000 kritische Treffer. | 1 |
+| `explosive_rounds` | Sprengmunition | 3 | Treffer explodieren (Radius 50, 30 % Schaden je Stufe). | area, projectile | Besiege insgesamt 3000 Gegner. | 1 |
 | `aura_of_pain` | Brennnesselkranz | 4 | Gegner im Umkreis von 100 px erleiden 6 Schaden/s je Stufe. | area, melee | von Anfang an | 1 |
 | `elemental_mastery` | Elementarmeister | 3 | +25 % Schaden von Brand, Gift und Blitz je Stufe. | elemental | von Anfang an | 1 |
 
@@ -128,20 +128,20 @@ Auswahl: Gewichte gewöhnlich 60, ungewöhnlich 25, selten 10, episch 4, legend�
 
 | ID | Name | Max. Stufe | Effekt | Tags | Freischaltung | Phase |
 |---|---|---|---|---|---|---|
-| `second_wind` | Zweiter Atem | 2 | Einmal wiederbeleben je Stufe (mit 50 % HP, 2 s unverwundbar). | defense | von Anfang an | 1 |
+| `second_wind` | Zweiter Atem | 2 | Einmal wiederbeleben je Stufe (mit 50 % HP, 2 s unverwundbar). | defense | Besiege den ersten Boss. | 1 |
 | `gravity_well` | Schwerkraftbrunnen | 2 | Alle 12 s zieht ein Sog alle Gegner im Radius 200 zusammen (Stufe 2: Radius 280, alle 9 s). | control, area | Erreiche das dritte Beet. | 3 |
-| `bloodlust` | Blutrausch | 3 | Jeder Kill: +2 % Angriffstempo für 5 s, stapelt bis +20 % je Stufe. | speed | von Anfang an | 1 |
-| `time_warp` | Zeitdehnung | 2 | Im Stand sind alle Gegner im Radius 250 um 12 % / 20 % langsamer. | control, stillness | Überlebe 2 Minuten Plagenflut. | 3 |
-| `shrapnel` | Splitterhagel | 3 | Sterbende Gegner verschießen mit 20 % Chance je Stufe 6 Splitter (50 % Schaden). | area, projectile | von Anfang an | 1 |
-| `titan_heart` | Titanenherz | 3 | +30 % Max-HP und +10 % Schaden je Stufe. | defense | von Anfang an | 1 |
+| `bloodlust` | Blutrausch | 3 | Jeder Kill: +2 % Angriffstempo für 5 s, stapelt bis +20 % je Stufe. | speed | Besiege 800 Gegner in einem Run. | 1 |
+| `time_warp` | Zeitdehnung | 2 | Im Stand sind alle Gegner im Radius 250 um 12 % / 20 % langsamer. | control, stillness | Überlebe 60 s Plagenflut. | 3 |
+| `shrapnel` | Splitterhagel | 3 | Sterbende Gegner verschießen mit 20 % Chance je Stufe 6 Splitter (50 % Schaden). | area, projectile | Besiege insgesamt 10000 Gegner. | 1 |
+| `titan_heart` | Titanenherz | 3 | +30 % Max-HP und +10 % Schaden je Stufe. | defense | Erleide 1500 Schaden in einem Run. | 1 |
 
 ### Legendär
 
 | ID | Name | Max. Stufe | Effekt | Tags | Freischaltung | Phase |
 |---|---|---|---|---|---|---|
-| `glass_cannon` | Glaskanone | 1 | +100 % Schaden, -40 % Max-HP. | damage | von Anfang an | 1 |
-| `reaper_pact` | Pakt der Sense | 1 | Jeder Kill heilt 1 HP, 25 % Chance auf eine Explosion beim Kill. | damage, defense | von Anfang an | 1 |
-| `elemental_storm` | Elementarsturm | 1 | Je 15 % Chance auf Brand und Blitz, Gift und Kälte bei jedem Treffer, +50 % Elementarschaden. | elemental | von Anfang an | 1 |
+| `glass_cannon` | Glaskanone | 1 | +100 % Schaden, -40 % Max-HP. | damage | Erreiche das zweite Beet in unter 4 Minuten. | 1 |
+| `reaper_pact` | Pakt der Sense | 1 | Jeder Kill heilt 1 HP, 25 % Chance auf eine Explosion beim Kill. | damage, defense | Besiege insgesamt 10 Bosse. | 1 |
+| `elemental_storm` | Elementarsturm | 1 | Je 15 % Chance auf Brand und Blitz, Gift und Kälte bei jedem Treffer, +50 % Elementarschaden. | elemental | Besitze Entzünden, Kälte, Toxin und Schock in einem Run. | 1 |
 
 ## Mob-Typen (10)
 
@@ -338,24 +338,24 @@ Rein kosmetische Zusatzfarben für jeden Charakter (Paletten-Tausch der Ramp-Far
 | `unlock_bomber` | Besiege insgesamt 2000 Gegner. | unlock_character: bomber |
 | `unlock_venom` | Verursache insgesamt 10000 Giftschaden. | unlock_character: venom |
 | `unlock_sniper` | Besiege alle drei Beet-Bosse (Schleimrun, Knollgrimm, den Schnitter). | unlock_character: sniper |
-| `unlock_up_stillness` | Schließe 10 Runs ab. | title: Ausdauernd |
+| `unlock_up_stillness` | Schließe 5 Runs ab. | unlock_upgrade: stillness |
 | `unlock_up_minion_horde` | Schalte 3 Charaktere frei. | unlock_upgrade: minion_horde |
 | `unlock_up_orbiting_blades` | Erreiche Level 20 in einem Run. | unlock_upgrade: orbiting_blades |
-| `unlock_up_executioner` | Besiege 25 Elite-Gegner. | title: Elitejäger |
-| `unlock_up_lifesteal` | Besiege insgesamt 1000 Gegner. | title: Plagenschreck |
-| `unlock_up_shield_burst` | Räume eine Welle ab Welle 8, ohne Schaden zu nehmen. | title: Unberührt |
-| `unlock_up_last_stand` | Verbringe insgesamt 60 s mit unter 20 % HP. | title: Zähe Bohne |
-| `unlock_up_overcharge` | Lande insgesamt 3000 kritische Treffer. | title: Volltreffer |
-| `unlock_up_explosive_rounds` | Besiege insgesamt 3000 Gegner. | title: Gärtnermeister |
-| `unlock_up_second_wind` | Besiege den ersten Boss. | title: Beetbefreier |
+| `unlock_up_executioner` | Besiege 25 Elite-Gegner. | unlock_upgrade: executioner |
+| `unlock_up_lifesteal` | Besiege insgesamt 1000 Gegner. | unlock_upgrade: lifesteal |
+| `unlock_up_shield_burst` | Räume eine Welle ab Welle 8, ohne Schaden zu nehmen. | unlock_upgrade: shield_burst |
+| `unlock_up_last_stand` | Verbringe insgesamt 60 s mit unter 20 % HP. | unlock_upgrade: last_stand |
+| `unlock_up_overcharge` | Lande insgesamt 3000 kritische Treffer. | unlock_upgrade: overcharge |
+| `unlock_up_explosive_rounds` | Besiege insgesamt 3000 Gegner. | unlock_upgrade: explosive_rounds |
+| `unlock_up_second_wind` | Besiege den ersten Boss. | unlock_upgrade: second_wind |
 | `unlock_up_gravity_well` | Erreiche das dritte Beet. | unlock_upgrade: gravity_well |
-| `unlock_up_bloodlust` | Besiege 800 Gegner in einem Run. | title: Blutrausch |
-| `unlock_up_time_warp` | Überlebe 2 Minuten Plagenflut. | unlock_upgrade: time_warp |
-| `unlock_up_shrapnel` | Besiege insgesamt 10000 Gegner. | title: Erntehelfer |
-| `unlock_up_titan_heart` | Erleide 1500 Schaden in einem Run. | title: Dickhaut |
-| `unlock_up_glass_cannon` | Erreiche das zweite Beet in unter 4 Minuten. | title: Eilig |
-| `unlock_up_reaper_pact` | Besiege insgesamt 10 Bosse. | title: Bossbrecher |
-| `unlock_up_elemental_storm` | Besitze Entzünden, Kälte, Toxin und Schock in einem Run. | title: Elementar |
+| `unlock_up_bloodlust` | Besiege 800 Gegner in einem Run. | unlock_upgrade: bloodlust |
+| `unlock_up_time_warp` | Überlebe 60 s Plagenflut. | unlock_upgrade: time_warp |
+| `unlock_up_shrapnel` | Besiege insgesamt 10000 Gegner. | unlock_upgrade: shrapnel |
+| `unlock_up_titan_heart` | Erleide 1500 Schaden in einem Run. | unlock_upgrade: titan_heart |
+| `unlock_up_glass_cannon` | Erreiche das zweite Beet in unter 4 Minuten. | unlock_upgrade: glass_cannon |
+| `unlock_up_reaper_pact` | Besiege insgesamt 10 Bosse. | unlock_upgrade: reaper_pact |
+| `unlock_up_elemental_storm` | Besitze Entzünden, Kälte, Toxin und Schock in einem Run. | unlock_upgrade: elemental_storm |
 | `skin_ranger_a` | Erreiche mit Fenn das zweite Beet. | unlock_skin: ranger_a |
 | `skin_ranger_b` | Erreiche mit Fenn das dritte Beet. | unlock_skin: ranger_b |
 | `skin_pyro_a` | Erreiche mit Mira das zweite Beet. | unlock_skin: pyro_a |

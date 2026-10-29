@@ -47,18 +47,17 @@ def test_touch_state_steering_and_taps():
     assert t.up(2, 203, 401) is True  # short touch = tap
 
 
-def test_two_fingers_pinch_instead_of_steering():
+def test_a_second_finger_never_takes_the_stick():
     t = TouchState()
     t.down(1, 100, 300, steer=True)
-    t.down(2, 200, 300, steer=True)
-    assert t.stick is None and t.pinching and t.pinch_ratio() == pytest.approx(1.0)
-    t.move(2, 250, 300)
-    assert t.pinch_ratio() == pytest.approx(1.5)  # fingers apart = zoom in
-    t.rebase_pinch()
-    assert t.pinch_ratio() == pytest.approx(1.0)
-    assert t.up(2, 250, 300) is False and t.up(1, 100, 300) is False  # ending a pinch is no tap
+    t.move(1, 140, 300)
+    t.down(2, 400, 300, steer=True)  # another finger somewhere: the first one keeps steering
+    t.move(2, 300, 300)
+    assert t.stick.finger == 1 and t.direction() == (1, 0)
+    assert t.up(2, 300, 300) is False and t.direction() == (1, 0)
+    t.up(1, 140, 300)
     t.down(3, 60, 300, steer=True)
-    assert t.stick is not None and not t.pinching  # next touch steers again
+    assert t.stick is not None and t.stick.finger == 3  # next touch steers again
 
 
 def test_zoom_steps_are_clamped():
@@ -232,3 +231,15 @@ def test_menu_buttons_do_not_overlap(renderer, size, safe):
         for b in buttons[i + 1 :]:
             assert not a.rect.colliderect(b.rect), (a, b)
     assert {"play", "account", "workshop", "challenges", "board", "settings", "name"} <= {b.action for b in buttons}
+
+
+def test_zoom_labels_follow_the_device_default():
+    from lastbean.app import zoom_label
+    from lastbean.ui.layout import ZOOM_STEPS, pixel_perfect_size
+
+    # iPhone in landscape: only whole pixel scales, so the steps collapse to a few distinct views
+    views = sorted({min(pixel_perfect_size(844, 390, 3.0, s)[:2]) for s in ZOOM_STEPS})
+    assert len(views) >= 3
+    labels = [zoom_label(v, 300) for v in views]
+    assert "normal" in labels and labels[0] == "sehr nah" and labels[-1] == "sehr weit"
+    assert zoom_label(360, 360) == "normal"

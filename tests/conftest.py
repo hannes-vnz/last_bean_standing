@@ -16,6 +16,8 @@ def make_config(content):
     """WorldConfig from the real content, with optional overrides (character stats, stats of every mob)."""
 
     def make(character: dict | None = None, mob: dict | None = None, **overrides) -> WorldConfig:
+        # Every upgrade in the pool unless a test says otherwise (in the game most are unlocked by challenges).
+        overrides.setdefault("unlocked_upgrades", tuple(u.id for u in content.upgrades))
         cfg = WorldConfig.from_content(content, **overrides)
         if character:
             cfg = dataclasses.replace(cfg, character=dataclasses.replace(cfg.character, **character))

@@ -27,7 +27,7 @@ def test_run_and_lifetime_challenges_complete_once_and_pay(content):
     assert {"unlock_pyro", "unlock_storm", "boss_snail_queen", "unlock_up_second_wind"} <= new
     assert "unlock_cryo" not in new  # 120 of 300 compost kills
     assert p["sparkles"] == sum(_ch(content, c).reward.stones for c in new)
-    assert "pyro" in p["unlocked"]["characters"] and "Beetbefreier" in p["titles"]
+    assert "pyro" in p["unlocked"]["characters"] and "second_wind" in p["unlocked"]["upgrades"]
     assert challenges.progress(_ch(content, "unlock_cryo"), p, 6) == (120.0, 300.0)
     assert challenges.evaluate(p, res, content.challenges, 6) == []  # never twice
     p2 = normalize(p)  # survives saving
@@ -117,3 +117,15 @@ def test_creative_challenges_complete(content):
     assert "golden_snail_3" not in done
     p["lifetime"]["menu_squished"] = 10
     assert [c.id for c in challenges.evaluate_profile(p, content.challenges, 1)] == ["menu_squish"]
+
+
+def test_completed_challenges_unlock_upgrades_that_used_to_be_titles(content):
+    """29.10.2026: 16 upgrades are locked; an old profile that completed their challenge keeps them."""
+    from lastbean.meta.profile import new_profile
+
+    locked = [u for u in content.upgrades if not u.unlocked_at_start and u.impl_phase == 1]
+    assert len(locked) == 14  # (plus 2 that were locked before and 2 of phase 3)
+    p = new_profile()
+    p["challenges_done"] = ["unlock_up_lifesteal"]
+    challenges.sync_unlocks(p, content.challenges)
+    assert p["unlocked"]["upgrades"] == ["lifesteal"]

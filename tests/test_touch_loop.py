@@ -103,13 +103,13 @@ def test_gate_asks_before_the_next_bed(monkeypatch):
 
 
 def test_ability_button_keeps_the_stick(monkeypatch):
-    """A second finger on the ability button must not stop the walking thumb (it used to start a pinch)."""
+    """A second finger on the ability button must not stop the walking thumb (it used to start a pinch zoom)."""
     from lastbean.ui.touch import TouchState
 
     t = TouchState()
     t.down(1, 100, 200, steer=True)
     t.move(1, 140, 200)
     t.down(2, 600, 330, steer=False, button=True)
-    assert t.direction() == (1, 0) and not t.pinching
+    assert t.direction() == (1, 0)
     t.up(2, 600, 330)
     assert t.direction() == (1, 0)

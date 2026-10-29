@@ -137,17 +137,17 @@
  },
  {
   "id": "unlock_up_stillness",
-  "text": "Schließe 10 Runs ab.",
+  "text": "Schließe 5 Runs ab.",
   "condition": {
    "type": "profile_stat",
    "stat": "runs_total",
    "op": ">=",
-   "value": 10
+   "value": 5
   },
   "reward": {
-   "type": "title",
-   "id": "Ausdauernd",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "stillness",
+   "stones": 40
   }
  },
  {
@@ -190,9 +190,9 @@
    "value": 25
   },
   "reward": {
-   "type": "title",
-   "id": "Elitejäger",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "executioner",
+   "stones": 40
   }
  },
  {
@@ -205,9 +205,9 @@
    "value": 1000
   },
   "reward": {
-   "type": "title",
-   "id": "Plagenschreck",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "lifesteal",
+   "stones": 40
   }
  },
  {
@@ -220,9 +220,9 @@
    "value": 8
   },
   "reward": {
-   "type": "title",
-   "id": "Unberührt",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "shield_burst",
+   "stones": 40
   }
  },
  {
@@ -235,9 +235,9 @@
    "value": 60
   },
   "reward": {
-   "type": "title",
-   "id": "Zähe Bohne",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "last_stand",
+   "stones": 40
   }
  },
  {
@@ -250,9 +250,9 @@
    "value": 3000
   },
   "reward": {
-   "type": "title",
-   "id": "Volltreffer",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "overcharge",
+   "stones": 40
   }
  },
  {
@@ -265,9 +265,9 @@
    "value": 3000
   },
   "reward": {
-   "type": "title",
-   "id": "Gärtnermeister",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "explosive_rounds",
+   "stones": 40
   }
  },
  {
@@ -280,9 +280,9 @@
    "value": 1
   },
   "reward": {
-   "type": "title",
-   "id": "Beetbefreier",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "second_wind",
+   "stones": 40
   }
  },
  {
@@ -310,19 +310,19 @@
    "value": 800
   },
   "reward": {
-   "type": "title",
-   "id": "Blutrausch",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "bloodlust",
+   "stones": 40
   }
  },
  {
   "id": "unlock_up_time_warp",
-  "text": "Überlebe 2 Minuten Plagenflut.",
+  "text": "Überlebe 60 s Plagenflut.",
   "condition": {
    "type": "run_stat",
    "stat": "swarm_seconds",
    "op": ">=",
-   "value": 120
+   "value": 60
   },
   "reward": {
    "type": "unlock_upgrade",
@@ -340,9 +340,9 @@
    "value": 10000
   },
   "reward": {
-   "type": "title",
-   "id": "Erntehelfer",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "shrapnel",
+   "stones": 40
   }
  },
  {
@@ -355,9 +355,9 @@
    "value": 1500
   },
   "reward": {
-   "type": "title",
-   "id": "Dickhaut",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "titan_heart",
+   "stones": 40
   }
  },
  {
@@ -370,9 +370,9 @@
    "value": 240
   },
   "reward": {
-   "type": "title",
-   "id": "Eilig",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "glass_cannon",
+   "stones": 40
   }
  },
  {
@@ -385,9 +385,9 @@
    "value": 10
   },
   "reward": {
-   "type": "title",
-   "id": "Bossbrecher",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "reaper_pact",
+   "stones": 40
   }
  },
  {
@@ -404,9 +404,9 @@
    ]
   },
   "reward": {
-   "type": "title",
-   "id": "Elementar",
-   "stones": 150
+   "type": "unlock_upgrade",
+   "id": "elemental_storm",
+   "stones": 40
   }
  },
  {

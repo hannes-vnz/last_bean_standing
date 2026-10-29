@@ -9,7 +9,7 @@ Portfolio project: clean code, tests, and later a reinforcement-learning agent t
 **Status:** working towards 1.0 (docs/ROADMAP.md): big map, items and seed chests, story frame (docs/STORY.md), phones first; earlier: online leaderboard, pixel sprites, particles, hit flashes, damage numbers, screen shake, synthesised sound effects, on top of all phase-1 enemies, elites, boss Ildra, menu and local highscores.
 
 Play in the browser, made for phones and tablets first (touch joystick, portrait or landscape): https://hannes-vnz.github.io/last_bean_standing/  
-On iPhone: Share → Add to Home Screen for fullscreen. Pinch with two fingers (or mouse wheel, +/-) to zoom.
+On iPhone: Share → Add to Home Screen for fullscreen. Zoom in Optionen (or mouse wheel, +/-).
 
 ## Quick start
 

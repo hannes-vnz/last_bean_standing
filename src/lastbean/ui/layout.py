@@ -11,7 +11,7 @@ SHORT_SIDE = 360
 SHORT_SIDE_COMPACT = 300  # small phones: zoom in a little
 COMPACT_BELOW = 500  # CSS pixels of the shorter screen side
 MAX_ASPECT = 2.4  # very long screens get bars instead of an extreme view
-# Player zoom: the short side in steps; smaller = closer. Pinch, mouse wheel or +/- move between steps.
+# Player zoom: the short side in steps; smaller = closer. Set in Optionen, or mouse wheel and +/-.
 ZOOM_STEPS = (240, 270, 300, 330, 360, 400, 440, 480)
 
 
