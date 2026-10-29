@@ -51,8 +51,12 @@ class TouchState:
         self._pinch_start: float | None = None
         self.pinching = False
 
-    def down(self, finger: int, x: float, y: float, steer: bool) -> None:
+    def down(self, finger: int, x: float, y: float, steer: bool, button: bool = False) -> None:
+        """`button`: the finger landed on an on-screen button (ability, pause). It neither steers nor
+        starts a pinch, so a thumb on the stick keeps walking while the other one presses the button."""
         self._down[finger] = (x, y)
+        if button:
+            return
         self._now[finger] = (x, y)
         if len(self._now) == 2:
             self.stick = None

@@ -56,7 +56,7 @@ COURAGE_MIN_RARITY = "rare"  # (text) Mut-Schrein: "Gratis-Upgradewahl mit minde
 # Performance (28.10.2026, measured: cost grows with the enemy count)
 RECYCLE_DISTANCE = 1100.0  # enemies farther than this from every player jump back to the spawn ring
 RECYCLE_EVERY_TICKS = 30
-SEPARATE_EVERY_TICKS = 2  # crowd separation every 2nd tick (the most expensive pass)
+SEPARATE_EVERY_TICKS = 2  # crowd separation every 3rd tick (the most expensive pass; 29.10.2026 for phones)
 
 # Pickups (Paket A: magnet; gold and healing follow with Paket C)
 PICKUP_RADIUS = 22.0

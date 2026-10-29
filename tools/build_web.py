@@ -30,6 +30,20 @@ def stage() -> None:
     # Optional extras (RL, bots) stay out of the web build when they grow dependencies.
 
 
+def bust_cache(index: Path) -> None:
+    """Give the game archive a name with its content hash, so browsers (and the home-screen app) load a new
+    version right away instead of an old cached copy under the same name."""
+    import hashlib
+
+    html = index.read_text(encoding="utf-8")
+    for archive in index.parent.glob("*.tar.gz"):
+        digest = hashlib.sha256(archive.read_bytes()).hexdigest()[:10]
+        versioned = archive.with_name(archive.name.replace(".tar.gz", f"-{digest}.tar.gz"))
+        shutil.copy(archive, versioned)
+        html = html.replace(f'"{archive.name}"', f'"{versioned.name}"')
+    index.write_text(html, encoding="utf-8")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--serve", action="store_true")
@@ -52,6 +66,7 @@ def main() -> None:
         index.write_text(
             index.read_text(encoding="utf-8").replace("LBS_BEAN_DATA_URI", bean_data_uri()), encoding="utf-8"
         )
+        bust_cache(index)
         # App icon and manifest for "Zum Home-Bildschirm" (made by tools/sprites/logo.py)
         shutil.copytree(ROOT / "web" / "icons", index.parent / "icons", dirs_exist_ok=True)
         shutil.copy(ROOT / "web" / "manifest.webmanifest", index.parent / "manifest.webmanifest")

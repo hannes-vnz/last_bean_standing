@@ -772,6 +772,11 @@ async def run(
         s = game.profile["settings"]
         audio.volume = s["volume"] / 100
         effects.show_numbers, effects.shake_on = s["numbers"], s["shake"]
+        renderer.hud_full = s.get("hud_full", False)
+
+    def toggle_hud() -> None:
+        renderer.hud_full = game.profile["settings"]["hud_full"] = not renderer.hud_full
+        game.save()
 
     apply_settings()
 
@@ -920,6 +925,8 @@ async def run(
                         pick_card(i)
             elif renderer.pause_rect.collidepoint(pos):
                 game.state = "pause"
+            elif renderer.hud_rect.collidepoint(pos):
+                toggle_hud()
             elif renderer.ability_rect.collidepoint(pos):
                 touch_ability = True
         else:
@@ -953,9 +960,10 @@ async def run(
                             f"tap {event.x:.2f},{event.y:.2f} -> {pos} {game.state}\n"
                             f"canvas {renderer.w}x{renderer.h} win {ww}x{wh} css {screen._css[0]}x{screen._css[1]}"
                         )
-                    on_button = renderer.ability_rect.collidepoint(pos) or renderer.pause_rect.collidepoint(pos)
+                    on_button = any(r.collidepoint(pos) for r in (renderer.ability_rect, renderer.pause_rect,
+                                                                       renderer.hud_rect))  # fmt: skip
                     steer = game.state == "play" and not game.world.paused and not on_button
-                    touch.down(event.finger_id, *pos, steer=steer)
+                    touch.down(event.finger_id, *pos, steer=steer, button=on_button and game.state == "play")
                     if game.state == "play" and not game.world.paused and on_button:
                         tap(pos)  # buttons react on touch down, so a running thumb is never blocked
                 elif event.type == pygame.FINGERMOTION:
@@ -1045,6 +1053,8 @@ async def run(
                         do("menu")  # abandon the run, it is not recorded
                 elif event.key in (pygame.K_ESCAPE, pygame.K_p) and not game.world.paused:
                     game.state = "pause"
+                elif event.key == pygame.K_TAB and game.state == "play":
+                    toggle_hud()
                 elif event.key == pygame.K_F4:
                     game.config = game.normal if game.config is not game.normal else stress_config(game.normal)
                     new_run()

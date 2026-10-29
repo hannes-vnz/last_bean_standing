@@ -282,6 +282,9 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool, bean: str = "rang
     # top bar: Funkelsteine and account
     _gem(r, 14 + sl, 16 + st)
     r.text(str(profile.get("sparkles", 0)), (22 + sl, 10 + st))
+    from .. import __version__
+
+    r.canvas.blit(r.tiny_font.render(f"v{__version__}", False, (220, 200, 230)), (8 + sl, 24 + st))
     acc = pygame.Rect(r.w - 96 - sr, 6 + st, 90, 22)
     buttons.append(_button(r, acc, "Konto: an" if signed_in else "Anmelden", "account"))
     small = [("Optionen", "settings"), ("Name", "name")] + ([] if web else [("Beenden", "quit")])

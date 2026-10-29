@@ -1561,10 +1561,17 @@ class World:
     # ------------------------------------------------------------------ enemies
 
     def _rebuild_grid(self) -> None:
+        """Same as SpatialHash.insert for every enemy, inlined: this runs twice per tick for hundreds of pests."""
         g = self._grid
         g.clear()
+        cells, cell = g._cells, g.cell
         for e in self.enemies:
-            g.insert(e, e.x, e.y)
+            key = (int(e.x // cell), int(e.y // cell))
+            bucket = cells.get(key)
+            if bucket is None:
+                cells[key] = [e]
+            else:
+                bucket.append(e)
 
     def _move_enemies(self, events: list[Event]) -> None:
         if not any(p.alive for p in self.players):
@@ -1586,9 +1593,15 @@ class World:
         if gone:
             self.enemies = [e for e in self.enemies if e.eid not in gone]
         self._separate()
+        # Out of obstacles and inside the arena (push_out and _clamp, inlined with push_out's fast path).
         obstacles = self.obstacles
+        hot, cell = obstacles._hot, obstacles.cell
+        aw, ah = self.config.arena_w, self.config.arena_h
         for e in self.enemies:
-            e.x, e.y = self._clamp(*obstacles.push_out(e.x, e.y, e.radius), e.radius)
+            x, y, r = e.x, e.y, e.radius
+            if (int(x // cell), int(y // cell)) in hot:
+                x, y = obstacles.push_out(x, y, r)
+            e.x, e.y = min(max(x, r), aw - r), min(max(y, r), ah - r)
         if self._despawned:
             self.enemies = [e for e in self.enemies if e.eid not in self._despawned]
             self._despawned.clear()
