@@ -260,6 +260,7 @@ class FloodWave(Event):
 class GateOpened(Event):
     x: float
     y: float
+    exit: bool = False  # the last bed's gate: going through ends the run as a win
 
 
 @dataclass(frozen=True, slots=True)

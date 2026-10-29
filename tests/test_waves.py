@@ -32,11 +32,13 @@ def test_budget_formula_matches_content_model(make_config):
 
 def test_scaling_curves(make_config):
     sc = make_config().scaling
-    # Beds last 3:00 (28.10.2026): the curves run 5/3 times faster than with 5:00 beds.
-    assert sc.hp_mult(0) == 1.0 and sc.hp_mult(3) == pytest.approx(1 + 0.17 * 3 + 0.033 * 9)
-    assert sc.damage_mult(3) == pytest.approx(1 + 0.085 * 3 + 0.011 * 9)
+    # 29.10.2026: clearly harder (weak builds fall behind).
+    assert sc.hp_mult(0) == 1.0 and sc.hp_mult(3) == pytest.approx(1 + 0.24 * 3 + 0.05 * 9)
+    assert sc.damage_mult(3) == pytest.approx(1 + 0.12 * 3 + 0.016 * 9)
     assert sc.speed_mult(3) == pytest.approx(1.051) and sc.speed_mult(60) == 1.2
-    assert sc.xp_needed(1) == pytest.approx(2 + 1.2 + 0.12)  # fast levels (Paket F)
+    assert sc.xp_needed(1) == pytest.approx(2 + 1.2 + 0.12)  # fast levels early (Paket F)
+    assert sc.xp_needed(10) == pytest.approx(2 + 12 + 12)  # the exponential part starts above level 10
+    assert sc.xp_needed(20) == pytest.approx((2 + 24 + 48) * 1.09**10)  # ... and makes late levels slow
 
 
 def spawned_costs(world: World, ticks: int) -> float:

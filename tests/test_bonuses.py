@@ -175,7 +175,18 @@ def test_gate_takes_the_build_to_the_next_bed(make_config):
     p.hp = 10.0
     w.gate = (p.x, p.y)
     w._gate_ready_tick = w.tick
-    events = w.step()
+    w.step()
+    assert p.gate_prompt and w.paused and w.stage == 0  # never automatically: the game asks first
+    w.step([PlayerInput(0, gate=False)])  # "not yet": no new question while standing in the gate
+    for _ in range(5):
+        w.step()
+    assert not p.gate_prompt and w.stage == 0
+    p.x += 200  # leave and come back: asked again
+    w.step()
+    p.x -= 200
+    w.step()
+    assert p.gate_prompt
+    events = w.step([PlayerInput(0, gate=True)])
     assert w.stage == 1 and any(isinstance(e, StageStarted) and e.stage == 2 for e in events)
     assert p.upgrades == {"sharp_edges": 2} and p.hp == p.stats.max_hp and w.gate is None
     assert w.snapshot().stage_name == "Gemüsebeet" and w.snapshot().obstacles == w.config.stages[1].obstacles

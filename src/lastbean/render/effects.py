@@ -229,7 +229,9 @@ class Effects:
                 self.subtitle = (f"Belohnung x{e.reward_mult:.2f}".replace(".", ","), 120)
                 self.trauma = min(1.0, self.trauma + 0.4)
             elif isinstance(e, ev.GateOpened):
-                self.banner = ("Das Gartentor ist offen!", 150)
+                self.banner = ("Der Heimweg ist offen!" if e.exit else "Das Gartentor ist offen!", 150)
+                if e.exit:
+                    self.subtitle = ("Heimgehen mit Siegbonus oder in der Flut weiterzocken?", 180)
                 self.rings.append(Ring(e.x, e.y, 10, 6, 30, 30, c.get("gate", c["crit"])))
                 self.burst(e.x, e.y, 30, c.get("gate", c["crit"]), speed=160, life=30, size=2)
             elif isinstance(e, ev.RunEnded) and e.victory:

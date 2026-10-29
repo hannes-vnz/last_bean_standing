@@ -92,19 +92,19 @@ SHIELD_RECHARGE_S = 8.0  # (text) recharges after 8 s without hits
 # Boss Ildra (bosses.json phase texts)
 BOSS_RADIUS = 28.0  # 32x32 sprite
 BOSS_MIN_SPAWN_DISTANCE = 420.0
-RING_SHOTS = 8  # (text) "Dornenring (8 Geschosse), alle 4 s"
-RING_INTERVAL_S = 4.0  # (text)
-RING_INTERVAL_FAST_S = 2.0  # (text) "doppelt so schnell"
+RING_SHOTS = 12  # (text) "Schleimring (12 Tropfen), alle 3 s"
+RING_INTERVAL_S = 3.0  # (text)
+RING_INTERVAL_FAST_S = 1.5  # (text) "doppelt so schnell"
 THORN_SPEED = 150.0
 THORN_RANGE = 520.0  # thorns vanish after this distance
-GRIP_INTERVAL_S = 7.0
+GRIP_INTERVAL_S = 5.0
 GRIP_RADIUS = 90.0
 GRIP_DELAY_S = 1.0
 GRIP_DURATION_S = 4.0
 GRIP_SLOW_PCT = 40.0  # (text) "verlangsamt dich 40 %"
 GRIP_SUMMONS = 3  # (text) "ruft 3 Wurzelwächter"
-SPORE_RAIN_INTERVAL_S = 1.5
-SPORE_RAIN_COUNT = 3
+SPORE_RAIN_INTERVAL_S = 1.1
+SPORE_RAIN_COUNT = 4
 SPORE_RAIN_SPREAD = 160.0
 
 # Paket F pests (mobs.json texts give the dash/explosion numbers; these are the rest)
@@ -113,9 +113,9 @@ EXPLODER_TRIGGER = 6.0  # pest tomatoes burst when this close to touching
 EXPLODER_FUSE_S = 0.4  # (text) "0,4 s Warnung"
 
 # Knollgrimm, der Käferkönig (bosses.json phase texts)
-BEETLE_FAN_INTERVAL_S = 3.0  # (text) "alle 3 s"
+BEETLE_FAN_INTERVAL_S = 2.2  # (text) "alle 2,2 s"
 BEETLE_FAN_DEG = 50.0
-BEETLE_DASH_INTERVAL_S = 5.0
+BEETLE_DASH_INTERVAL_S = 4.0
 BEETLE_AIM_S = 0.8
 BEETLE_DASH_S = 0.7
 BEETLE_DASH_SPEED = 380.0  # (text) "Tempo 380"
@@ -123,15 +123,15 @@ BEETLE_DAZE_S = 1.0
 BEETLE_SUMMONS = 4  # (text) "ruft 4 Kartoffelkäfer"
 
 # Der Schnitter (bosses.json phase texts)
-REAPER_RING_SHOTS = 12  # (text)
-REAPER_RING_INTERVAL_S = 3.5  # (text)
-REAPER_RAIN_INTERVAL_S = 4.0
+REAPER_RING_SHOTS = 16  # (text)
+REAPER_RING_INTERVAL_S = 2.6  # (text)
+REAPER_RAIN_INTERVAL_S = 3.2
 REAPER_RAIN_COUNT = 6  # (text)
 REAPER_RAIN_RADIUS = 80.0  # (text)
 REAPER_RAIN_SPREAD = 200.0
 REAPER_RAIN_DELAY_S = 1.0
-REAPER_DASH_INTERVAL_S = 4.0
-REAPER_SUMMONS = 4
+REAPER_DASH_INTERVAL_S = 3.2
+REAPER_SUMMONS = 6
 
 # Gartentor (Paket F)
 GATE_OFFSET = 140.0  # below the spot where the boss fell, so its chest and the gate do not overlap

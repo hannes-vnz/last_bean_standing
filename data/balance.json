@@ -5,17 +5,17 @@
  "swarm_time_s": 300,
  "max_alive_enemies": 350,
  "budget": {
-  "base": 40,
-  "linear": 7.0,
-  "quadratic": 0.22
+  "base": 48,
+  "linear": 8.0,
+  "quadratic": 0.26
  },
  "hp_mult": {
-  "linear": 0.17,
-  "quadratic": 0.033
+  "linear": 0.24,
+  "quadratic": 0.05
  },
  "damage_mult": {
-  "linear": 0.085,
-  "quadratic": 0.011
+  "linear": 0.12,
+  "quadratic": 0.016
  },
  "speed_mult": {
   "linear": 0.017,
@@ -24,7 +24,9 @@
  "xp_to_next": {
   "base": 2,
   "linear": 1.2,
-  "quadratic": 0.12
+  "quadratic": 0.12,
+  "growth": 1.09,
+  "growth_from_level": 10
  },
  "elite_every_n_waves": 5,
  "boss_waves": {},

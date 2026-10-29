@@ -12,6 +12,7 @@ from lastbean.sim import (
     EnemyShot,
     EnemyShotFired,
     EnemySpawned,
+    GateOpened,
     HazardActivated,
     HazardSpec,
     ItemGained,
@@ -53,7 +54,7 @@ def run(w: World, seconds: float, inputs=None) -> list:
 def test_aphids_spawn_in_groups_and_pay_per_member(make_config):
     w = World(3, make_config(character={"attack_rate": 0.001, "hp": 10**6}, bosses=()))
     w.tick = w.stage_tick = 30 * TICK_HZ  # aphids need 20 s
-    spawned = [e for e in run(w, 60) if isinstance(e, EnemySpawned)]
+    spawned = [e for e in run(w, 25) if isinstance(e, EnemySpawned)]  # (well below the enemy limit)
     bats = [e for e in spawned if e.kind == "aphid"]
     assert bats and len(bats) % 5 == 0
     groups = [bats[i : i + 5] for i in range(0, len(bats), 5)]
@@ -214,18 +215,18 @@ def boss_world(make_config, stage: int = 0) -> tuple[World, Enemy]:
 
 def test_snail_queen_arrives_at_three_thirty(make_config):
     w, boss = boss_world(make_config)
-    assert boss.boss == "snail_queen" and boss.max_hp == 2400
+    assert boss.boss == "snail_queen" and boss.max_hp == 4000
     p = w.players[0]
     assert (boss.x - p.x) ** 2 + (boss.y - p.y) ** 2 >= T.BOSS_MIN_SPAWN_DISTANCE**2
 
 
-def test_snail_queen_ring_every_four_seconds(make_config):
+def test_snail_queen_ring_every_three_seconds(make_config):
     w, boss = boss_world(make_config)
     boss.speed = 0.0
-    events = run(w, 8.1)
+    events = run(w, 6.1)
     rings = [e for e in events if isinstance(e, EnemyShotFired) and not e.lobbed]
     assert len(rings) == 2
-    assert sum(1 for s in w.enemy_shots if not s.lobbed) <= 16
+    assert sum(1 for s in w.enemy_shots if not s.lobbed) <= 2 * T.RING_SHOTS
 
 
 def test_snail_queen_phases(make_config):
@@ -283,9 +284,18 @@ def test_reaper_rains_and_wins_the_run(make_config):
     run(w, 4.2)
     assert any(h.spec.kind == "explosion" for h in w.hazards)  # soul rain with warning circles
     boss.hp = 0
-    w._kill(boss, 0, [])
-    assert w.victory and w.gate is None
-    events = w.step()
+    events = []
+    w._kill(boss, 0, events)
+    # the way home opens; the run goes on (flood for more points) until you walk through it
+    assert not w.victory and w.gate is not None and w.snapshot().gate_exit
+    assert [e.exit for e in events if isinstance(e, GateOpened)] == [True]
+    p = w.players[0]
+    w.enemies = []
+    w._gate_ready_tick = w.tick
+    p.x, p.y = w.gate
+    w.step()
+    assert p.gate_prompt and not w.over
+    events = w.step([PlayerInput(0, gate=True)])
     assert w.over and w.result().victory and any(getattr(e, "victory", False) for e in events)
 
 

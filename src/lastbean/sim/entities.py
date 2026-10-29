@@ -280,6 +280,8 @@ class Player:
     pending_chests: list[str] = field(default_factory=list)  # min rarity of each unopened chest
     offer: tuple[str, ...] = ()
     offer_source: str = ""  # "level" or "chest"
+    gate_prompt: bool = False  # standing in the open gate: asked whether to go through
+    in_gate: bool = False  # inside the gate area (asked once per visit)
     slow_pct: float = 0.0
     damage_taken: float = 0.0
     ability_cooldown: float = 0.0

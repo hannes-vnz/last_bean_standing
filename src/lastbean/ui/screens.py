@@ -231,7 +231,7 @@ def _menu_slug(r: Renderer, t: int, squish_ms: int) -> pygame.Rect | None:
     """Every 20 s a slug crawls along the bottom of the menu. Squished ones leave a puff and stay away a while."""
     cycle, period = t // 20_000, 20_000
     since = t - squish_ms
-    ground = r.h - getattr(r, "safe", (0, 0, 0, 0))[2] - 24  # just above the tip line
+    ground = r.h - getattr(r, "safe", (0, 0, 0, 0))[2] - 40  # just above the tip band
     if 0 <= since < 600:  # squish puff
         x, y = _menu_slug.last if hasattr(_menu_slug, "last") else (r.w // 2, ground)
         for k in range(6):
@@ -276,6 +276,7 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool, bean: str = "rang
     t = pygame.time.get_ticks()
     wide = r.w > r.h
     st, sr, sb, sl = getattr(r, "safe", (0, 0, 0, 0))
+    col_w = 176
     signed_in = bool(profile.get("account", {}).get("session"))
     buttons: list[Button] = []
     # top bar: Funkelsteine and account
@@ -284,14 +285,15 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool, bean: str = "rang
     acc = pygame.Rect(r.w - 96 - sr, 6 + st, 90, 22)
     buttons.append(_button(r, acc, "Konto: an" if signed_in else "Anmelden", "account"))
     small = [("Optionen", "settings"), ("Name", "name")] + ([] if web else [("Beenden", "quit")])
-    tip_y = r.h - sb - 14  # the garden tip line; everything else stays above it
-    bottom = tip_y - 6
+    tip = GARDEN_TIPS[(t // 6000) % len(GARDEN_TIPS)]
+    tip_lines = _wrap(r, tip, r.w - 24 - sl - sr)[:2]
+    tip_y = r.h - sb - 8 - 12 * len(tip_lines)  # the garden tip at the bottom; everything else stays above it
+    bottom = tip_y - 8
     if wide:
         one_line = r.h - st - sb < 340
         logo_y = st + (18 if one_line else 26)
         _logo(r, r.w // 2, logo_y, t, one_line)
         top = logo_y + (40 if one_line else 72)
-        col_w = 176
         rows = [(40, [("Spielen", "play")], True)]
         rows += [(30, [(label, action)], False) for label, action in
                  (("Gewächshaus", "workshop"), ("Challenges", "challenges"), ("Bestenliste", "board"))]  # fmt: skip
@@ -322,17 +324,24 @@ def draw_menu(r: Renderer, profile: dict[str, Any], web: bool, bean: str = "rang
     if slug is not None:
         buttons.append(Button(slug, "squish"))
     best = profile["highscores"]["overall"]
-    sign = pygame.Rect(0, 0, 150, 34)
-    sign.midtop = (bean_x, bean_y + 44)
-    _plank(r, sign)
     titles = profile.get("titles") or []
     hello = f"Hallo, {profile.get('nickname') or 'Bohne'}!"
-    r.text(
-        _fit(r, f"{hello} ({titles[-1]})" if titles else hello, sign.w + 40), (sign.centerx, sign.y + 9), center=True
-    )
-    r.text(f"Rekord {best['score']}" if best else "Noch kein Rekord", (sign.centerx, sign.y + 22), center=True)
-    tip = GARDEN_TIPS[(t // 6000) % len(GARDEN_TIPS)]
-    r.text(_fit(r, tip, r.w - 16 - sl - sr), (r.w // 2, tip_y), center=True)
+    hello = f"{hello} ({titles[-1]})" if titles else hello
+    record = f"Rekord {best['score']}" if best else "Noch kein Rekord"
+    room = (r.w - 24 - col_w - 20) if wide else r.w - 16  # the sign may not reach into the buttons
+    sign_w = min(room, max(150, r.font.size(hello)[0] + 24, r.font.size(record)[0] + 24))
+    sign = pygame.Rect(0, 0, sign_w, 34)
+    sign.midtop = (bean_x, bean_y + 44)
+    sign.right = min(sign.right, r.w - 8 - sr)
+    _plank(r, sign)
+    r.text(_fit(r, hello, sign.w - 12), (sign.centerx, sign.y + 9), center=True)
+    r.text(record, (sign.centerx, sign.y + 22), center=True)
+    band = pygame.Rect(0, tip_y - 5, r.w, 12 * len(tip_lines) + 6)  # dark band: readable on the busy ground
+    shade = pygame.Surface(band.size, pygame.SRCALPHA)
+    shade.fill((*r.ink, 170))
+    r.canvas.blit(shade, band)
+    for i, line in enumerate(tip_lines):
+        r.text(line, (r.w // 2, tip_y + 4 + 12 * i), center=True)
     return buttons
 
 

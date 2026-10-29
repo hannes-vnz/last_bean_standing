@@ -896,6 +896,8 @@ async def run(
             offer_action, renderer.banish_mode = PlayerInput(0, reroll=True), False
         elif action == "banish":
             renderer.banish_mode = not renderer.banish_mode
+        elif action in ("gate_yes", "gate_no"):
+            offer_action = PlayerInput(0, gate=action == "gate_yes")
 
     def pick_card(i: int) -> None:
         """A card tap or 1/2/3: take it, or banish it while banish mode is on."""
@@ -1046,6 +1048,11 @@ async def run(
                 elif event.key == pygame.K_F4:
                     game.config = game.normal if game.config is not game.normal else stress_config(game.normal)
                     new_run()
+                elif game.world.paused and game.world.players[0].gate_prompt:
+                    if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE, pygame.K_y, pygame.K_j):
+                        card_action("gate_yes")
+                    elif event.key in (pygame.K_ESCAPE, pygame.K_n, pygame.K_BACKSPACE):
+                        card_action("gate_no")
                 elif game.world.paused:
                     if event.key == pygame.K_r:
                         card_action("reroll")
@@ -1071,7 +1078,7 @@ async def run(
                         frame_events += world.step([PlayerInput(0, choice=choice)])
                         renderer.selected = 0
                     elif game.config is not game.normal:
-                        frame_events += world.step([PlayerInput(0, choice=0)])  # stress test picks automatically
+                        frame_events += world.step([PlayerInput(0, choice=0, gate=True)])  # stress test: automatic
                 elif effects.reel is not None or effects.intro is not None:  # chest draw or boss entrance
                     acc = 0.0
                 elif effects.hitstop > 0:  # hit-stop: the picture holds for a few frames, the run just waits
@@ -1220,7 +1227,7 @@ def first_run_hints(touch: bool) -> list[str]:
         "Sammle die Funken der Plagen: Jedes Level bringt eine neue Karte.",
         ability,
         "Schreine: Bleib im Kreis stehen. Mehr Belohnung, aber die Plagen werden stärker.",
-        "Bei 2:06 kommt der Boss. Besiegt öffnet er das Gartentor ins nächste Beet.",
+        "Bei 2:06 kommt der Boss. Besiegt öffnet er das Gartentor; lauf hinein, wenn du bereit bist.",
     ]
 
 
