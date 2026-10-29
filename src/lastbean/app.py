@@ -37,7 +37,7 @@ from .render.interp import interpolate
 from .render.renderer import CANVAS_H, CANVAS_W, Renderer, effect_palette
 from .sim import DT, PlayerInput, World, WorldConfig
 from .ui import screens
-from .ui.layout import default_short_side, is_compact, logical_size, pixel_perfect_size, zoom_step
+from .ui.layout import SHORT_SIDE, default_short_side, is_compact, logical_size, pixel_perfect_size, zoom_step
 from .ui.touch import TouchState
 
 MAX_STEPS_PER_FRAME = 3  # avoid the spiral of death after a stall (slow devices slow down instead)
@@ -145,6 +145,7 @@ class Game:
         for c in self.all_characters:  # beans someone already played before they were locked stay theirs
             if c.unlock_challenge and c.id not in unlocked and c.id in self.profile["highscores"]["by_character"]:
                 unlocked.append(c.id)
+        challenges.sync_unlocks(self.profile, content.challenges)  # rewards that changed after they were earned
         playable = {c.id for c in self.characters}
         self.character = self.profile.get("character") if self.profile.get("character") in playable else "ranger"
         self.normal = self._world_config(self.character)
@@ -594,6 +595,12 @@ class Screen:
         self.zoom = zoom  # short side of the canvas chosen by the player; None = device default
         self.fit()
 
+    def default_short(self) -> int:
+        """Shorter canvas side without a player zoom (phones start a little closer)."""
+        if WEB:
+            return default_short_side(is_compact(*self._css[0]))
+        return SHORT_SIDE
+
     def change_zoom(self, steps: int) -> bool:
         """Zoom in (negative steps) or out. Returns True when the view changed."""
         before = (self.renderer.w, self.renderer.h)
@@ -772,6 +779,11 @@ async def run(
         s = game.profile["settings"]
         audio.volume = s["volume"] / 100
         effects.show_numbers, effects.shake_on = s["numbers"], s["shake"]
+        renderer.hud_full = s.get("hud_full", False)
+
+    def toggle_hud() -> None:
+        renderer.hud_full = game.profile["settings"]["hud_full"] = not renderer.hud_full
+        game.save()
 
     apply_settings()
 
@@ -881,6 +893,12 @@ async def run(
             game.state = "settings"
         elif action == "settings_back":
             game.state = game.settings_return
+        elif action == "set:zoom":  # cycle: closer and closer ... then all the way out again
+            if not screen.change_zoom(-1):
+                while screen.change_zoom(1):
+                    pass
+            game.profile["settings"]["zoom"] = screen.zoom
+            game.save()
         elif action.startswith("set:"):
             game.change_setting(action[4:])
             apply_settings()
@@ -920,6 +938,8 @@ async def run(
                         pick_card(i)
             elif renderer.pause_rect.collidepoint(pos):
                 game.state = "pause"
+            elif renderer.hud_rect.collidepoint(pos):
+                toggle_hud()
             elif renderer.ability_rect.collidepoint(pos):
                 touch_ability = True
         else:
@@ -953,17 +973,14 @@ async def run(
                             f"tap {event.x:.2f},{event.y:.2f} -> {pos} {game.state}\n"
                             f"canvas {renderer.w}x{renderer.h} win {ww}x{wh} css {screen._css[0]}x{screen._css[1]}"
                         )
-                    on_button = renderer.ability_rect.collidepoint(pos) or renderer.pause_rect.collidepoint(pos)
+                    on_button = any(r.collidepoint(pos) for r in (renderer.ability_rect, renderer.pause_rect,
+                                                                       renderer.hud_rect))  # fmt: skip
                     steer = game.state == "play" and not game.world.paused and not on_button
-                    touch.down(event.finger_id, *pos, steer=steer)
+                    touch.down(event.finger_id, *pos, steer=steer, button=on_button and game.state == "play")
                     if game.state == "play" and not game.world.paused and on_button:
                         tap(pos)  # buttons react on touch down, so a running thumb is never blocked
                 elif event.type == pygame.FINGERMOTION:
                     touch.move(event.finger_id, *screen.to_canvas(event))
-                    ratio = touch.pinch_ratio()  # two fingers: pinch to zoom
-                    if ratio is not None and (ratio > 1.15 or ratio < 0.87):
-                        zoom(-1 if ratio > 1 else 1)
-                        touch.rebase_pinch()
                 elif event.type == pygame.MOUSEWHEEL:
                     zoom(-1 if event.y > 0 else 1)
                 elif event.type == pygame.FINGERUP:
@@ -1045,6 +1062,8 @@ async def run(
                         do("menu")  # abandon the run, it is not recorded
                 elif event.key in (pygame.K_ESCAPE, pygame.K_p) and not game.world.paused:
                     game.state = "pause"
+                elif event.key == pygame.K_TAB and game.state == "play":
+                    toggle_hud()
                 elif event.key == pygame.K_F4:
                     game.config = game.normal if game.config is not game.normal else stress_config(game.normal)
                     new_run()
@@ -1149,7 +1168,8 @@ async def run(
             elif game.state == "prologue":
                 buttons = screens.draw_prologue(renderer)
             elif game.state == "settings":
-                buttons = screens.draw_settings(renderer, game.profile["settings"])
+                label = zoom_label(min(renderer.w, renderer.h), screen.default_short())
+                buttons = screens.draw_settings(renderer, game.profile["settings"], label)
             elif game.state == "workshop":
                 buttons = screens.draw_greenhouse(renderer, content, game.profile, game.workshop_tab)
             elif game.state == "challenges":
@@ -1229,6 +1249,13 @@ def first_run_hints(touch: bool) -> list[str]:
         "Schreine: Bleib im Kreis stehen. Mehr Belohnung, aber die Plagen werden stärker.",
         "Bei 2:06 kommt der Boss. Besiegt öffnet er das Gartentor; lauf hinein, wenn du bereit bist.",
     ]
+
+
+def zoom_label(short: int, default: int) -> str:
+    """How close the camera is compared to the device's normal view (shorter side in canvas pixels)."""
+    ratio = short / max(1, default)
+    return "sehr nah" if ratio < 0.85 else "nah" if ratio < 0.96 else "normal" if ratio <= 1.08 else \
+        "weit" if ratio < 1.4 else "sehr weit"  # fmt: skip
 
 
 def combine_input(keys: PlayerInput, stick: tuple[int, int], touch_ability: bool) -> PlayerInput:

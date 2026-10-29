@@ -501,8 +501,8 @@
     "per_level": 15
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_stillness",
   "impl_phase": 1
  },
  {
@@ -659,8 +659,8 @@
     "per_level": 30
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_executioner",
   "impl_phase": 1
  },
  {
@@ -679,8 +679,8 @@
     "per_level": 2
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_lifesteal",
   "impl_phase": 1
  },
  {
@@ -698,8 +698,8 @@
     "per_level": 25
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_shield_burst",
   "impl_phase": 1
  },
  {
@@ -718,8 +718,8 @@
     "per_level": 30
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_last_stand",
   "impl_phase": 1
  },
  {
@@ -737,8 +737,8 @@
     "per_level": 200
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_overcharge",
   "impl_phase": 1
  },
  {
@@ -757,8 +757,8 @@
     "per_level": 30
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_explosive_rounds",
   "impl_phase": 1
  },
  {
@@ -815,8 +815,8 @@
     "per_level": 1
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_second_wind",
   "impl_phase": 1
  },
  {
@@ -861,8 +861,8 @@
     "per_level": 20
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_bloodlust",
   "impl_phase": 1
  },
  {
@@ -905,8 +905,8 @@
     "per_level": 20
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_shrapnel",
   "impl_phase": 1
  },
  {
@@ -928,8 +928,8 @@
     "per_level": 10
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_titan_heart",
   "impl_phase": 1
  },
  {
@@ -951,8 +951,8 @@
     "per_level": -40
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_glass_cannon",
   "impl_phase": 1
  },
  {
@@ -975,8 +975,8 @@
     "per_level": 25
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_reaper_pact",
   "impl_phase": 1
  },
  {
@@ -1010,8 +1010,8 @@
     "per_level": 50
    }
   ],
-  "unlocked_at_start": true,
-  "unlock_challenge": null,
+  "unlocked_at_start": false,
+  "unlock_challenge": "unlock_up_elemental_storm",
   "impl_phase": 1
  }
 ]

@@ -62,6 +62,7 @@ def normalize(data: Any) -> dict[str, Any]:
         "volume": volume if isinstance(volume, int) and not isinstance(volume, bool) and 0 <= volume <= 100 else 100,
         "numbers": settings.get("numbers") is not False,  # damage numbers
         "shake": settings.get("shake") is not False,  # screen shake
+        "hud_full": settings.get("hud_full") is True,  # in the run: all HUD lines and the minimap (else compact)
     }
     out["hints_seen"] = bool(data.get("hints_seen", False))
     out["sparkles"] = _num(data.get("sparkles"))  # Funkelsteine

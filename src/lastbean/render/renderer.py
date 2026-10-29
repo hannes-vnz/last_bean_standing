@@ -69,6 +69,8 @@ class Renderer:
         self.hud_bottom = 24
         # Safe area (notch, Dynamic Island, home bar) in canvas pixels: top, right, bottom, left (app.Screen.fit).
         self.safe = (0, 0, 0, 0)
+        self.hud_full = False  # collapsed HUD: time and HP only; tap the HUD (or Tab) for everything
+        self.hud_rect = pygame.Rect(0, 0, 0, 0)  # tap target that folds the HUD in and out
         self._dest, self._scale = (0, 0), 1
         style = content.style
         self.tile_px = content.balance.tile_px
@@ -364,7 +366,8 @@ class Renderer:
         if snap.gate is not None:
             self._draw_edge_arrow(snap.gate[0], snap.gate[1], cam_x, cam_y, (126, 217, 87))
         self._draw_hud(snap, focus)
-        self._draw_minimap(snap, focus)
+        if self.hud_full:
+            self._draw_minimap(snap, focus)
         if effects and effects.banner:
             y = max(70, self.hud_bottom + 34)
             self.text(effects.banner[0], (self.w // 2, y), self.big_font, center=True)
@@ -446,21 +449,37 @@ class Renderer:
         else:
             m, s = divmod(int(left + 0.999), 60)
             clock = f"{m}:{s:02d}"
-        parts = [f"Beet {snap.stage}", clock, f"Level {focus.level}", f"Kills {focus.kills}",
-                 f"HP {int(focus.hp)}/{int(focus.max_hp)}" + (f" +{int(focus.shield)}" if focus.shield >= 1 else ""),
-                 f"Samen {focus.seeds}"] + ([f"Funkel {focus.sparkles}"] if focus.sparkles else [])  # fmt: skip
-        if snap.difficulty != 1.0:
-            parts.append(f"Schwierigkeit {round(snap.difficulty * 100)} %")
+        hp = f"HP {int(focus.hp)}/{int(focus.max_hp)}" + (f" +{int(focus.shield)}" if focus.shield >= 1 else "")
+        if self.hud_full:
+            parts = [f"Beet {snap.stage}", clock, f"Level {focus.level}", f"Kills {focus.kills}", hp,
+                     f"Samen {focus.seeds}"] + ([f"Funkel {focus.sparkles}"] if focus.sparkles else [])  # fmt: skip
+            if snap.difficulty != 1.0:
+                parts.append(f"Schwierigkeit {round(snap.difficulty * 100)} %")
+        else:  # folded: only what you need while running
+            parts = [clock, hp]
         st, sr, sb, sl = self.safe
-        line, y = "", 9 + st
+        line, y, widest = "", 9 + st, 0
+        room = self.w - 50 - sl - sr - (self.minimap_size() if self.hud_full else 0)
         for part in parts:  # wrap onto a second line on narrow (portrait) screens
             trial = f"{line}   {part}" if line else part
-            if line and self.font.size(trial)[0] > self.w - 50 - sl - sr - self.minimap_size():
+            if line and self.font.size(trial)[0] > room:
                 self.text(line, (6 + sl, y))
+                widest = max(widest, self.font.size(line)[0])
                 line, y = part, y + 14
             else:
                 line = trial
         self.text(line, (6 + sl, y))
+        widest = max(widest, self.font.size(line)[0])
+        # fold/unfold chip right of the text: the whole HUD text is the tap target (at least thumb-sized)
+        chip = pygame.Rect(6 + sl + widest + 6, 4 + st, 14, 11)
+        c.fill(ink, chip.inflate(2, 2))
+        c.fill((90, 60, 100), chip)
+        cx, cy = chip.center
+        for k in range(3):  # a small triangle: down when folded (there is more), up when unfolded
+            half = 3 - k
+            row = cy - 1 + k if not self.hud_full else cy + 1 - k
+            c.fill(WHITE, (cx - half, row, 2 * half + 1, 1))
+        self.hud_rect = pygame.Rect(sl, st, chip.right + 6 - sl, max(26, y + 8 - st))
         self.hud_bottom = y + 14
         self._draw_build(focus)
         # Pause button (touch has no Esc key) and ability button, both big enough for a thumb on touch.
@@ -1187,11 +1206,19 @@ class Renderer:
             c.blit(overlay, (0, 0))
 
     def _draw_boss_bar(self, bar) -> None:
-        """Below the HUD lines and left of the minimap, so nothing overlaps on narrow screens."""
+        """Top centre, between the HUD text and the pause button; below them when the screen is too narrow."""
         c, ink = self.canvas, self.ink
-        free = self.w - self.minimap_size() - 24  # room left of the minimap
-        w = min(300, free)
-        rect = pygame.Rect(6 + (free - w) // 2, self.hud_bottom + 6, w, 8)
+        st, sr = self.safe[0], self.safe[1]
+        left = self.hud_rect.right + 8
+        right = self.w - sr - 40 - (self.minimap_size() + 8 if self.hud_full else 0)
+        w = min(240, self.w - 2 * max(left, self.w - right))  # centred: same margin on both sides
+        if w >= 120:
+            rect = pygame.Rect((self.w - w) // 2, 8 + st, w, 8)
+        else:
+            # Too narrow: right under the HUD text, centred in the room left of the minimap (when it is shown).
+            x0, x1 = 6 + self.safe[3], self.w - 6 - sr - (self.minimap_size() + 10 if self.hud_full else 0)
+            w = min(240, x1 - x0)
+            rect = pygame.Rect(x0 + (x1 - x0 - w) // 2, max(self.hud_rect.bottom, self.hud_bottom) + 4, w, 8)
         c.fill(ink, rect.inflate(2, 2))
         c.fill((90, 60, 100), rect)
         c.fill(self.enemy_colors.get(bar.boss, self.telegraph), (rect.x, rect.y, round(w * bar.hp_frac), rect.h))

@@ -144,7 +144,7 @@ def up(id, name, rar, maxlv, tags, text, effects, unlocked, phase, unlock_ch=Non
                 unlocked_at_start=unlocked, unlock_challenge=unlock_ch, impl_phase=phase)
 S = lambda stat, v: dict(stat=stat, per_level=v)
 UPGRADES = [
- # Paket F (28.10.2026): alle umgesetzten Boni wirken über Stat-Schlüssel und sind von Anfang an im Pool.
+ # Paket F (28.10.2026): alle umgesetzten Boni wirken über Stat-Schlüssel. Seit 29.10.2026 sind 18 davon gesperrt (UP_UNLOCKS).
  # Werte gelten für eine gewöhnliche Karte; die Kartenseltenheit vervielfacht sie (card_tier_mult).
  # --- gewöhnlich (18)
  up("sharp_edges", "Geschärfte Spitzen", "common", 5, ["damage"], "+8 % Schaden je Stufe.", [S("damage_pct", 8)], True, 1),
@@ -361,25 +361,30 @@ chal("unlock_bomber", "Besiege insgesamt 2000 Gegner.", PS("kills_total", 2000),
 chal("unlock_venom", "Verursache insgesamt 10000 Giftschaden.", PS("poison_damage_total", 10000), UC("venom"))
 chal("unlock_sniper", "Besiege alle drei Beet-Bosse (Schleimrun, Knollgrimm, den Schnitter).", PS("distinct_bosses_defeated", 3), UC("sniper"))
 UP_UNLOCKS = {
- "unlock_up_stillness": ("Schließe 10 Runs ab.", PS("runs_total", 10), "Ausdauernd"),
+ "unlock_up_stillness": ("Schließe 5 Runs ab.", PS("runs_total", 5), "stillness"),
  "unlock_up_minion_horde": ("Schalte 3 Charaktere frei.", PS("characters_unlocked", 3), "minion_horde"),
  "unlock_up_orbiting_blades": ("Erreiche Level 20 in einem Run.", RS("level_reached", 20), "orbiting_blades"),
- "unlock_up_executioner": ("Besiege 25 Elite-Gegner.", PS("elite_kills_total", 25), "Elitejäger"),
- "unlock_up_lifesteal": ("Besiege insgesamt 1000 Gegner.", PS("kills_total", 1000), "Plagenschreck"),
- "unlock_up_shield_burst": ("Räume eine Welle ab Welle 8, ohne Schaden zu nehmen.", RS("flawless_wave", 8), "Unberührt"),
- "unlock_up_last_stand": ("Verbringe insgesamt 60 s mit unter 20 % HP.", PS("low_hp_seconds_total", 60), "Zähe Bohne"),
- "unlock_up_overcharge": ("Lande insgesamt 3000 kritische Treffer.", PS("crits_total", 3000), "Volltreffer"),
- "unlock_up_explosive_rounds": ("Besiege insgesamt 3000 Gegner.", PS("kills_total", 3000), "Gärtnermeister"),
- "unlock_up_second_wind": ("Besiege den ersten Boss.", PS("boss_kills_total", 1), "Beetbefreier"),
+ "unlock_up_executioner": ("Besiege 25 Elite-Gegner.", PS("elite_kills_total", 25), "executioner"),
+ "unlock_up_lifesteal": ("Besiege insgesamt 1000 Gegner.", PS("kills_total", 1000), "lifesteal"),
+ "unlock_up_shield_burst": ("Räume eine Welle ab Welle 8, ohne Schaden zu nehmen.", RS("flawless_wave", 8), "shield_burst"),
+ "unlock_up_last_stand": ("Verbringe insgesamt 60 s mit unter 20 % HP.", PS("low_hp_seconds_total", 60), "last_stand"),
+ "unlock_up_overcharge": ("Lande insgesamt 3000 kritische Treffer.", PS("crits_total", 3000), "overcharge"),
+ "unlock_up_explosive_rounds": ("Besiege insgesamt 3000 Gegner.", PS("kills_total", 3000), "explosive_rounds"),
+ "unlock_up_second_wind": ("Besiege den ersten Boss.", PS("boss_kills_total", 1), "second_wind"),
  "unlock_up_gravity_well": ("Erreiche das dritte Beet.", RS("stage_reached", 3), "gravity_well"),
- "unlock_up_bloodlust": ("Besiege 800 Gegner in einem Run.", RS("kills_in_run", 800), "Blutrausch"),
- "unlock_up_time_warp": ("Überlebe 2 Minuten Plagenflut.", RS("swarm_seconds", 120), "time_warp"),
- "unlock_up_shrapnel": ("Besiege insgesamt 10000 Gegner.", PS("kills_total", 10000), "Erntehelfer"),
- "unlock_up_titan_heart": ("Erleide 1500 Schaden in einem Run.", RS("damage_taken_run", 1500), "Dickhaut"),
- "unlock_up_glass_cannon": ("Erreiche das zweite Beet in unter 4 Minuten.", RS("stage2_reached_s", 240, op="<"), "Eilig"),
- "unlock_up_reaper_pact": ("Besiege insgesamt 10 Bosse.", PS("boss_kills_total", 10), "Bossbrecher"),
- "unlock_up_elemental_storm": ("Besitze Entzünden, Kälte, Toxin und Schock in einem Run.", dict(type="run_flag", flag="owns_all", ids=["ignite", "chill", "toxin", "shock"]), "Elementar"),
+ "unlock_up_bloodlust": ("Besiege 800 Gegner in einem Run.", RS("kills_in_run", 800), "bloodlust"),
+ "unlock_up_time_warp": ("Überlebe 60 s Plagenflut.", RS("swarm_seconds", 60), "time_warp"),
+ "unlock_up_shrapnel": ("Besiege insgesamt 10000 Gegner.", PS("kills_total", 10000), "shrapnel"),
+ "unlock_up_titan_heart": ("Erleide 1500 Schaden in einem Run.", RS("damage_taken_run", 1500), "titan_heart"),
+ "unlock_up_glass_cannon": ("Erreiche das zweite Beet in unter 4 Minuten.", RS("stage2_reached_s", 240, op="<"), "glass_cannon"),
+ "unlock_up_reaper_pact": ("Besiege insgesamt 10 Bosse.", PS("boss_kills_total", 10), "reaper_pact"),
+ "unlock_up_elemental_storm": ("Besitze Entzünden, Kälte, Toxin und Schock in einem Run.", dict(type="run_flag", flag="owns_all", ids=["ignite", "chill", "toxin", "shock"]), "elemental_storm"),
 }
+# 29.10.2026 (Hannes: "nicht alle Boni von Anfang an"): jede dieser Challenges schaltet ihr Upgrade frei (vorher nur ein Titel).
+for cid, (_text, _cond, target) in UP_UNLOCKS.items():
+    for u in UPGRADES:
+        if u["id"] == target:
+            u["unlocked_at_start"], u["unlock_challenge"] = False, cid
 LOCKED_UPGRADES = {u["id"] for u in UPGRADES if not u["unlocked_at_start"]}
 for cid, (text, cond, target) in UP_UNLOCKS.items():
     chal(cid, text, cond, UU(target) if target in LOCKED_UPGRADES else dict(type="title", id=target))

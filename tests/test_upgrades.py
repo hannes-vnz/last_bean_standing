@@ -26,7 +26,10 @@ from lastbean.sim.upgrades import (
 def test_phase_one_pool_has_every_supported_upgrade(content, make_config):
     phase1 = [UpgradeDef.from_content(u) for u in content.upgrades if u.impl_phase == 1]
     assert len(phase1) == 46 and all(u.supported for u in phase1)
-    assert {u.id for u in make_config().upgrades} == {u.id for u in phase1}
+    start = {u.id for u in content.upgrades if u.impl_phase == 1 and u.unlocked_at_start}
+    assert len(start) == 32 and {u.id for u in make_config(unlocked_upgrades=()).upgrades} == start  # rest: challenges
+    every = make_config(unlocked_upgrades=tuple(u.id for u in phase1))
+    assert {u.id for u in every.upgrades} == {u.id for u in phase1}
 
 
 def test_every_upgrade_effect_changes_stats(make_config):

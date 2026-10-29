@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lastbean"
-version = "0.6.0"
+version = "0.7.0"
 description = "Last Bean Standing: a stop-and-shoot roguelite with bean mascots"
 readme = "README.md"
 requires-python = ">=3.11"
